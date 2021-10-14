@@ -105,7 +105,7 @@ Simulation pass
 ```
 cd /tmp/ATHENA && mkdir sandbox && cd sandbox
 
-# Links to the directories with the "official" .xml files
+# Links to the directories with the "official" .xml files (depend on your installation);
 ln -s <directory-with-"ip6_defs.xml"-file> ip6
 ln -s <directory-with-"definitions.xml"-file> compact
 
@@ -113,7 +113,7 @@ ln -s <directory-with-"definitions.xml"-file> compact
 ln -sf /tmp/ATHENA/share/athena/compact/erich.xml .
 ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
-# Eventually run 'npsim' for 100 8 GeV pions;
+# Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;;
 npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler=''
 ```
 
