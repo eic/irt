@@ -36,6 +36,3 @@ install(DIRECTORY compact/
     DESTINATION share/${PROJECT_NAME}/compact
     FILES_MATCHING PATTERN "*.xml"
     )
-install(FILES athena.xml
-    DESTINATION share/${PROJECT_NAME}/
-    )
