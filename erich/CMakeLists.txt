@@ -33,10 +33,6 @@ target_link_libraries(${a_lib_name}
 #-----------------------------------------------------------------------------------
 # Install the detector description files.
 install(DIRECTORY compact/
-    DESTINATION share/${PROJECT_NAME}/${a_lib_name}
-    FILES_MATCHING PATTERN "*.xml"
-    )
-install(DIRECTORY compact/
     DESTINATION share/${PROJECT_NAME}/compact
     FILES_MATCHING PATTERN "*.xml"
     )
