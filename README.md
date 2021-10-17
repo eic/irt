@@ -162,9 +162,9 @@ Updated procedure
   - you can do this with `source environ.sh`, which will also add some
     useful directories to `$PATH`, e.g., `bin/`
 - setup links, so scripts know where things are:
-  - point `athena` to [https://eicweb.phy.anl.gov/EIC/detectors/athena](athena):
+  - point `athena` to [athena](https://eicweb.phy.anl.gov/EIC/detectors/athena):
     `ln -sv /path/to/repo/EIC/detectors/athena ./`
-  - point `athena/ip6` to [https://eicweb.phy.anl.gov/EIC/detectors/ip6](ip6):
+  - point `athena/ip6` to [ip6](https://eicweb.phy.anl.gov/EIC/detectors/ip6):
     `ln -sv /path/to/repo/EIC/detectors/ip6/ip6 athena/`
     (you've probably already done this, if you setup `athena` software)
 - build with `buildIRT.sh`
