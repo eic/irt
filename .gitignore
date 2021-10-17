@@ -2,3 +2,5 @@
 build
 install
 athena
+*.root
+sim/macro/tmp*.mac

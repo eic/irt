@@ -9,16 +9,15 @@ pushd $(dirname $(realpath $0))/..
 # clean
 if [ $clean -eq 1 ]; then
   echo "clean build -----------"
-  mkdir -p build install
-  rm -r build install
+  mkdir -p build
+  rm -r build
 fi
 
 # build
-# NOTE: it may be better to use `$ATHENA_PREFIX` for the install dir,
-# but this may clobber installations for those of us who also develop
-# the `EIC/detectors/athena` repo
+# NOTE: hopefully using `$ATHENA_PREFIX` doesn't bother those of us
+# who also develop the `EIC/detectors/athena` repo
 cmake -B build -S . \
-  -DCMAKE_INSTALL_PREFIX=install \
+  -DCMAKE_INSTALL_PREFIX=$ATHENA_PREFIX \
   -DREADER=YES \
   -DATHENA=YES \
   && \

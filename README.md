@@ -157,6 +157,9 @@ source code for more details.
 
 Updated procedure
 -----------------
+
+### Setup and Build
+
 - Start `eic-shell`, and be sure your environment variables are setup to use
   the ATHENA framework
   - you can do this with `source environ.sh`, which will also add some
@@ -170,3 +173,11 @@ Updated procedure
 - build with `buildIRT.sh`
   - output directories are `build` and `install`
   - run `buildIRT.sh clean` for a clean build (`rm -r build install`)
+
+### Simulation
+
+- `simulate_erich.py` to run a test simulation
+  - run with no arguments for usage guide
+  - writes a macro file to `sim/macro/` and runs `npsim`
+  - simulation output tree written to `sim/out/`
+  - IRT geometry config file written to `sim/irtgeo/`
