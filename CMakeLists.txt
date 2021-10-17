@@ -12,7 +12,7 @@ include(${ROOT_USE_FILE})
 
 include(CheckCXXCompilerFlag)
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wno-misleading-indentation -std=c++0x")
+SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 check_cxx_compiler_flag(-std=c++17 HAVE_FLAG_STD_CXX17)
 if(HAVE_FLAG_STD_CXX17)
@@ -52,12 +52,19 @@ ROOT_GENERATE_DICTIONARY(G__irt ${HEADERS} LINKDEF irtLinkDef.h)
 
 ADD_LIBRARY( ${IRT_LIB} SHARED ${IRT_SRC} )
 TARGET_LINK_LIBRARIES(${IRT_LIB} ${ROOT_LIBRARIES} )
+TARGET_COMPILE_OPTIONS(${IRT_LIB} PRIVATE -Wall -Wno-misleading-indentation)
 
 #----------------------------------------------------------------------------
 
 SET(ignoreMe "${READER}")
 if(DEFINED READER)
   add_subdirectory(reader)
+endif()
+
+SET(ignoreMe "${ATHENA}")
+if(DEFINED ATHENA)
+  add_compile_definitions(IRTGEO)
+  add_subdirectory(athena)
 endif()
 
 #----------------------------------------------------------------------------

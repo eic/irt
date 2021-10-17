@@ -153,3 +153,19 @@ source code for more details.
 ```
 /tmp/ATHENA/bin/reader erich-data.root erich-config.root
 ```
+
+
+Updated procedure
+-----------------
+```
+eic-shell
+source /opt/detector/setup.sh
+
+ln -sv /path/to/repo/EIC/detectors/athena ./
+ln -sv ../ip6/ip6 athena/    # (if not already done)
+
+// consider instead using $ATHENA_PREFIX instead of ./install
+cmake -B build -S . -DCMAKE_INSTALL_PREFIX=install -DREADER=YES -DATHENA=YES
+cmake --build build -- install
+
+```
