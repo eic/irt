@@ -157,15 +157,16 @@ source code for more details.
 
 Updated procedure
 -----------------
-```
-eic-shell
-source /opt/detector/setup.sh
-
-ln -sv /path/to/repo/EIC/detectors/athena ./
-ln -sv ../ip6/ip6 athena/    # (if not already done)
-
-// consider instead using $ATHENA_PREFIX instead of ./install
-cmake -B build -S . -DCMAKE_INSTALL_PREFIX=install -DREADER=YES -DATHENA=YES
-cmake --build build -- install
-
-```
+- Start `eic-shell`, and be sure your environment variables are setup to use
+  the ATHENA framework
+  - you can do this with `source environ.sh`, which will also add some
+    useful directories to `$PATH`, e.g., `bin/`
+- setup links, so scripts know where things are:
+  - point `athena` to [https://eicweb.phy.anl.gov/EIC/detectors/athena](athena):
+    `ln -sv /path/to/repo/EIC/detectors/athena ./`
+  - point `athena/ip6` to [https://eicweb.phy.anl.gov/EIC/detectors/ip6](ip6):
+    `ln -sv /path/to/repo/EIC/detectors/ip6/ip6 athena/`
+    (you've probably already done this, if you setup `athena` software)
+- build with `buildIRT.sh`
+  - output directories are `build` and `install`
+  - run `buildIRT.sh clean` for a clean build (`rm -r build install`)

@@ -1,6 +1,8 @@
 
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
+cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
+
 project(IRT)
 
 #----------------------------------------------------------------------------
@@ -65,6 +67,7 @@ SET(ignoreMe "${ATHENA}")
 if(DEFINED ATHENA)
   add_compile_definitions(IRTGEO)
   add_subdirectory(athena)
+  target_link_libraries(athena PUBLIC -L${IRT}/lib irt)
 endif()
 
 #----------------------------------------------------------------------------
