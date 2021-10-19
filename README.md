@@ -19,8 +19,8 @@ as well as a set of spherical and / or flat mirrors.
  Content:
 
  * [Introduction](#introduction)
- * [Installation](#installation)
  * [Prerequisites](#prerequisites)
+ * [Installation](#installation)
  * [eRICH example configuration](#erich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [Reconstruction pass](#reconstruction-pass)
