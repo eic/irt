@@ -20,6 +20,7 @@ as well as a set of spherical and / or flat mirrors.
 
  * [Introduction](#introduction)
  * [Installation](#installation)
+ * [Prerequisites](#prerequisites)
  * [eRICH example configuration](#erich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [Reconstruction pass](#reconstruction-pass)
@@ -56,20 +57,40 @@ hytheses requested by a user.
 
 <br/>
 
-Installation
-------------
+Prerequisites
+-------------
 
   It is assumed that a user ia familiar with the [ATHENA software](https://eic.phy.anl.gov/ip6) 
 environment, and a juggler singularity container "jug_xl" is running. It is also assumed 
 that dd4hep sources are available either via cvmfs or locally, and athena detector software 
-is installed. In the following /tmp/ATHENA is supposed to be a scratch directory.
+is installed. In the following /tmp/ATHENA is supposed to be a scratch directory. For the sake of 
+completeness, the following sequence of commands installs all what is needed under /tmp/ATHENA:
 
 ```
 mkdir -p /tmp/ATHENA && cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git
+cd athena && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+make -j2 install
+
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/detectors/ip6.git
+cd ip6 && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+make -j2 install
+```
+
+<br/>
+
+Installation
+------------
+
+```
+cd /tmp/ATHENA
 git clone https://eicweb.phy.anl.gov/EIC/irt.git
 cd irt && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DREADER=YES ..
-make install
+make -j2 install
 ```
 
   This compiles the IRT library codes and the executable to be later on used to read the .root
@@ -106,11 +127,11 @@ Simulation pass
 cd /tmp/ATHENA && mkdir sandbox && cd sandbox
 
 # Links to the directories with the "official" .xml files (depend on your installation);
-ln -s <directory-with-"ip6_defs.xml"-file> ip6
-ln -s <directory-with-"definitions.xml"-file> compact
+ln -s /tmp/ATHENA/share/ip6/ip6 .
+ln -s /tmp/ATHENA/share/athena/compact .
 
 # These two just to simplify 'npsim' command line:
-ln -sf /tmp/ATHENA/share/athena/compact/erich.xml .
+ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
 ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
 # Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;;
@@ -130,5 +151,5 @@ and evaluate pion vs kaon hypothesis for the primary pions. See [reader.cc](read
 source code for more details.
   
 ```
-../bin/reader erich-data.root erich-config.root
+/tmp/ATHENA/bin/reader erich-data.root erich-config.root
 ```
