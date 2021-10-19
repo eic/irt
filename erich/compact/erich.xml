@@ -3,11 +3,11 @@
 
 <define>
 <!-- vessel geometry -->
-<constant name="ERICH_Length"             value="BackwardPID_length"/>  <!-- vessel z-length -->
+<constant name="ERICH_Length"             value="60*cm"/>  <!-- vessel z-length -->
 <constant name="ERICH_zmin"               value="-BackwardPID_zmin"/> <!-- vessel front -->
 <constant name="ERICH_zmax"               value="ERICH_zmin - ERICH_Length"/>  <!-- vessel back -->
-<constant name="ERICH_rmin0"              value="BackwardPID_rmin1"/>  <!-- bore radius at vessel frontplane -->
-<constant name="ERICH_rmin1"              value="BackwardPID_rmin2"/>  <!-- bore radius at vessel backplane -->
+<constant name="ERICH_rmin0"              value="5*cm"/>  <!-- bore radius at vessel frontplane -->
+<constant name="ERICH_rmin1"              value="5*cm"/>  <!-- bore radius at vessel backplane -->
 <constant name="ERICH_rmax"               value="BackwardPID_rmax - 2*cm"/>  <!-- vessel backplane radius -->
 <constant name="ERICH_wall_thickness"     value="0.5*cm"/>  <!-- thickness of radial walls -->
 <constant name="ERICH_window_thickness"   value="0.1*cm"/>  <!-- thickness of entrance and exit walls -->
@@ -35,11 +35,11 @@
 ### eRICH: Electron Endcap RICH (name TBD)
 </documentation>
 <detector
-  id="BackwardRICH_ID"
+  id="ForwardRICH_ID"
   name="ERICH"
   type="athena_ERICH"
   readout="ERICHHits"
-  gas="C4F10_ERICH"
+  gas="C2F6_DRICH"
   material="Aluminum"
   vis_vessel="DRICH_vessel_vis"
   vis_gas="DRICH_gas_vis"
