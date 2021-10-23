@@ -160,11 +160,11 @@ Updated procedure
 
 ### Setup and Build
 
-- Start `eic-shell`, and be sure your environment variables are setup to use
-  the ATHENA framework
-  - you can do this with `source environ.sh`, which will also add some
-    useful directories to `$PATH`, e.g., `bin/`
+- Start `eic-shell`, 
 - Optional: If you want to build `athena` repo including IRT: 
+  - be sure your environment variables are setup to use the ATHENA framework; you
+    can do this with `source environ.sh`, which will also add some useful
+    directories to `$PATH`, e.g., `bin/`
   - setup symlinks, so scripts know where things are:
     - point `athena` to [athena](https://eicweb.phy.anl.gov/EIC/detectors/athena):
       `ln -sv /path/to/repo/EIC/detectors/athena ./`
