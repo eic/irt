@@ -14,12 +14,13 @@ if [ $clean -eq 1 ]; then
 fi
 
 # build
-# NOTE: hopefully using `$ATHENA_PREFIX` doesn't bother those of us
-# who also develop the `EIC/detectors/athena` repo
+# - NOTE: hopefully using `$ATHENA_PREFIX` doesn't bother those of us
+#   who also develop the `EIC/detectors/athena` repo
+# - use `-DATHENA=YES` if you want to build `athena` with preprocessor macro
+#   `IRTGEO` defined (to be deprecated)
 cmake -B build -S . \
   -DCMAKE_INSTALL_PREFIX=$ATHENA_PREFIX \
   -DREADER=YES \
-  -DATHENA=YES \
   && \
 cmake --build build -j$(grep -c processor /proc/cpuinfo) -- install && \
 popd && \

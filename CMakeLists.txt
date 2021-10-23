@@ -72,7 +72,13 @@ endif()
 
 #----------------------------------------------------------------------------
 
-install(TARGETS ${IRT_LIB}     DESTINATION lib)
-INSTALL(FILES   ${IRT_ROOTMAP} DESTINATION lib)
-INSTALL(FILES   ${HEADERS}     DESTINATION include/irt)
-
+SET(IRT_CONFIG ${IRT_LIB}-config)
+INSTALL(TARGETS ${IRT_LIB} DESTINATION lib EXPORT ${IRT_CONFIG})
+INSTALL(FILES ${IRT_ROOTMAP} DESTINATION lib)
+INSTALL(FILES ${HEADERS} DESTINATION include/irt)
+INSTALL(
+  EXPORT ${IRT_CONFIG}
+  FILE ${IRT_CONFIG}.cmake
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake
+  NAMESPACE IRT::
+)

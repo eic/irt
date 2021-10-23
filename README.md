@@ -164,14 +164,17 @@ Updated procedure
   the ATHENA framework
   - you can do this with `source environ.sh`, which will also add some
     useful directories to `$PATH`, e.g., `bin/`
-- setup links, so scripts know where things are:
-  - point `athena` to [athena](https://eicweb.phy.anl.gov/EIC/detectors/athena):
-    `ln -sv /path/to/repo/EIC/detectors/athena ./`
-  - point `athena/ip6` to [ip6](https://eicweb.phy.anl.gov/EIC/detectors/ip6):
-    `ln -sv /path/to/repo/EIC/detectors/ip6/ip6 athena/`
-    (you've probably already done this, if you setup `athena` software)
+- Optional: If you want to build `athena` repo including IRT: 
+  - setup symlinks, so scripts know where things are:
+    - point `athena` to [athena](https://eicweb.phy.anl.gov/EIC/detectors/athena):
+      `ln -sv /path/to/repo/EIC/detectors/athena ./`
+    - point `athena/ip6` to [ip6](https://eicweb.phy.anl.gov/EIC/detectors/ip6):
+      `ln -sv /path/to/repo/EIC/detectors/ip6/ip6 athena/`
+      (you've probably already done this, if you setup `athena` software)
+    - use `-DATHENA=YES` in the `cmake` command in `buildIRT.sh`
 - build with `buildIRT.sh`
-  - output directories are `build` and `install`
+  - build directory is `build` and install directory is
+    `$ATHENA_PREFIX`
   - run `buildIRT.sh clean` for a clean build (`rm -r build install`)
 
 ### Simulation
