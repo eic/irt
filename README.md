@@ -160,7 +160,7 @@ Updated procedure
 
 ### Setup and Build
 
-- Start `eic-shell`, 
+- Start `eic-shell`
 - Optional: If you want to build `athena` repo including IRT: 
   - be sure your environment variables are setup to use the ATHENA framework; you
     can do this with `source environ.sh`, which will also add some useful
@@ -171,15 +171,15 @@ Updated procedure
     - point `athena/ip6` to [ip6](https://eicweb.phy.anl.gov/EIC/detectors/ip6):
       `ln -sv /path/to/repo/EIC/detectors/ip6/ip6 athena/`
       (you've probably already done this, if you setup `athena` software)
-    - use `-DATHENA=YES` in the `cmake` command in `buildIRT.sh`
-- build with `buildIRT.sh`
+    - use `-DATHENA=YES` in the `cmake` command in `bin/buildIRT.sh`
+- build with `bin/buildIRT.sh`
   - build directory is `build` and install directory is
     `$ATHENA_PREFIX`
-  - run `buildIRT.sh clean` for a clean build (`rm -r build install`)
+  - run `bin/buildIRT.sh clean` for a clean build (`rm -r build install`)
 
 ### Simulation
 
-- `simulate_erich.py` to run a test simulation
+- `bin/simulate_erich.py` to run a test simulation
   - run with no arguments for usage guide
   - writes a macro file to `sim/macro/` and runs `npsim`
   - simulation output tree written to `sim/out/`
