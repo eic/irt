@@ -18,7 +18,7 @@ ROOT_GENERATE_DICTIONARY(G__reader dd4pod/PhotoMultiplierHitData.h dd4pod/Geant4
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ADD_EXECUTABLE( ${EXE} ${READER_SRC} )
-TARGET_LINK_LIBRARIES(${EXE} ${ROOT_LIBRARIES} DD4pod irt)
+TARGET_LINK_LIBRARIES(${EXE} ${ROOT_LIBRARIES} DD4pod IRT)
 
 #----------------------------------------------------------------------------
 
