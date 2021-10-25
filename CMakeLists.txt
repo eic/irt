@@ -1,68 +1,126 @@
-
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
-project(IRT)
+project(IRT
+  VERSION 1.0
+  LANGUAGES CXX
+)
+
+cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 
 #----------------------------------------------------------------------------
+# dependencies
 
 find_package(ROOT 6.0.00 REQUIRED COMPONENTS RIO Hist Tree ROOTDataFrame)
 include(${ROOT_USE_FILE})
 
 #----------------------------------------------------------------------------
+# flags
 
 include(CheckCXXCompilerFlag)
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wno-misleading-indentation -std=c++0x")
+set(CMAKE_CXX_FLAGS "-std=c++0x")
 
 check_cxx_compiler_flag(-std=c++17 HAVE_FLAG_STD_CXX17)
 if(HAVE_FLAG_STD_CXX17)
   # Have -std=c++17, use it;	
-  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
   check_cxx_compiler_flag(-std=c++11 HAVE_FLAG_STD_CXX11)
   if(HAVE_FLAG_STD_CXX11)
     # Have -std=c++17, use it;	
-    SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
   endif()
 endif()
 
 #----------------------------------------------------------------------------
-#
+# library
+
+set(IRT_LIB IRT)
+
 include_directories( 
   ${PROJECT_SOURCE_DIR}/include 
-
   ${ROOT_INCLUDE_DIRS}
 )
-
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h )
 
-SET(IRT_LIB irt)
-
-SET( IRT_SRC
-   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
-   ${PROJECT_SOURCE_DIR}/source/IRT.cc
-   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
-
-   G__irt.cxx
+set(IRT_SRC
+  ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/IRT.cc
+  ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
+  G__IRT.cxx
 )
 
-SET(IRT_ROOTMAP ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}_rdict.pcm ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}.rootmap )
+set(IRT_ROOTMAP ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}_rdict.pcm ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}.rootmap )
+root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
 
-ROOT_GENERATE_DICTIONARY(G__irt ${HEADERS} LINKDEF irtLinkDef.h)
-
-ADD_LIBRARY( ${IRT_LIB} SHARED ${IRT_SRC} )
-TARGET_LINK_LIBRARIES(${IRT_LIB} ${ROOT_LIBRARIES} )
+add_library(${IRT_LIB} SHARED ${IRT_SRC} )
+target_link_libraries(${IRT_LIB} ${ROOT_LIBRARIES} )
+target_compile_options(${IRT_LIB} PRIVATE -Wall -Wno-misleading-indentation)
+target_include_directories(${IRT_LIB} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
 
 #----------------------------------------------------------------------------
+# subdirs, etc.
 
-SET(ignoreMe "${READER}")
+set(ignoreMe "${READER}")
 if(DEFINED READER)
   add_subdirectory(reader)
 endif()
 
+set(ignoreMe "${ATHENA}") # TODO: will be deprecated
+if(DEFINED ATHENA)
+  add_compile_definitions(IRTGEO) # build `athena` with macro `IRTGEO` defined
+  add_subdirectory(athena)
+  target_link_libraries(athena PUBLIC -L${IRT}/lib IRT)
+endif()
+
 #----------------------------------------------------------------------------
+# installation
 
-install(TARGETS ${IRT_LIB}     DESTINATION lib)
-INSTALL(FILES   ${IRT_ROOTMAP} DESTINATION lib)
-INSTALL(FILES   ${HEADERS}     DESTINATION include/irt)
+install(FILES
+  ${HEADERS}
+  DESTINATION include/IRT
+)
+install(TARGETS ${IRT_LIB}
+  EXPORT ${PROJECT_NAME}Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include/IRT
+)
+install(FILES
+  ${IRT_ROOTMAP}
+  DESTINATION lib
+)
 
+#----------------------------------------------------------------------------
+# package config
+
+include(CMakePackageConfigHelpers)
+install(EXPORT ${PROJECT_NAME}Targets
+  FILE ${PROJECT_NAME}Targets.cmake
+  DESTINATION lib/IRT
+)
+
+set(TARGETS_INSTALL_PATH lib/IRT/IRTTargets.cmake)
+
+configure_package_config_file(
+  cmake/IRTConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/IRTConfig.cmake
+  INSTALL_DESTINATION lib/IRT
+  PATH_VARS TARGETS_INSTALL_PATH
+)
+
+write_basic_package_version_file(
+  "IRTConfigVersion.cmake"
+  VERSION ${VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/IRTConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/IRTConfigVersion.cmake
+  DESTINATION lib/IRT
+)
