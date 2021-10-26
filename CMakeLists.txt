@@ -40,6 +40,10 @@ set(IRT_LIB IRT)
 include_directories( 
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
+
+  # For now assume that newly installed eicd::(CherenkovPID, ...) event structures are available 
+  # in the same place where IRT is supposed to be installed;
+  ${CMAKE_INSTALL_PREFIX}/include 
 )
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h )
 
@@ -64,9 +68,9 @@ target_include_directories(${IRT_LIB} PUBLIC
 #----------------------------------------------------------------------------
 # subdirs, etc.
 
-set(ignoreMe "${READER}")
-if(DEFINED READER)
-  add_subdirectory(reader)
+set(ignoreMe "${EVALUATION}")
+if(DEFINED EVALUATION)
+  add_subdirectory(evaluation)
 endif()
 
 set(ignoreMe "${ATHENA}") # TODO: will be deprecated

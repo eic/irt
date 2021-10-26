@@ -89,7 +89,7 @@ Installation
 cd /tmp/ATHENA
 git clone https://eicweb.phy.anl.gov/EIC/irt.git
 cd irt && mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DREADER=YES ..
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
 ```
 
@@ -147,7 +147,7 @@ Reconstruction pass
 -------------------
 
   The following command executed in the same sandbox directory will run through the produced 100 events,
-and evaluate pion vs kaon hypothesis for the primary pions. See [reader.cc](reader/reader.cc)
+and evaluate pion vs kaon hypothesis for the primary pions. See [reader.cc](evaluation/reader.cc)
 source code for more details.
   
 ```
