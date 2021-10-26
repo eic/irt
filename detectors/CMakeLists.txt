@@ -13,7 +13,7 @@ SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-int-to-pointer-cast")
 #-----------------------------------------------------------------------------------
 
 include_directories( 
-  ${IRT}/include/irt 
+  ${IRT}/include/IRT
 )
 
 #-----------------------------------------------------------------------------------
@@ -24,13 +24,15 @@ dd4hep_configure_output()
 
 dd4hep_add_plugin(${a_lib_name} SOURCES 
   src/ERich_geo.cpp
+  src/DRich_geo.cpp
   )
 
 target_link_libraries(${a_lib_name}
-  PUBLIC DD4hep::DDCore -L${IRT}/lib irt
+  PUBLIC DD4hep::DDCore -L${IRT}/lib IRT
   )
 
 #-----------------------------------------------------------------------------------
+
 # Install the detector description files.
 install(DIRECTORY compact/
     DESTINATION share/${PROJECT_NAME}/compact

@@ -17,6 +17,8 @@
 
 using namespace dd4hep;
 
+#define _SECOND_AEROGEL_LAYER_ 
+
 // create the detector
 static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetector sens) {
   xml::DetElement detElem = handle;
@@ -182,7 +184,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // solid and volume: create aerogel and filter sectors
     Tube aerogelSolid(radiatorRmin, radiatorRmax, aerogelThickness/2, -radiatorPhiw/2.0, radiatorPhiw/2.0);
     Tube filterSolid( radiatorRmin, radiatorRmax, filterThickness/2,  -radiatorPhiw/2.0, radiatorPhiw/2.0);
-    Volume aerogelVol( detName+"_aerogel_"+secName, aerogelSolid, aerogelMat );
+    Volume aerogelVol( detName+"_aerogel_"+secName, aerogelSolid, gasvolMat);//aerogelMat );
     Volume filterVol(  detName+"_filter_"+secName,  filterSolid,  filterMat );
     aerogelVol.setVisAttributes(aerogelVis);
     filterVol.setVisAttributes(filterVis);
@@ -225,13 +227,35 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	TVector3 nx(1,0,0), ny(0,1,0);
 	
 	// FIXME: create a small air gap in the geometry as well;
-	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()-0.01), nx, ny);
+	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()-0.01*mm), nx, ny);
 	geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
-    };
+    } //if
 
+    // Second aerogel layer, for debugging purposes;
+#ifdef _SECOND_AEROGEL_LAYER_
+    {
+      double __dz = 250*mm;
+      Tube __aerogelSolid(radiatorRmin, radiatorRmax, (1/3.)*aerogelThickness/2, -radiatorPhiw/2.0, radiatorPhiw/2.0);
+      Volume __aerogelVol( detName+"___aerogel_"+secName, __aerogelSolid, aerogelMat );
+      __aerogelVol.setVisAttributes(aerogelVis);
+      auto __aerogelPV = gasvolVol.placeVolume(__aerogelVol,
+					       RotationZ(sectorRotation) // rotate about beam axis to sector
+					       * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z() - __dz) 
+					       * RotationY(radiatorPitch) // change polar angle to specified pitch
+					       );
+      DetElement __aerogelDE(det, Form("__aerogel_de%d", isec), isec);
+      __aerogelDE.setPlacement(__aerogelPV);
+
+      if (!isec) {
+	TVector3 nx(1,0,0), ny(0,1,0);
+	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+aerogelPV.position().z()- __dz), nx, ny);
+	
+	geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x3), 0, surface, 10.0);
+      } //if
+    }
+#endif
   }; // END SECTOR LOOP //////////////////////////
-
 
 
   // BUILD SENSORS ///////////////////////
@@ -251,6 +275,18 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // miscellaneous
   int imod=0; // module number
   double tBoxMax = vesselRmax1; // sensors will be tiled in tBox, within annular limits
+
+  // One more optical boundary, which defines the end of the gas volume for photon production 
+  // purposes;
+  {
+    // NB: detector is installed in the e-endcap; this defined axis orientation
+    //TVector3 nx(1,0,0), ny(0,1,0);
+	
+    // FIXME: create a small air gap in the geometry as well; NB: detector is installed in the e-endcap;
+    //auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+sensorPlanePos.z() + 0.5*sensorThickness + 0.01), nx, ny);
+    // FIXME: well, in principle need only a single (fake) refractive boundary;
+    //geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x0), 0, surface, 0.01);
+  }
 
   // SENSOR MODULE LOOP ------------------------
   /* cartesian tiling loop
@@ -329,8 +365,12 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     //for(auto radiator: det->Radiators())
     //radiator->SetReferenceRefractiveIndex(radiator->GetMaterial()->RefractiveIndex(eV*_MAGIC_CFF_/_LAMBDA_NOMINAL_));
     {
-      // C4F10, aerogel, acrylic in this sequence;
+      // C4F10, aerogel, acrylic in this sequence; a second aerogel layer, optionally;
+#ifdef _SECOND_AEROGEL_LAYER_
+      double n[] = {1.0013, 1.0170, 1.5017, 1.0170};
+#else
       double n[] = {1.0013, 1.0170, 1.5017};
+#endif
 
       for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
 	if (ir >= detector->GetRadiatorCount()) break;

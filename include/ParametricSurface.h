@@ -123,7 +123,8 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
     return GetCenter() + x*m_Nx + y*m_Ny;
   };
   TVector3 GetNormal(const TVector3 &xx) const {
-    return m_Nz;
+    // Make compiler happy, use 'xx' variable;
+    return m_Nz + 0.0*xx;
   };
   TVector3 GetNormal( void ) const {
     return m_Nz;

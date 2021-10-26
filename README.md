@@ -104,14 +104,14 @@ IRT library in application to a basic ATHENA e-endcap proximity focusing aerogel
 eRICH example configuration
 ---------------------------
 
-  See [ERich_geo.cpp](erich/src/ERich_geo.cpp) for a simple API example, in particular the calls
+  See [ERich_geo.cpp](detectors/src/ERich_geo.cpp) for a simple API example, in particular the calls
 which define gas volume and aerogel radiators, as well as the photosensor geometry.
 
-  The following will compile libathena.so plugin with eRICH detector only:
+  The following will compile libathena.so plugin with e(d)RICH detectors only:
 
 ```
 export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
-cd /tmp/ATHENA/irt/erich && mkdir -p build && cd build
+cd /tmp/ATHENA/irt/detectors && mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DIRT=/tmp/ATHENA ..
 make install
 ```

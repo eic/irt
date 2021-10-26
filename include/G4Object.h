@@ -44,7 +44,7 @@ public:
   void SetColor(const G4Colour &color);
 
   void PlaceWedgeCopies(G4VPhysicalVolume *mother);
-  virtual void AdjustWedgeCopies(G4VPhysicalVolume *mother) {};
+  virtual void AdjustWedgeCopies(G4VPhysicalVolume * /*mother*/) {};
 
   G4LogicalVolume *GetLogicalVolume( void ) const { return m_LogicalVolume; };
   
