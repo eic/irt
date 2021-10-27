@@ -1,0 +1,61 @@
+image: eicweb.phy.anl.gov:4567/containers/eic_container/jug_dev:testing
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "webide"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+default:
+  tags:
+    - phy
+
+stages:
+  - config
+  - build
+  - tests
+
+env:
+  stage: config 
+  rules:
+    - if: '$CI_SERVER_HOST == "eicweb.phy.anl.gov"' 
+  script:
+    - |
+      if [[ "x${CI_PIPELINE_SOURCE}" == "xmerge_request_event"  || "$CI_COMMIT_BRANCH" == "main" ]]; then
+        export IRT_VERSION="${CI_COMMIT_REF_NAME}"
+        export IRT_ROOT="${CI_PROJECT_DIR}"
+        echo "IRT_VERSION=$CI_COMMIT_REF_NAME" >> juggler.env
+        echo "IRT_ROOT=$CI_PROJECT_DIR" >> juggler.env
+        cat juggler.env
+      fi
+    - mkdir -p "/scratch/${CI_PROJECT_NAME}_${CI_PIPELINE_ID}" && cp juggler.env /scratch/${CI_PROJECT_NAME}_${CI_PIPELINE_ID}/juggler.env && printenv > /scratch/${CI_PROJECT_NAME}_${CI_PIPELINE_ID}/env.out
+  artifacts:
+    reports:
+      dotenv: juggler.env
+
+compile:
+  stage: build
+  rules:
+    - if: '$CI_SERVER_HOST == "eicweb.phy.anl.gov"' 
+  script:
+    - cmake -B build -S . -DCMAKE_INSTALL_PREFIX=install && cmake --build build -j20 -- install
+
+deploy:juggler:
+  stage: tests
+  rules:
+    - if: '$CI_SERVER_HOST == "eicweb.phy.anl.gov"'
+  variables:
+    IRT_VERSION: "$IRT_VERSION"
+    IRT_ROOT: "$IRT_ROOT"
+  trigger:
+    project: EIC/juggler
+    branch: irt-init # TODO - remove when merged
+    strategy: depend
+
+# irt:test:
+#   stage: tests
+#   rules:
+#     - if: '$CI_SERVER_HOST == "eicweb.phy.anl.gov"' 
+#   script:
+#     - simulate.py && install/bin/IRTtest.exe # TODO: make a local test

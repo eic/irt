@@ -74,13 +74,6 @@ if(DEFINED EVALUATION)
   add_subdirectory(evaluation)
 endif()
 
-set(ignoreMe "${ATHENA}") # TODO: will be deprecated
-if(DEFINED ATHENA)
-  add_compile_definitions(IRTGEO) # build `athena` with macro `IRTGEO` defined
-  add_subdirectory(athena)
-  target_link_libraries(athena PUBLIC -L${IRT}/lib IRT)
-endif()
-
 #----------------------------------------------------------------------------
 # installation
 
