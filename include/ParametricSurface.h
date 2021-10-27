@@ -40,6 +40,7 @@ class ParametricSurface: public TObject {
     return GetNormal(pt);
   };
   const TVector3 &GetCenter( void ) const { return m_Center; };
+  virtual double GetDistance(const TVector3 &xx) const = 0;
 
   // Crossing with the straight line defined by {x0,n0}; 
   virtual bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const = 0;
@@ -80,6 +81,7 @@ class SphericalSurface: public ParametricSurface {
   double GetRadius( void ) const { return m_Radius; };
 
   bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const;
+  double GetDistance(const TVector3 &xx) const;
 
   void SetConvex( void ) { m_Concave = false; };
   ParametricSurface *Clone(double angle, const TVector3 &axis) const {
@@ -138,6 +140,7 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
   };
 
   bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const;
+  double GetDistance(const TVector3 &xx) const;
   ParametricSurface *Clone(double angle, const TVector3 &axis) const {
     auto copy = new FlatSurface(*this);
 

@@ -48,7 +48,8 @@ include_directories(
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h )
 
 set(IRT_SRC
-  ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
   G__IRT.cxx
