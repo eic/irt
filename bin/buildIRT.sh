@@ -16,13 +16,10 @@ fi
 # build
 # - NOTE: hopefully using `$ATHENA_PREFIX` doesn't bother those of us
 #   who also develop the `EIC/detectors/athena` repo
-# - use `-DATHENA=YES` if you want to build `athena` with preprocessor macro
-#   `IRTGEO` defined (to be deprecated)
 cmake -B build -S . \
   -DCMAKE_INSTALL_PREFIX=$ATHENA_PREFIX \
-  -DREADER=YES \
   && \
-cmake --build build -j$(grep -c processor /proc/cpuinfo) -- install && \
+cmake --build build -j$((`nproc`/4+1)) -- install && \
 popd && \
 exit 0
 
