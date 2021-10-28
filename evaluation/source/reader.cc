@@ -31,13 +31,13 @@ int main(int argc, char** argv)
   auto gas      = detector->Radiators()[0];
   auto aerogel1 = detector->Radiators()[1];
   auto acrylic  = detector->Radiators()[2];
-  auto aerogel3 = detector->Radiators()[3];
+  //auto aerogel3 = detector->Radiators()[3];
   // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
   // this may not be true; 
   gas     ->m_AverageRefractiveIndex = gas     ->n();
   aerogel1->m_AverageRefractiveIndex = aerogel1->n();
   acrylic ->m_AverageRefractiveIndex = acrylic ->n();
-  aerogel3->m_AverageRefractiveIndex = aerogel3->n();
+  //aerogel3->m_AverageRefractiveIndex = aerogel3->n();
 
   // TTree interface variable;
   auto event = new CherenkovEvent();
@@ -63,10 +63,10 @@ int main(int argc, char** argv)
       auto particle = new ChargedParticle(track.pdgID);
       event->AddChargedParticle(particle);
 
-      for(unsigned irad=1; irad<2; irad++) {
+      for(unsigned irad=0; irad<1; irad++) {
 	auto history = new RadiatorHistory();
 	// FIXME: yes, for now assume all the photons were produced in aerogel; 
-	particle->StartRadiatorHistory(std::make_pair(irad ? aerogel3 : aerogel1, history));
+	particle->StartRadiatorHistory(std::make_pair(/*irad ? aerogel3 :*/ aerogel1, history));
 	//particle->StartRadiatorHistory(std::make_pair(gas, history));
 	{
 	  // FIXME: need it not at vertex, but in the radiator; as coded here, this can 
@@ -88,6 +88,7 @@ int main(int argc, char** argv)
 	}
 
 	for(auto hit: *hits) {
+	  //printf("New hit!\n");
 	  // FIXME: yes, use MC truth here; not really needed I guess; 
 	  if (hit.g4ID != track.ID) continue;
 	  

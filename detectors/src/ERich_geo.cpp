@@ -17,7 +17,7 @@
 
 using namespace dd4hep;
 
-#define _SECOND_AEROGEL_LAYER_ 
+//#define _SECOND_AEROGEL_LAYER_ 
 
 // create the detector
 static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetector sens) {
@@ -184,7 +184,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // solid and volume: create aerogel and filter sectors
     Tube aerogelSolid(radiatorRmin, radiatorRmax, aerogelThickness/2, -radiatorPhiw/2.0, radiatorPhiw/2.0);
     Tube filterSolid( radiatorRmin, radiatorRmax, filterThickness/2,  -radiatorPhiw/2.0, radiatorPhiw/2.0);
-    Volume aerogelVol( detName+"_aerogel_"+secName, aerogelSolid, gasvolMat);//aerogelMat );
+    Volume aerogelVol( detName+"_aerogel_"+secName, aerogelSolid, aerogelMat );
     Volume filterVol(  detName+"_filter_"+secName,  filterSolid,  filterMat );
     aerogelVol.setVisAttributes(aerogelVis);
     filterVol.setVisAttributes(filterVis);
