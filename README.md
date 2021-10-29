@@ -65,8 +65,8 @@ environment, and a juggler singularity container "jug_xl" is running. It is also
 that dd4hep sources are available either via cvmfs or locally, and athena detector software 
 is installed.  . 
 For the sake of completeness, the following sequence of commands installs all what is needed 
-under /tmp, assuming that eic-shell was just started (see [ATHENA software]https://eic.phy.anl.gov/ip6 
-for further details):
+under /tmp, assuming that eic-shell was just started, see [ATHENA software](https://eic.phy.anl.gov/ip6) 
+for further details:
 
 ```
 # In the following /tmp/ATHENA is supposed to be a *link* to a safe scratch directory
