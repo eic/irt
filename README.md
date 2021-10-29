@@ -63,27 +63,44 @@ Prerequisites
   It is assumed that a user ia familiar with the [ATHENA software](https://eic.phy.anl.gov/ip6) 
 environment, and a juggler singularity container "jug_xl" is running. It is also assumed 
 that dd4hep sources are available either via cvmfs or locally, and athena detector software 
-is installed. In the following /tmp/ATHENA is supposed to be a scratch directory. For the sake of 
-completeness, the following sequence of commands installs all what is needed under /tmp/ATHENA:
+is installed.  . 
+For the sake of completeness, the following sequence of commands installs all what is needed 
+under /tmp, assuming that eic-shell was just started (see [ATHENA software](https://eic.phy.anl.gov/ip6 
+for further details):
 
 ```
-mkdir -p /tmp/ATHENA && cd /tmp/ATHENA
+# In the following /tmp/ATHENA is supposed to be a *link* to a safe scratch directory
+# <your-safe-scratch-area> somewhere on a (local) filesystem:
+
+# Install "athena" detector description (at least the materials are needed);
+cd /tmp && ln -s <your-safe-scratch-area> ATHENA && cd ATHENA
 git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git
 cd athena && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
 
+# Install "ip6" description;
 cd /tmp/ATHENA
 git clone https://eicweb.phy.anl.gov/EIC/detectors/ip6.git
 cd ip6 && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
+
+# Install a particular branch of the EIC data model (will become master soon);
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-00
+cd eicd && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+make -j2 install
+
 ```
 
 <br/>
 
 Installation
 ------------
+
+  Now install the IRT library itself, and a particular juggler branch.
 
 ```
 cd /tmp/ATHENA
@@ -93,7 +110,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
 ```
 
-  This compiles the IRT library codes and the executable to be later on used to read the .root
+  This compiles the IRT library codes and the executables to be later on used to read the .root
 files with the GEANT hits after *npsim* simulation pass. 
 
   The rest of this README builds a minimalistic self-contained example of how to make use of the 
@@ -107,13 +124,14 @@ eRICH example configuration
   See [ERich_geo.cpp](detectors/src/ERich_geo.cpp) for a simple API example, in particular the calls
 which define gas volume and aerogel radiators, as well as the photosensor geometry.
 
-  The following will compile libathena.so plugin with e(d)RICH detectors only:
+  The following will compile libathena.so plugin with e(d)RICH detectors only. Be aware that it will 
+overwrite /tmp/ATHENA/lib/libathena.so installed earlier.
 
 ```
 export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
 cd /tmp/ATHENA/irt/detectors && mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DIRT=/tmp/ATHENA ..
-make install
+make -j2 install
 ```
 
 <br/>
@@ -134,7 +152,7 @@ ln -s /tmp/ATHENA/share/athena/compact .
 ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
 ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
-# Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;;
+# Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
 npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler=''
 ```
 
@@ -146,12 +164,28 @@ a file with GEANT tracks and photon hits.
 Reconstruction pass
 -------------------
 
-  The following command executed in the same sandbox directory will run through the produced 100 events,
-and evaluate pion vs kaon hypothesis for the primary pions. See [reader.cc](evaluation/reader.cc)
-source code for more details.
-  
+  Install Juggler first:
+
 ```
-/tmp/ATHENA/bin/reader erich-data.root erich-config.root
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch irt-init
+cd juggler && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+
+# Fix an issue with LD_LIBRARY_PATH in jugglerenv.sh; may be required more than once (?);
+sed -i.bak 's/\:\/usr\/local\/lib\:/\:/g' jugglerenv.sh && echo "export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/lib && export PYTHONPATH=\${PYTHONPATH}:/usr/local/lib" >> jugglerenv.sh
+# Compile with a single thread unless have a plenty of memory;
+make -j1 install
+```
+
+```
+cd /tmp/ATHENA/sandbox
+# Run Juggler with a simplified testIRT.py options file provided with IRT distribution; 
+xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
+
+# Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
+../bin/evaluation erich-reco.root
+
 ```
 
 
