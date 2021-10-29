@@ -65,7 +65,7 @@ environment, and a juggler singularity container "jug_xl" is running. It is also
 that dd4hep sources are available either via cvmfs or locally, and athena detector software 
 is installed.  . 
 For the sake of completeness, the following sequence of commands installs all what is needed 
-under /tmp, assuming that eic-shell was just started (see [ATHENA software](https://eic.phy.anl.gov/ip6 
+under /tmp, assuming that eic-shell was just started (see [ATHENA software]https://eic.phy.anl.gov/ip6 
 for further details):
 
 ```
@@ -185,7 +185,6 @@ xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
 ../bin/evaluation erich-reco.root
-
 ```
 
 
