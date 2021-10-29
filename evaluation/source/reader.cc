@@ -127,10 +127,9 @@ int main(int argc, char** argv)
 	{
 	  auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
 	  double wt0 = pion->GetWeight(), wt1 = kaon->GetWeight();
-	  double np0 = pion->GetNph(),    np1 = kaon->GetNph();
 
 	  printf("%10.5f (%5.1f) vs %10.5f (%5.1f) ...  %3d %d\n", 
-		 wt0, np0, wt1, np1, track.pdgID, wt0 > wt1);
+		 wt0, pion->GetNpe(), wt1, kaon->GetNpe(), track.pdgID, wt0 > wt1);
 
 	  if (wt0 < wt1) false_assignment_stat++;
 	}

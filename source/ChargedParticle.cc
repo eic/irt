@@ -107,6 +107,8 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	}
       } //if
     } //for rhistoty
+
+    //printf("@W@ %2d -> %7.2f %7.2f %7.2f\n", ih, m, hypothesis->GetNph(), hypothesis->GetWeight());
   } //for ih
 } // ChargedParticle::Reconstruction()
 

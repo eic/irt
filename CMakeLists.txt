@@ -122,3 +122,4 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/IRTConfigVersion.cmake
   DESTINATION lib/IRT
 )
+
