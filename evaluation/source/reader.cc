@@ -81,7 +81,8 @@ int main(int argc, char** argv)
 	  // So, give the algorithm aerogel surface boundaries as encoded in ERich_geo.cpp;
 	  
 	  //auto s1 = detector->m_OpticalBoundaries[1], s2 = detector->m_OpticalBoundaries[2];
-	  auto s1 = detector->m_OpticalBoundaries[irad ? 5 : 1], s2 = detector->m_OpticalBoundaries[irad ? 6 : 2];
+	  auto s1 = detector->_m_OpticalBoundaries[0][irad ? 5 : 1];
+	  auto s2 = detector->_m_OpticalBoundaries[0][irad ? 6 : 2];
 	  //printf("%ld\n", detector->m_OpticalBoundaries.size());
 	  
 	  TVector3 from, to;

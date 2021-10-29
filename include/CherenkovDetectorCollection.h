@@ -39,7 +39,7 @@ class CherenkovDetectorCollection: public BitMask {
     m_RadiatorLookup[volume] = radiator;
     return radiator;
   };
-  void AddFlatRadiator(CherenkovDetector *det, const G4LogicalVolume *volume, 
+  void AddFlatRadiator(CherenkovDetector *det, unsigned sector, const G4LogicalVolume *volume, 
 		       const G4RadiatorMaterial *material, const FlatSurface *surface, double thickness) {
     auto radiator = AddRadiator(det, volume, material);
 
@@ -48,16 +48,17 @@ class CherenkovDetectorCollection: public BitMask {
     {
       auto boundary = surface->Clone(0.0, TVector3(0,0,1));
       boundary->Shift(( thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(new OpticalBoundary(radiator,                             boundary, true));
+      det->AddOpticalBoundary(sector, new OpticalBoundary(radiator,                             boundary, true));
     }
     {
       auto boundary = surface->Clone(0.0, TVector3(0,0,1));
       boundary->Shift((-thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(new OpticalBoundary(FindRadiator(det->m_ContainerVolume), boundary, true));
+      det->AddOpticalBoundary(sector, new OpticalBoundary(FindRadiator(det->m_ContainerVolume), boundary, true));
     }    
   };
-  void AddPhotonDetector(CherenkovDetector *det, const G4LogicalVolume *lv, CherenkovPhotonDetector *pd) {
-    det->AddPhotonDetector(pd);
+  void AddPhotonDetector(CherenkovDetector *det, unsigned sector, const G4LogicalVolume *lv, 
+			 CherenkovPhotonDetector *pd) {
+    det->AddPhotonDetector(sector, pd);
 
     m_PhotonDetectorLookup[lv] = pd;
   };
@@ -83,11 +84,12 @@ class CherenkovDetectorCollection: public BitMask {
     return (m_PhotonDetectorLookup.find(lv) == m_PhotonDetectorLookup.end() ? 0 : m_PhotonDetectorLookup[lv]);
   };
 
-  void SetContainerVolume(CherenkovDetector *det, const G4LogicalVolume *lv, const G4RadiatorMaterial *material, 
+  void SetContainerVolume(CherenkovDetector *det, unsigned sector, const G4LogicalVolume *lv, 
+			  const G4RadiatorMaterial *material, 
 			  const ParametricSurface *surface) { 
     AddRadiator(det, lv, material);
 
-    det->AddOpticalBoundary(new OpticalBoundary(FindRadiator(lv), surface, true));
+    det->AddOpticalBoundary(sector, new OpticalBoundary(FindRadiator(lv), surface, true));
     det->SetContainerVolume(lv);
   };
 
@@ -110,7 +112,7 @@ class CherenkovDetectorCollection: public BitMask {
 
   std::vector<CherenkovDetector*> m_Detectors;
   
-  ClassDef(CherenkovDetectorCollection, 1);
+  ClassDef(CherenkovDetectorCollection, 2);
 };
 
 #endif
