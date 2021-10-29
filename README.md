@@ -23,7 +23,8 @@ as well as a set of spherical and / or flat mirrors.
  * [Installation](#installation)
  * [eRICH example configuration](#erich-example-configuration)
  * [Simulation pass](#simulation-pass)
- * [Reconstruction pass](#reconstruction-pass)
+ * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
+ * [Juggler reconstruction pass](#juggler-reconstruction-pass)
 
 <br/>
 
@@ -161,8 +162,20 @@ a file with GEANT tracks and photon hits.
 
 <br/>
 
-Reconstruction pass
--------------------
+No-juggler reconstruction pass
+------------------------------
+
+  A simplified executable, using the same IRT engine, but with hardcoded (optional) QE 
+and low wavelength cutoff.
+
+```
+cd /tmp/ATHENA/sandbox
+# Loop through the events in the raw GEANT4 hit file. See [reader.cc](evaluation/reader.cc)
+/tmp/ATHENA/bin/reader erich-data.root erich-config.root
+```
+
+Juggler reconstruction pass
+---------------------------
 
   Install Juggler first:
 
@@ -184,7 +197,7 @@ cd /tmp/ATHENA/sandbox
 xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
-../bin/evaluation erich-reco.root
+/tmp/ATHENA/bin/evaluation erich-reco.root
 ```
 
 

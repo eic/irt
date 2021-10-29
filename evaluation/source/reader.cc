@@ -2,6 +2,7 @@
 // ROOT
 #include "TTree.h"
 #include "TFile.h"
+#include <TRandom.h>
 
 // NPdet
 #include "dd4pod/Geant4ParticleCollection.h"
@@ -10,6 +11,10 @@
 // IRT
 #include <CherenkovEvent.h>
 #include <CherenkovDetectorCollection.h>
+
+// Optionally: mimic low wave length cutoff and average QE x Geometric sensor efficiency;
+//#define _WAVE_LENGTH_CUTOFF_ (350.0)
+//#define _AVERAGE_PDE_        ( 0.30)
 
 int main(int argc, char** argv) 
 {
@@ -92,6 +97,18 @@ int main(int argc, char** argv)
 	  // FIXME: yes, use MC truth here; not really needed I guess; 
 	  if (hit.g4ID != track.ID) continue;
 	  
+#ifdef _WAVE_LENGTH_CUTOFF_ 
+	  {
+	    auto &p = hit.momentum;
+	    double pmag = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+
+	    if (1239.84/(1E9*pmag) < _WAVE_LENGTH_CUTOFF_) continue;
+	  }
+#endif
+#ifdef _AVERAGE_PDE_  
+	  if (gRandom->Uniform(0.0, 1.0) > _AVERAGE_PDE_) continue;
+#endif
+
 	  auto photon = new OpticalPhoton();
 	  
 	  {
@@ -128,7 +145,7 @@ int main(int argc, char** argv)
 	  auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
 	  double wt0 = pion->GetWeight(), wt1 = kaon->GetWeight();
 
-	  printf("%10.5f (%5.1f) vs %10.5f (%5.1f) ...  %3d %d\n", 
+	  printf("%10.5f (%2d) vs %10.5f (%2d) ...  %3d %d\n", 
 		 wt0, pion->GetNpe(), wt1, kaon->GetNpe(), track.pdgID, wt0 > wt1);
 
 	  if (wt0 < wt1) false_assignment_stat++;
