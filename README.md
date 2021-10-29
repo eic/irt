@@ -166,10 +166,3 @@ Updated procedure
     (change it if you want, or just `cmake` commands)
   - run `bin/buildIRT.sh clean` for a clean build (`rm -r build`)
 
-### Simulation
-
-- `bin/simulate_erich.py` to run a test simulation
-  - run with no arguments for usage guide
-  - writes a macro file to `sim/macro/` and runs `npsim`
-  - simulation output tree written to `sim/out/`
-  - IRT geometry config file written to `sim/irtgeo/`
