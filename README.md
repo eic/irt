@@ -72,8 +72,17 @@ for further details:
 # In the following /tmp/ATHENA is supposed to be a *link* to a safe scratch directory
 # <your-safe-scratch-area> somewhere on a (local) filesystem:
 
-# Install "athena" detector description (at least the materials are needed);
 cd /tmp && ln -s <your-safe-scratch-area> ATHENA && cd ATHENA
+```
+
+  The rest of the commands in this README can be grabbed by mouse and executed 
+block by block.
+
+```
+# Do not want to mess up with the initial software installation in the container;
+unset ATHENA_PREFIX
+
+# Install "athena" detector description (at least the materials are needed);
 git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git
 cd athena && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
@@ -108,6 +117,7 @@ git clone https://eicweb.phy.anl.gov/EIC/irt.git
 cd irt && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
+
 ```
 
   This compiles the IRT library codes and the executables to be later on used to read the .root
@@ -132,6 +142,7 @@ export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
 cd /tmp/ATHENA/irt/detectors && mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DIRT=/tmp/ATHENA ..
 make -j2 install
+
 ```
 
 <br/>
@@ -154,6 +165,7 @@ ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
 # Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
 npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler=''
+
 ```
 
   A pair of ROOT output files is produced: eRICH detector optics configuration and 
@@ -176,6 +188,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 sed -i.bak 's/\:\/usr\/local\/lib\:/\:/g' jugglerenv.sh && echo "export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/lib && export PYTHONPATH=\${PYTHONPATH}:/usr/local/lib" >> jugglerenv.sh
 # Compile with a single thread unless have a plenty of memory;
 make -j1 install
+
 ```
 
 ```
@@ -185,6 +198,7 @@ xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
 ../bin/evaluation erich-reco.root
+
 ```
 
 
