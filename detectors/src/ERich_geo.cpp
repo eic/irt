@@ -167,6 +167,20 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // sensitive detector type
   sens.setType("photoncounter");
 
+  //Transform3D trans;
+
+  // place gas volume
+  PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
+  DetElement gasvolDE(det, "gasvol_de", 0);
+  gasvolDE.setPlacement(gasvolPV);
+
+  // place mother volume (vessel)
+  Volume motherVol = desc.pickMotherVolume(det);
+  PlacedVolume vesselPV = motherVol.placeVolume(vesselVol,
+      Position(0, 0, vesselZmin) - originFront
+      );
+  vesselPV.addPhysVolID("system", detID);
+  det.setPlacement(vesselPV);
 
   // SECTOR LOOP //////////////////////////////////
   for(int isec=0; isec<nSectors; isec++) {
@@ -213,6 +227,10 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
     // filter placement and surface properties
     if(!debug_optics) {
+      //trans = RotationZ(sectorRotation) // rotate about beam axis to sector
+        //  * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
+	//* RotationY(radiatorPitch) // change polar angle
+	//* Translation3D(0., 0., -(aerogelThickness+filterThickness)/2.) ;
       auto filterPV = gasvolVol.placeVolume(filterVol,
             RotationZ(sectorRotation) // rotate about beam axis to sector
           * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
@@ -221,6 +239,19 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
           );
       DetElement filterDE(det, Form("filter_de%d", isec), isec);
       filterDE.setPlacement(filterPV);
+      {
+	double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
+	filterPV.ptr()->LocalToMaster(l, g);
+	vesselPV.ptr()->LocalToMaster(g, m);
+	//auto x = (trans * (Position(0, 0, vesselZmin) - originFront)).Translation();//.Vect();
+	//auto rotation    = trans.Rotation();
+	//const TGeoMatrix& localToGlobal = filterDE.nominal().worldTransformation();
+	//localToGlobal.LocalToMaster(l, g);
+	//double xx, yy, zz;
+	//x.GetComponents(xx, yy, zz);
+	printf("@G@ %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
+	//printf("@G@ %10.5f %10.5f %10.5f\n", xx, yy, zz);//(0), x[1], x[2]);
+      }
       //SkinSurface filterSkin(desc, filterDE, Form("mirror_optical_surface%d", isec), filterSurf, filterVol);
       //filterSkin.isValid();
       if (!isec) {
@@ -342,7 +373,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   };
   // END SENSOR MODULE LOOP ------------------------
 
-
+#if _OLD_
   // place gas volume
   PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
   DetElement gasvolDE(det, "gasvol_de", 0);
@@ -355,6 +386,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
       );
   vesselPV.addPhysVolID("system", detID);
   det.setPlacement(vesselPV);
+#endif
 
   //@@@ Write the geometry out as a custom TObject class instance;
   {
@@ -366,6 +398,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     //radiator->SetReferenceRefractiveIndex(radiator->GetMaterial()->RefractiveIndex(eV*_MAGIC_CFF_/_LAMBDA_NOMINAL_));
     {
       // C4F10, aerogel, acrylic in this sequence; a second aerogel layer, optionally;
+      // FIXME: import from the geometry database;
 #ifdef _SECOND_AEROGEL_LAYER_
       double n[] = {1.0013, 1.0170, 1.5017, 1.0170};
 #else
