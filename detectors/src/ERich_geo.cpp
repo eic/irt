@@ -147,7 +147,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // who cares; material pointer can seemingly be '0', and effective refractive index 
     // for all radiators will be assigned at the end by hand; FIXME: should assign it on 
     // per-photon basis, at birth, like standalone GEANT code does;
-    geometry->SetContainerVolume(detector, (G4LogicalVolume*)(0x0), 0, boundary);
+    geometry->SetContainerVolume(detector, 0, (G4LogicalVolume*)(0x0), 0, boundary);
   }
   // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
   // assuming no rotations involved; [cm];
@@ -167,6 +167,20 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // sensitive detector type
   sens.setType("photoncounter");
 
+  //Transform3D trans;
+
+  // place gas volume
+  PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
+  DetElement gasvolDE(det, "gasvol_de", 0);
+  gasvolDE.setPlacement(gasvolPV);
+
+  // place mother volume (vessel)
+  Volume motherVol = desc.pickMotherVolume(det);
+  PlacedVolume vesselPV = motherVol.placeVolume(vesselVol,
+      Position(0, 0, vesselZmin) - originFront
+      );
+  vesselPV.addPhysVolID("system", detID);
+  det.setPlacement(vesselPV);
 
   // SECTOR LOOP //////////////////////////////////
   for(int isec=0; isec<nSectors; isec++) {
@@ -208,11 +222,15 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
       // This call will create a pair of flat refractive surfaces internally; FIXME: should make
       // a small gas gap at the upstream end of the gas volume;
-      geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
+      geometry->AddFlatRadiator(detector, 0, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
     } //if
 
     // filter placement and surface properties
     if(!debug_optics) {
+      //trans = RotationZ(sectorRotation) // rotate about beam axis to sector
+        //  * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
+	//* RotationY(radiatorPitch) // change polar angle
+	//* Translation3D(0., 0., -(aerogelThickness+filterThickness)/2.) ;
       auto filterPV = gasvolVol.placeVolume(filterVol,
             RotationZ(sectorRotation) // rotate about beam axis to sector
           * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
@@ -221,6 +239,19 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
           );
       DetElement filterDE(det, Form("filter_de%d", isec), isec);
       filterDE.setPlacement(filterPV);
+      {
+	double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
+	filterPV.ptr()->LocalToMaster(l, g);
+	vesselPV.ptr()->LocalToMaster(g, m);
+	//auto x = (trans * (Position(0, 0, vesselZmin) - originFront)).Translation();//.Vect();
+	//auto rotation    = trans.Rotation();
+	//const TGeoMatrix& localToGlobal = filterDE.nominal().worldTransformation();
+	//localToGlobal.LocalToMaster(l, g);
+	//double xx, yy, zz;
+	//x.GetComponents(xx, yy, zz);
+	printf("@G@ %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
+	//printf("@G@ %10.5f %10.5f %10.5f\n", xx, yy, zz);//(0), x[1], x[2]);
+      }
       //SkinSurface filterSkin(desc, filterDE, Form("mirror_optical_surface%d", isec), filterSurf, filterVol);
       //filterSkin.isValid();
       if (!isec) {
@@ -228,7 +259,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	
 	// FIXME: create a small air gap in the geometry as well;
 	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()-0.01*mm), nx, ny);
-	geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
+	geometry->AddFlatRadiator(detector, 0, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
     } //if
 
@@ -322,7 +353,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 				      TVector3(1,0,0), TVector3(0,1,0));
 
 	    // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
-	    detector->AddPhotonDetector(new CherenkovPhotonDetector(0, 0, surface));
+	    detector->AddPhotonDetector(0, new CherenkovPhotonDetector(0, 0, surface));
 	  } //if
 
           // properties
@@ -342,7 +373,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   };
   // END SENSOR MODULE LOOP ------------------------
 
-
+#if _OLD_
   // place gas volume
   PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
   DetElement gasvolDE(det, "gasvol_de", 0);
@@ -355,6 +386,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
       );
   vesselPV.addPhysVolID("system", detID);
   det.setPlacement(vesselPV);
+#endif
 
   //@@@ Write the geometry out as a custom TObject class instance;
   {
@@ -366,6 +398,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     //radiator->SetReferenceRefractiveIndex(radiator->GetMaterial()->RefractiveIndex(eV*_MAGIC_CFF_/_LAMBDA_NOMINAL_));
     {
       // C4F10, aerogel, acrylic in this sequence; a second aerogel layer, optionally;
+      // FIXME: import from the geometry database;
 #ifdef _SECOND_AEROGEL_LAYER_
       double n[] = {1.0013, 1.0170, 1.5017, 1.0170};
 #else

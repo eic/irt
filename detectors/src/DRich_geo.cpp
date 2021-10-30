@@ -215,7 +215,8 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // who cares; material pointer can seemingly be '0', and effective refractive index 
     // for all radiators will be assigned at the end by hand; FIXME: should assign it on 
     // per-photon basis, at birth, like standalone GEANT code does;
-    geometry->SetContainerVolume(detector, (G4LogicalVolume*)(0x0), 0, boundary);
+    for(int isec=0; isec<nSectors; isec++) 
+      geometry->SetContainerVolume(detector, isec, (G4LogicalVolume*)(0x0), 0, boundary);
   }
   // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
   // assuming no rotations involved; [cm];
@@ -242,6 +243,18 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // sensitive detector type
   sens.setType("photoncounter");
 
+  // place gas volume
+  PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
+  DetElement gasvolDE(det, "gasvol_de", 0);
+  gasvolDE.setPlacement(gasvolPV);
+
+  // place mother volume (vessel)
+  Volume motherVol = desc.pickMotherVolume(det);
+  PlacedVolume vesselPV = motherVol.placeVolume(vesselVol,
+      Position(0, 0, vesselZmin) - originFront
+      );
+  vesselPV.addPhysVolID("system", detID);
+  det.setPlacement(vesselPV);
 
   // SECTOR LOOP //////////////////////////////////
   for(int isec=0; isec<nSectors; isec++) {
@@ -277,13 +290,13 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     //SkinSurface aerogelSkin(desc, aerogelDE, Form("mirror_optical_surface%d", isec), aerogelSurf, aerogelVol);
     //aerogelSkin.isValid();
 
-    if (!isec) {
+    /*if (!isec)*/ {
       TVector3 nx(1,0,0), ny(0,-1,0);
       auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+aerogelPV.position().z()), nx, ny);
 
       // This call will create a pair of flat refractive surfaces internally; FIXME: should make
       // a small gas gap at the upstream end of the gas volume;
-      geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
+      geometry->AddFlatRadiator(detector, isec, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
     } //if
 
     // filter placement and surface properties
@@ -299,12 +312,12 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
       //SkinSurface filterSkin(desc, filterDE, Form("mirror_optical_surface%d", isec), filterSurf, filterVol);
       //filterSkin.isValid();
 
-      if (!isec) {
+      /*if (!isec)*/ {
 	TVector3 nx(1,0,0), ny(0,-1,0);
 	
 	// FIXME: create a small air gap in the geometry as well;
 	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()+0.01*mm), nx, ny);
-	geometry->AddFlatRadiator(detector, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
+	geometry->AddFlatRadiator(detector, isec, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
     };
 
@@ -545,6 +558,12 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // properties
     DetElement mirrorDE(det, Form("mirror_de%d", isec), isec);
     mirrorDE.setPlacement(mirrorPV2);
+    {
+      double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
+      mirrorPV2.ptr()->LocalToMaster(l, g);
+      vesselPV. ptr()->LocalToMaster(g, m);
+      printf("@G@ %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
+    }
     SkinSurface mirrorSkin(desc, mirrorDE, Form("mirror_optical_surface%d", isec), mirrorSurf, mirrorVol);
     mirrorSkin.isValid();
 
@@ -553,6 +572,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
 
   // place gas volume
+#if _MOVED_
   PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
   DetElement gasvolDE(det, "gasvol_de", 0);
   gasvolDE.setPlacement(gasvolPV);
@@ -564,12 +584,13 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
       );
   vesselPV.addPhysVolID("system", detID);
   det.setPlacement(vesselPV);
+#endif
 
   //@@@ Write the geometry out as a custom TObject class instance; FIXME: unify eRICH & dRICH;
   {
     {
-      // C4F10, aerogel, acrylic in this sequence;
-      double n[] = {1.0013, 1.0013, 1.5017};
+      // C2F6, aerogel, acrylic in this sequence; FIXME: import from the geometry database;
+      double n[] = {1.00080, 1.0170, 1.5017};
 
       for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
 	if (ir >= detector->GetRadiatorCount()) break;
