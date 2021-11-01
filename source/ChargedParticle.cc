@@ -1,15 +1,29 @@
 
-//#include <TRandom.h>
-
 #include <ChargedParticle.h>
-//#include <CherenkovDetectorCollection.h>
+
+#define _MIX_ALL_PHOTONS_
 
 // -------------------------------------------------------------------------------------
 
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 {
-  // FIXME: 'zdim' should be configurable;
-  const unsigned zdim = 10;
+  const unsigned zdim = pid.GetTrajectoryBinCount();
+
+#ifdef _MIX_ALL_PHOTONS_
+  std::vector<OpticalPhoton*> photons;
+  //std::map<CherenkovRadiator*, OpticalPhoton*> photons;
+
+  for(auto rhistory: GetRadiatorHistory()) {
+    //auto radiator = GetRadiator(rhistory);
+    auto history  = GetHistory (rhistory);
+
+    for(auto photon: history->Photons()) {
+      if (!photon->WasDetected()) continue;
+
+      photons.push_back(photon);
+    } //for photon
+  } //for rhistory
+#endif
 
   // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
   // of emission vertex locations and build kind of a PDF out of that to calculate weights;
@@ -21,6 +35,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
   for(auto rhistory: GetRadiatorHistory()) {
     //+auto radiator = GetRadiator(rhistory);
     auto history  = GetHistory (rhistory);
+    auto radiator = GetRadiator(rhistory);
 	
     //+auto det = geometry->GetDetectorByRadiator(radiator);
     
@@ -29,7 +44,11 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       auto from = history->GetStep(0), to = history->GetStep(history->StepCount()-1);
       TVector3 p = 0.5*(from->GetMomentum() + to->GetMomentum());
       {
+#ifdef _MIX_ALL_PHOTONS_
+	for(auto photon: photons) {
+#else
 	for(auto photon: history->Photons()) {
+#endif
 	  if (!photon->WasDetected()) continue;
 
 	  auto pd = photon->GetPhotonDetector();
@@ -57,8 +76,12 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	    IRTSolution solutions[zdim+1];
 
 	    for(unsigned iq=0; iq<zdim+1; iq++) {
-	      solutions[iq] = pd->GetIRT()->Solve(vstart + iq*step*ptnx, ptnx, phx, TVector3(0,0,1), false);
-	      //printf("%2d -> %7.2f\n", iq, 1000*solutions[iq].GetTheta());
+	      //printf("--> %d\n", photon->GetVolumeCopy());
+	      //solutions[iq] = pd->GetIRT(0)->Solve(vstart + iq*step*ptnx, ptnx, phx, TVector3(0,0,1), false);
+	      solutions[iq] = pd->GetIRT(photon->GetVolumeCopy())->Solve(vstart + iq*step*ptnx, ptnx, phx, TVector3(0,0,1), false);
+
+	      //solutions[iq] = pd->GetIRT(/*photon->GetVolumeCopy()*/0)->Solve(vstart + iq*step*ptnx, ptnx, phx, TVector3(0,0,1), false);
+	      //printf("%2d -> %7.2f, %7.2f\n", iq, 1000*solutions[iq].GetTheta(), vlen);
 	    } //for iq
 
 	    for(unsigned iq=0; iq<zdim; iq++) {
@@ -66,7 +89,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	      
 	      // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
 	      // in the previous loop; FIXME: add some smearing later;
-	      photon->m_PDF.AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	      //#ifdef _MIX_ALL_PHOTONS_
+	      //#else
+	      photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	      //#endif
 	    } //for iq
 	  }
 	} //for photon
@@ -96,20 +122,25 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	if (fabs(arg) > 1.0) continue;
 	
 	{
-	  double theta = acos(arg);
+	  double theta = acos(arg), dth = pid.GetSmearing();
 	  
 	  for(auto photon: history->Photons()) {
 	    if (!photon->WasDetected()) continue;
 	    
-	    hypothesis->IncrementWeight(photon->m_PDF.GetWithinRangeCount(theta), 
-					photon->m_PDF.GetValue           (theta)/zdim);
+	    //printf("%d\n", photon->m_PDF.GetWithinRangeCount(theta, pid.GetSmearing()));
+	    hypothesis->IncrementWeight(float(photon->_m_PDF[radiator].GetWithinRangeCount(theta, pid.GetSmearing()))/zdim, 
+					//(dth ? photon->m_PDF.GetRangeIntegral(theta - dth, theta + dth) : photon->m_PDF.GetValue(theta))/zdim);
+					(dth ? (pid.UseGaussianSmearing() ? photon->_m_PDF[radiator].GetGaussianIntegral(theta,dth) :
+						photon->_m_PDF[radiator].GetRangeIntegral(theta - dth, theta + dth)) : 
+					 photon->_m_PDF[radiator].GetValue(theta))/zdim);
+	    //printf("@W@ %2d -> %7.2f %7.2f\n", ih, m, 1000*theta);
 	  } //for photon
 	}
       } //if
-    } //for rhistoty
+    } //for rhistory
 
     //printf("@W@ %2d -> %7.2f %7.2f %7.2f\n", ih, m, hypothesis->GetNph(), hypothesis->GetWeight());
   } //for ih
-} // ChargedParticle::Reconstruction()
+} // ChargedParticle::PIDReconstruction()
 
 // -------------------------------------------------------------------------------------

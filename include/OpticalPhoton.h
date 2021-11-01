@@ -1,4 +1,5 @@
 
+#include <map>
 #include <vector>
 
 #include <TVector3.h>
@@ -51,6 +52,7 @@ class OpticalPhoton: public TransientParticle {
   inline const TVector3 &GetDetectionPosition( void )   const { return m_DetectionPosition; };
 
   inline bool WasDetected( void )                       const { return m_Detected; };
+  inline unsigned GetVolumeCopy( void )                 const { return m_VolumeCopy; };
 
   inline CherenkovPhotonDetector *GetPhotonDetector( void ) const {
     return dynamic_cast<CherenkovPhotonDetector*>(m_PhotonDetector.GetObject());
@@ -80,7 +82,7 @@ class OpticalPhoton: public TransientParticle {
   // Transient variables for some convenience in an analysis script;
  public:
   //IRTSolution m_Solution;  //!
-  VectorPDF m_PDF;           //!
+  std::map<CherenkovRadiator*, VectorPDF> _m_PDF;           //!
 
   ClassDef(OpticalPhoton, 1);
 };

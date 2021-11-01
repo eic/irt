@@ -49,6 +49,9 @@ public:
   G4LogicalVolume *GetLogicalVolume( void ) const { return m_LogicalVolume; };
   
   virtual G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new G4ObjectCopy(phys); };
+  G4ObjectCopy *GetCopy(unsigned id) const {
+    return (id < m_Copies.size() ? m_Copies[id] : 0);
+  }; 
 
   virtual G4OpticalSurface *GetMirrorSurface( void ) const { return 0; };
 

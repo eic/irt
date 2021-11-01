@@ -36,7 +36,7 @@
 #pragma link C++ class G4Object+;
 #pragma link C++ class G4ObjectCopy+;
 
-#pragma link C++ class MirrorCopy+;
+#pragma link C++ class SurfaceCopy+;
 #pragma link C++ class CherenkovMirror+;
 #pragma link C++ class CherenkovMirrorGroup+;
 #pragma link C++ class FlatMirror+;

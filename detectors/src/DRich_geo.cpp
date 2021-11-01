@@ -34,6 +34,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   xml::Component dims = detElem.dimensions();
   OpticalSurfaceManager surfMgr = desc.surfaceManager();
 
+#if _TODAY_
   //@@@ Create output file and a geometry object pointer;
   auto fout = new TFile("drich-config.root", "RECREATE");
   auto geometry = new CherenkovDetectorCollection();
@@ -250,9 +251,12 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
   // place mother volume (vessel)
   Volume motherVol = desc.pickMotherVolume(det);
-  PlacedVolume vesselPV = motherVol.placeVolume(vesselVol,
-      Position(0, 0, vesselZmin) - originFront
-      );
+  // FIXME: usage of this translation assumes gasvolume2vessel translation is (0,0,0);
+  auto gasvolume2master = Position(0, 0, vesselZmin) - originFront;
+  printf("@M@ %7.1f %7.1f %7.1f\n", gasvolume2master.x()/mm, gasvolume2master.y()/mm, gasvolume2master.z()/mm);
+  PlacedVolume vesselPV = motherVol.placeVolume(vesselVol, gasvolume2master);
+  //Position(0, 0, vesselZmin) - originFront
+  //  );
   vesselPV.addPhysVolID("system", detID);
   det.setPlacement(vesselPV);
 
@@ -265,6 +269,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // sector rotation about z axis
     double sectorRotation = isec * 360/nSectors * degree;
     std::string secName = "sec" + std::to_string(isec);
+
 
 
     // BUILD RADIATOR ====================================================================
@@ -292,7 +297,8 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
     /*if (!isec)*/ {
       TVector3 nx(1,0,0), ny(0,-1,0);
-      auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+aerogelPV.position().z()), nx, ny);
+      auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+aerogelPV.position().z()+aerogelThickness/2), nx, ny);
+      printf("@M@  aerogel %7.2f\n", (vesselOffset+aerogelPV.position().z()+aerogelThickness/2)/mm);
 
       // This call will create a pair of flat refractive surfaces internally; FIXME: should make
       // a small gas gap at the upstream end of the gas volume;
@@ -300,6 +306,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     } //if
 
     // filter placement and surface properties
+#if _LATER_
     if(!debug_optics) {
       auto filterPV = gasvolVol.placeVolume(filterVol,
             RotationZ(sectorRotation) // rotate about beam axis to sector
@@ -320,131 +327,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	geometry->AddFlatRadiator(detector, isec, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
     };
-
-
-    // BUILD SENSORS ====================================================================
-
-    // if debugging sphere properties, restrict number of sensors drawn
-    if(debug_sensors) { sensorSide = 2*M_PI*sensorSphRadius / 64; };
-
-    // solid and volume: single sensor module
-    Box sensorSolid(sensorSide/2., sensorSide/2., sensorThickness/2.);
-    Volume sensorVol(detName+"_sensor_"+secName, sensorSolid, sensorMat);
-    sensorVol.setVisAttributes(sensorVis);
-
-    auto sensorSphPos = Position(sensorSphCenterX, 0., sensorSphCenterZ) + originFront;
-
-    // sensitivity
-    if(!debug_optics) sensorVol.setSensitiveDetector(sens);
-
-    // SENSOR MODULE LOOP ------------------------
-    /* ALGORITHM: generate sphere of positions
-     * - NOTE: there are two coordinate systems here:
-     *   - "global" the main ATHENA coordinate system
-     *   - "generator" (vars end in `Gen`) is a local coordinate system for
-     *     generating points on a sphere; it is related to the global system by
-     *     a rotation; we do this so the "patch" (subset of generated
-     *     positions) of sensors we choose to build is near the equator, where
-     *     point distribution is more uniform
-     * - PROCEDURE: loop over `thetaGen`, with subloop over `phiGen`, each divided evenly
-     *   - the number of points to generate depends how many sensors (+`sensorGap`)
-     *     can fit within each ring of constant `thetaGen` or `phiGen`
-     *   - we divide the relevant circumference by the sensor
-     *     size(+`sensorGap`), and this number is allowed to be a fraction,
-     *     because likely we don't care about generating a full sphere and
-     *     don't mind a "seam" at the overlap point
-     *   - if we pick a patch of the sphere near the equator, and not near
-     *     the poles or seam, the sensor distribution will appear uniform
-     */
-
-    // initialize module number for this sector
-    int imod=0;
-
-    // thetaGen loop: iterate less than "0.5 circumference / sensor size" times
-    double nTheta = M_PI*sensorSphRadius / (sensorSide+sensorGap);
-    for(int t=0; t<(int)(nTheta+0.5); t++) {
-      double thetaGen = t/((double)nTheta) * M_PI;
-
-      // phiGen loop: iterate less than "circumference at this latitude / sensor size" times
-      double nPhi = 2*M_PI * sensorSphRadius * std::sin(thetaGen) / (sensorSide+sensorGap);
-      for(int p=0; p<(int)(nPhi+0.5); p++) {
-        double phiGen = p/((double)nPhi) * 2*M_PI - M_PI; // shift to [-pi,pi]
-
-        // determine global phi and theta
-        // - convert {radius,thetaGen,phiGen} -> {xGen,yGen,zGen}
-        double xGen = sensorSphRadius * std::sin(thetaGen) * std::cos(phiGen);
-        double yGen = sensorSphRadius * std::sin(thetaGen) * std::sin(phiGen);
-        double zGen = sensorSphRadius * std::cos(thetaGen);
-        // - convert {xGen,yGen,zGen} -> global {x,y,z} via rotation
-        double x = zGen;
-        double y = xGen;
-        double z = yGen;
-        // - convert global {x,y,z} -> global {phi,theta}
-        double phi = std::atan2(y,x);
-        double theta = std::acos(z/sensorSphRadius);
-
-        // shift global coordinates so we can apply spherical patch cuts
-        double zCheck = z + sensorSphCenterZ;
-        double xCheck = x + sensorSphCenterX;
-        double yCheck = y;
-        double rCheck = std::hypot(xCheck,yCheck);
-        double phiCheck = std::atan2(yCheck,xCheck);
-
-        // patch cut
-        bool patchCut =
-          std::fabs(phiCheck) < sensorSphPatchPhiw
-          && zCheck > sensorSphPatchZmin
-          && rCheck > sensorSphPatchRmin
-          && rCheck < sensorSphPatchRmax;
-        if(debug_sensors) patchCut = std::fabs(phiCheck) < sensorSphPatchPhiw;
-        if(patchCut) {
-
-          // append sensor position to centroid calculation
-          if(isec==0) {
-            sensorCentroidX += xCheck;
-            sensorCentroidZ += zCheck;
-            sensorCount++;
-          };
-
-          // placement (note: transformations are in reverse order)
-          // - transformations operate on global coordinates; the corresponding
-          //   generator coordinates are provided in the comments
-          auto sensorPV = gasvolVol.placeVolume(sensorVol,
-                RotationZ(sectorRotation) // rotate about beam axis to sector
-              * Translation3D(sensorSphPos.x(), sensorSphPos.y(), sensorSphPos.z()) // move sphere to reference position
-              * RotationX(phiGen) // rotate about `zGen`
-              * RotationZ(thetaGen) // rotate about `yGen`
-              * Translation3D(sensorSphRadius, 0., 0.) // push radially to spherical surface
-              * RotationY(M_PI/2) // rotate sensor to be compatible with generator coords
-              * RotationZ(-M_PI/2) // correction for readout segmentation mapping
-              );
-
-          // generate LUT for module number -> sensor position, for readout mapping tests
-          //if(isec==0) printf("%d %f %f\n",imod,sensorPV.position().x(),sensorPV.position().y());
-
-          // properties
-          sensorPV.addPhysVolID("sector", isec).addPhysVolID("module", imod);
-          DetElement sensorDE(det, Form("sensor_de%d_%d", isec, imod), 10000*isec+imod);
-          sensorDE.setPlacement(sensorPV);
-          if(!debug_optics) {
-            SkinSurface sensorSkin(desc, sensorDE, Form("sensor_optical_surface%d", isec), sensorSurf, sensorVol);
-            sensorSkin.isValid();
-          };
-
-          // increment sensor module number
-          imod++;
-
-        }; // end patch cuts
-      }; // end phiGen loop
-    }; // end thetaGen loop
-
-    // calculate centroid sensor position
-    if(isec==0) {
-      sensorCentroidX /= sensorCount;
-      sensorCentroidZ /= sensorCount;
-    };
-
-    // END SENSOR MODULE LOOP ------------------------
+#endif
 
 
     // BUILD MIRRORS ====================================================================
@@ -550,22 +433,186 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // mirror volume, attributes, and placement
     Volume mirrorVol(detName+"_mirror_"+secName, mirrorSolid2, mirrorMat);
     mirrorVol.setVisAttributes(mirrorVis);
-    auto mirrorPV2 = gasvolVol.placeVolume(mirrorVol,
-          RotationZ(sectorRotation) // rotate about beam axis to sector
-        * Translation3D(0,0,0)
-        );
-
-    // properties
-    DetElement mirrorDE(det, Form("mirror_de%d", isec), isec);
-    mirrorDE.setPlacement(mirrorPV2);
     {
-      double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
-      mirrorPV2.ptr()->LocalToMaster(l, g);
-      vesselPV. ptr()->LocalToMaster(g, m);
-      printf("@G@ %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
+      Transform3D slice2gasvolume = RotationZ(sectorRotation)*Translation3D(0,0,0);
+      {
+	auto translation = (slice2gasvolume*mirrorPlacement).Translation();//.Vect();
+	//auto x = (trans * (Position(0, 0, vesselZmin) - originFront)).Translation();//.Vect();
+	//auto rotation    = trans.Rotation();
+	//const TGeoMatrix& localToGlobal = filterDE.nominal().worldTransformation();
+	//localToGlobal.LocalToMaster(l, g);
+	double xx, yy, zz;
+	translation.GetComponents(xx, yy, zz);
+	printf("@M@ %10.5f %10.5f %10.5f\n", xx/mm, yy/mm, zz/mm);
+
+	auto surface = new SphericalSurface((1/mm)*TVector3(
+							    xx+gasvolume2master.x(), 
+							    yy+gasvolume2master.y(), 
+							    zz+gasvolume2master.z()), 
+					    mirrorRadius/mm);
+	detector->AddOpticalBoundary(isec, new OpticalBoundary(0x0, surface, false));
+      }
+      auto mirrorPV2 = gasvolVol.placeVolume(mirrorVol, slice2gasvolume); // rotate about beam axis to sector
+      //RotationZ(sectorRotation) // rotate about beam axis to sector
+      //					     * Translation3D(0,0,0)
+      //				     );
+      
+      // properties
+      DetElement mirrorDE(det, Form("mirror_de%d", isec), isec);
+      mirrorDE.setPlacement(mirrorPV2);
+      {
+	//double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
+	//mirrorPV2.ptr()->LocalToMaster(l, g);
+	//vesselPV. ptr()->LocalToMaster(g, m);
+	//printf("@M@   %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
+      }
+      SkinSurface mirrorSkin(desc, mirrorDE, Form("mirror_optical_surface%d", isec), mirrorSurf, mirrorVol);
+      mirrorSkin.isValid();
     }
-    SkinSurface mirrorSkin(desc, mirrorDE, Form("mirror_optical_surface%d", isec), mirrorSurf, mirrorVol);
-    mirrorSkin.isValid();
+
+
+    // BUILD SENSORS ====================================================================
+
+    // if debugging sphere properties, restrict number of sensors drawn
+    if(debug_sensors) { sensorSide = 2*M_PI*sensorSphRadius / 64; };
+
+    // solid and volume: single sensor module
+    Box sensorSolid(sensorSide/2., sensorSide/2., sensorThickness/2.);
+    Volume sensorVol(detName+"_sensor_"+secName, sensorSolid, sensorMat);
+    sensorVol.setVisAttributes(sensorVis);
+
+    auto sensorSphPos = Position(sensorSphCenterX, 0., sensorSphCenterZ) + originFront;
+
+    // sensitivity
+    if(!debug_optics) sensorVol.setSensitiveDetector(sens);
+
+    // SENSOR MODULE LOOP ------------------------
+    /* ALGORITHM: generate sphere of positions
+     * - NOTE: there are two coordinate systems here:
+     *   - "global" the main ATHENA coordinate system
+     *   - "generator" (vars end in `Gen`) is a local coordinate system for
+     *     generating points on a sphere; it is related to the global system by
+     *     a rotation; we do this so the "patch" (subset of generated
+     *     positions) of sensors we choose to build is near the equator, where
+     *     point distribution is more uniform
+     * - PROCEDURE: loop over `thetaGen`, with subloop over `phiGen`, each divided evenly
+     *   - the number of points to generate depends how many sensors (+`sensorGap`)
+     *     can fit within each ring of constant `thetaGen` or `phiGen`
+     *   - we divide the relevant circumference by the sensor
+     *     size(+`sensorGap`), and this number is allowed to be a fraction,
+     *     because likely we don't care about generating a full sphere and
+     *     don't mind a "seam" at the overlap point
+     *   - if we pick a patch of the sphere near the equator, and not near
+     *     the poles or seam, the sensor distribution will appear uniform
+     */
+
+    // initialize module number for this sector
+    int imod=0;
+
+    // thetaGen loop: iterate less than "0.5 circumference / sensor size" times
+    double nTheta = M_PI*sensorSphRadius / (sensorSide+sensorGap);
+    for(int t=0; t<(int)(nTheta+0.5); t++) {
+      double thetaGen = t/((double)nTheta) * M_PI;
+
+      // phiGen loop: iterate less than "circumference at this latitude / sensor size" times
+      double nPhi = 2*M_PI * sensorSphRadius * std::sin(thetaGen) / (sensorSide+sensorGap);
+      for(int p=0; p<(int)(nPhi+0.5); p++) {
+        double phiGen = p/((double)nPhi) * 2*M_PI - M_PI; // shift to [-pi,pi]
+
+        // determine global phi and theta
+        // - convert {radius,thetaGen,phiGen} -> {xGen,yGen,zGen}
+        double xGen = sensorSphRadius * std::sin(thetaGen) * std::cos(phiGen);
+        double yGen = sensorSphRadius * std::sin(thetaGen) * std::sin(phiGen);
+        double zGen = sensorSphRadius * std::cos(thetaGen);
+        // - convert {xGen,yGen,zGen} -> global {x,y,z} via rotation
+        double x = zGen;
+        double y = xGen;
+        double z = yGen;
+        // - convert global {x,y,z} -> global {phi,theta}
+        double phi = std::atan2(y,x);
+        double theta = std::acos(z/sensorSphRadius);
+
+        // shift global coordinates so we can apply spherical patch cuts
+        double zCheck = z + sensorSphCenterZ;
+        double xCheck = x + sensorSphCenterX;
+        double yCheck = y;
+        double rCheck = std::hypot(xCheck,yCheck);
+        double phiCheck = std::atan2(yCheck,xCheck);
+
+        // patch cut
+        bool patchCut =
+          std::fabs(phiCheck) < sensorSphPatchPhiw
+          && zCheck > sensorSphPatchZmin
+          && rCheck > sensorSphPatchRmin
+          && rCheck < sensorSphPatchRmax;
+        if(debug_sensors) patchCut = std::fabs(phiCheck) < sensorSphPatchPhiw;
+        if(patchCut) {
+
+          // append sensor position to centroid calculation
+          if(isec==0) {
+            sensorCentroidX += xCheck;
+            sensorCentroidZ += zCheck;
+            sensorCount++;
+          };
+
+          // placement (note: transformations are in reverse order)
+          // - transformations operate on global coordinates; the corresponding
+          //   generator coordinates are provided in the comments
+          auto sensorPV = gasvolVol.placeVolume(sensorVol,
+                RotationZ(sectorRotation) // rotate about beam axis to sector
+              * Translation3D(sensorSphPos.x(), sensorSphPos.y(), sensorSphPos.z()) // move sphere to reference position
+              * RotationX(phiGen) // rotate about `zGen`
+              * RotationZ(thetaGen) // rotate about `yGen`
+              * Translation3D(sensorSphRadius, 0., 0.) // push radially to spherical surface
+              * RotationY(M_PI/2) // rotate sensor to be compatible with generator coords
+              * RotationZ(-M_PI/2) // correction for readout segmentation mapping
+              );
+
+	  {
+	    // nx[] and ny[] orientation should be the same as in eRICH, right?;
+	    double xxl[3] = {0.0, 0.0, 0.0}, bff[3], xxg[3], nxl[3] = {1.0, 0.0, 0.0}, nyl[3] = {0.0, 1.0, 0.0}, nxg[3], nyg[3];
+	    sensorPV.ptr()->LocalToMaster(xxl, bff);
+	    vesselPV.ptr()->LocalToMaster(bff, xxg);
+	    //printf("@G@ %10.5f %10.5f %10.5f\n", xxg[0]/mm, xxg[1]/mm, xxg[2]/mm);
+
+	    sensorPV.ptr()->LocalToMasterVect(nxl, nxg);
+	    sensorPV.ptr()->LocalToMasterVect(nyl, nyg);
+	    {
+	      TVector3 nx(nxg), ny(nyg);
+	      //printf("@G@ %10.5f %10.5f %10.5f\n", xxg[0]/mm, xxg[1]/mm, xxg[2]/mm);
+	      auto surface = new FlatSurface((1/mm)*TVector3(xxg), nx, ny);
+
+	      // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
+	      detector->AddPhotonDetector(isec, new CherenkovPhotonDetector(0, 0, surface));
+	    }
+	  }
+
+          // generate LUT for module number -> sensor position, for readout mapping tests
+          //if(isec==0) printf("%d %f %f\n",imod,sensorPV.position().x(),sensorPV.position().y());
+
+          // properties
+          sensorPV.addPhysVolID("sector", isec).addPhysVolID("module", imod);
+          DetElement sensorDE(det, Form("sensor_de%d_%d", isec, imod), 10000*isec+imod);
+          sensorDE.setPlacement(sensorPV);
+          if(!debug_optics) {
+            SkinSurface sensorSkin(desc, sensorDE, Form("sensor_optical_surface%d", isec), sensorSurf, sensorVol);
+            sensorSkin.isValid();
+          };
+
+          // increment sensor module number
+          imod++;
+
+        }; // end patch cuts
+      }; // end phiGen loop
+    }; // end thetaGen loop
+
+    // calculate centroid sensor position
+    if(isec==0) {
+      sensorCentroidX /= sensorCount;
+      sensorCentroidZ /= sensorCount;
+    };
+
+    // END SENSOR MODULE LOOP ------------------------
 
 
   }; // END SECTOR LOOP //////////////////////////
@@ -590,7 +637,8 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   {
     {
       // C2F6, aerogel, acrylic in this sequence; FIXME: import from the geometry database;
-      double n[] = {1.00080, 1.0170, 1.5017};
+      //double n[] = {1.00080, 1.0170, 1.5017};
+      double n[] = {1.00000, 1.0170};//, 1.5017};
 
       for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
 	if (ir >= detector->GetRadiatorCount()) break;
@@ -602,6 +650,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     geometry->Write();
     fout->Close();
   }
+#endif
 
   return det;
 };

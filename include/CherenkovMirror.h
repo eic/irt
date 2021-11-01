@@ -5,14 +5,14 @@
 #include <G4Object.h>
 #include <ParametricSurface.h>
 
-class MirrorCopy: public G4ObjectCopy {
+class SurfaceCopy: public G4ObjectCopy {
  public:
- MirrorCopy(G4VPhysicalVolume *phys = 0): G4ObjectCopy(phys), m_Surface(0) {};
-  ~MirrorCopy() {};
+ SurfaceCopy(G4VPhysicalVolume *phys = 0): G4ObjectCopy(phys), m_Surface(0) {};
+  ~SurfaceCopy() {};
 
   ParametricSurface *m_Surface;
 
-  ClassDef(MirrorCopy, 1);
+  ClassDef(SurfaceCopy, 1);
 };
 
 class CherenkovMirror: public G4Object {
@@ -22,13 +22,15 @@ class CherenkovMirror: public G4Object {
 
   void SetReflectivity( void );
 
-  G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new MirrorCopy(phys); };
+  G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new SurfaceCopy(phys); };
   
   void AdjustWedgeCopies(G4VPhysicalVolume *mother) {
     for(int iq=0; iq<6; iq++) {
-      auto mcopy = dynamic_cast<MirrorCopy*>(m_Copies[iq]);
+      auto mcopy = dynamic_cast<SurfaceCopy*>(m_Copies[iq]);
 
-      mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->Clone((iq-1)*60*180/M_PI, TVector3(0,0,1));
+      // FIXME: why there should be a "-" sign here to keep G4 and ROOT rotations around Z axis in sync?!;
+      mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone(-(iq-0)*60*M_PI/180, TVector3(0,0,1));
+      //mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone((iq-0)*60*180/M_PI, TVector3(0,0,1));
     } //for iq
   };
 

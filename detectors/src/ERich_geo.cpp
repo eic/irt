@@ -33,8 +33,8 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   auto fout = new TFile("erich-config.root", "RECREATE");
   auto geometry = new CherenkovDetectorCollection();
   // Yes, a single detector in this environment;
-  geometry->AddNewDetector();
-  auto detector = geometry->GetDetector(0);
+  geometry->AddNewDetector("ERICH");
+  auto detector = geometry->GetDetector("ERICH");//0);
 
   // attributes -----------------------------------------------------------
   // - vessel
@@ -147,7 +147,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // who cares; material pointer can seemingly be '0', and effective refractive index 
     // for all radiators will be assigned at the end by hand; FIXME: should assign it on 
     // per-photon basis, at birth, like standalone GEANT code does;
-    geometry->SetContainerVolume(detector, 0, (G4LogicalVolume*)(0x0), 0, boundary);
+    geometry->SetContainerVolume(detector, 0, 0, (G4LogicalVolume*)(0x0), 0, boundary);
   }
   // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
   // assuming no rotations involved; [cm];
@@ -222,7 +222,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
       // This call will create a pair of flat refractive surfaces internally; FIXME: should make
       // a small gas gap at the upstream end of the gas volume;
-      geometry->AddFlatRadiator(detector, 0, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
+      geometry->AddFlatRadiator(detector, 0, 0, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
     } //if
 
     // filter placement and surface properties
@@ -259,7 +259,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	
 	// FIXME: create a small air gap in the geometry as well;
 	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()-0.01*mm), nx, ny);
-	geometry->AddFlatRadiator(detector, 0, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
+	geometry->AddFlatRadiator(detector, 0, 0, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
     } //if
 
@@ -353,7 +353,10 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 				      TVector3(1,0,0), TVector3(0,1,0));
 
 	    // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
-	    detector->AddPhotonDetector(0, new CherenkovPhotonDetector(0, 0, surface));
+	    //detector->AddPhotonDetector(0, new CherenkovPhotonDetector(0, 0, surface));
+	    auto pd = new CherenkovPhotonDetector(0, 0);//, surface));
+	    geometry->AddPhotonDetector(detector, 0, pd);//new CherenkovPhotonDetector(0, 0, surface));
+	    detector->CreatePhotonDetectorInstance(0, pd, 0, surface);
 	  } //if
 
           // properties
@@ -406,9 +409,10 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 #endif
 
       for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
-	if (ir >= detector->GetRadiatorCount()) break;
+	assert(0);
+	//if (ir >= detector->GetRadiatorCount()) break;
 	
-	detector->Radiators()[ir]->SetReferenceRefractiveIndex(n[ir]);
+	//detector->Radiators()[ir]->SetReferenceRefractiveIndex(n[ir]);
       } //for ir
     }
 

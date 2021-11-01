@@ -32,10 +32,10 @@ int main(int argc, char** argv)
   auto fcfg  = new TFile(argv[2]);
   auto geometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("CherenkovDetectorCollection"));
   // Assume a single detector (eRICH), and that aerogel was encoded as raditor#1 in ERich_geo.cpp;
-  auto detector = geometry->GetDetector(0);
-  auto gas      = detector->Radiators()[0];
-  auto aerogel1 = detector->Radiators()[1];
-  auto acrylic  = detector->Radiators()[2];
+  auto detector = geometry->GetDetector("ERICH");
+  auto gas      = detector->GetRadiator("GasVolume");//[0];
+  auto aerogel1 = detector->GetRadiator("Aerogel");//s()[1];
+  auto acrylic  = detector->GetRadiator("Acrylic");//s()[2];
   //auto aerogel3 = detector->Radiators()[3];
   // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
   // this may not be true; 
