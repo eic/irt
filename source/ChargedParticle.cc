@@ -22,7 +22,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
   // rejection, average theta calculation and such;
   for(auto rhistory: GetRadiatorHistory()) {
     auto radiator = GetRadiator(rhistory);
-    const unsigned zdim = radiator->GetTrajectoryBinCount();
+    // FIXME: error message;
+    if (radiator->m_Locations.size() < 2) return;
+
+    const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
 
     if (radiator->m_Locations.size()) {
       for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
@@ -66,7 +69,8 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
     
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
-      const unsigned zdim = radiator->GetTrajectoryBinCount();
+      //const unsigned zdim = radiator->GetTrajectoryBinCount();
+      const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
       
       if (!radiator->m_Locations.size()) continue;
 

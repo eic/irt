@@ -31,6 +31,10 @@ qe_data = [
     (900, 0.04)
 ]
 
+radiators = [
+    "Aerogel zbins=5 smearing=uniform 3mrad"
+]
+
 podioinput = PodioInput(
         "PodioReader",
         # Input collections: MC truth tracks and eRICH raw hits (photons);
@@ -53,7 +57,8 @@ irtrec = IRTAlgorithm(
         QEbins="100",
 
         # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
-        ConfigFile="erich-config.root"
+        ConfigFile="erich-config.root",
+        Radiators=[ (r) for r in radiators ]
         )
 
 # Output ROOT file; keep the input collections as well, append eRICH PID tables;
