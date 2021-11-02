@@ -27,12 +27,12 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   xml::Component dims = detElem.dimensions();
   OpticalSurfaceManager surfMgr = desc.surfaceManager();
 
-  //@@@ Create output file and a geometry object pointer;
-  auto fout = new TFile("erich-config.root", "RECREATE");
+  //@@@ Create output file and a geometry object pointer; 
+  std::string str = detName; std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+  auto fout = new TFile((str + "-config.root").c_str(), "RECREATE");
   auto geometry = new CherenkovDetectorCollection();
-  // Yes, a single detector in this environment;
-  geometry->AddNewDetector("ERICH");
-  auto detector = geometry->GetDetector("ERICH");
+  // Yes, a single detector per .root file in this environment;
+  auto detector = geometry->AddNewDetector(detName.c_str());
 
   // attributes -----------------------------------------------------------
   // - vessel

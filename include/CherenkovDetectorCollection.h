@@ -124,6 +124,9 @@ class CherenkovDetectorCollection: public BitMask {
 
     return _m_Detectors[name];
   };
+  const std::map<TString, CherenkovDetector*> &GetDetectors( void ) const {
+    return _m_Detectors;
+  }; 
 
   // The lookup tables are global of course since the same particle can hit radiators
   // in more than one detector;

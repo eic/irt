@@ -44,7 +44,7 @@ irtrec = IRTAlgorithm(
         #inputHitCollection="ERICHHits",
 
         # Output collection: eRICH PID decisions; 
-        outputCherenkovPID="ERICHPID",
+        #outputCherenkovPID="ERICHPID",
 
         # SiPM QE and geometric efficiency; FIXME: units.eV coefficient gives extra x1000 (?);
         QEcurve=[ ((1239.84/a), b) for a, b in qe_data ],
@@ -53,8 +53,8 @@ irtrec = IRTAlgorithm(
         QEbins="100",
 
         # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
-        ConfigFile="erich-config.root",
-        Detector="ERICH"
+        ConfigFile="erich-config.root"#,
+        #Detector="ERICH"
         )
 
 # Output ROOT file; keep the input collections as well, append eRICH PID tables;
