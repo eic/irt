@@ -48,7 +48,8 @@ class IRT: public TObject {
   bool Transport(const TVector3 &xfrom, const TVector3 &nfrom); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
-	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
+    	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
+    //return (id < _m_OpticalBoundaries.size() ? _m_OpticalBoundaries[id] : 0);
   };
   inline OpticalBoundary *tail( void ) const { 
     return _m_OpticalBoundaries.size() ? GetOpticalBoundary(_m_OpticalBoundaries.size()-1) : 0;
@@ -58,8 +59,9 @@ class IRT: public TObject {
   double m_Precision, m_JacobianStep; 
 
   std::vector<TRef> _m_OpticalBoundaries;
+  //std::vector<OpticalBoundary *> _m_OpticalBoundaries;
 
-  ClassDef(IRT, 1);
+  ClassDef(IRT, 3);
 };
 
 #endif

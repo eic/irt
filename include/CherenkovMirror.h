@@ -29,7 +29,10 @@ class CherenkovMirror: public G4Object {
       auto mcopy = dynamic_cast<SurfaceCopy*>(m_Copies[iq]);
 
       // FIXME: why there should be a "-" sign here to keep G4 and ROOT rotations around Z axis in sync?!;
-      mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone(-(iq-0)*60*M_PI/180, TVector3(0,0,1));
+      //+mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone(-(iq-0)*60*M_PI/180, TVector3(0,0,1));
+      mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone((iq-1)*60*M_PI/180, TVector3(0,0,1));
+
+
       //mcopy->m_Surface = dynamic_cast<ParametricSurface*>(this)->_Clone((iq-0)*60*180/M_PI, TVector3(0,0,1));
     } //for iq
   };
