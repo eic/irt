@@ -8,7 +8,6 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
-  //printf("\n");
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
@@ -17,7 +16,6 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto boundary = GetOpticalBoundary(iq), prev = iq ? GetOpticalBoundary(iq-1) : 0;
     auto surface = boundary->m_Surface;
 
-    //printf("%f %f %f, %f %f %f\n", x0[0], x0[1], x0[2], n0[0], n0[1], n0[2]); 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
 
     // The logic here is that the first few boundaries may be irrelenat for this 
@@ -53,7 +51,6 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 	if (fabs(arg) > 1.0) return false;
 	double theta2 = asin(arg);
 
-	//printf("%f %f %f\n", boundary->m_IncomingDirection.x(), boundary->m_IncomingDirection.y(), boundary->m_IncomingDirection.z());
 	boundary->m_OutgoingDirection.Rotate(theta1 - theta2, na);
       } //if
     } else {
@@ -93,10 +90,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
   IRTSolution solution; if (seed) solution = *seed;
-  //return solution;
   if (!_m_OpticalBoundaries.size()) return solution;
-
-  //return solution;
 
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);

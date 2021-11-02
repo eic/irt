@@ -12,7 +12,8 @@ class SinglePDF: public TObject {
   SinglePDF() {};
   ~SinglePDF() {};
 
-  virtual double GetValue   (double x) const = 0;
+  virtual double GetValue   (double x)                  const = 0;
+  virtual double GetAverage(void)                       const = 0;
   virtual bool   WithinRange(double x, double dx = 0.0) const = 0;
 
   ClassDef(SinglePDF, 1);
@@ -40,6 +41,11 @@ class UniformPDF: public SinglePDF {
   inline double GetValue(double x) const {
     return WithinRange(x) ? m_Norm*m_Weight : 0.0;
   };
+  double GetAverage(void) const {
+    return (m_X0 + m_X1)/2;
+  };
+  double GetWeight(void) const { return m_Weight; };
+
   inline double GetRangeIntegral(double x0, double x1) const {
     if (x0 > x1) std::swap(x0, x1);
     
@@ -89,6 +95,16 @@ class VectorPDF: public TObject {
       ret += member->GetValue(x);
 
     return ret;
+  };
+  double GetAverage( void ) const {
+    double avg = 0.0, wtsum = 0.0;
+
+    for(auto member: m_Members) {
+      avg   += member->GetWeight() * member->GetAverage();
+      wtsum += member->GetWeight();
+    } //for member
+
+    return (wtsum ? avg / wtsum : 0.0);
   };
   inline double GetRangeIntegral(double x0, double x1) const {
     double ret = 0.0;

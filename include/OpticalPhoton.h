@@ -83,7 +83,6 @@ class OpticalPhoton: public TransientParticle {
 
   // Transient variables for some convenience in an analysis script;
  public:
-  //IRTSolution m_Solution;  //!
   std::map<CherenkovRadiator*, VectorPDF> _m_PDF;           //!
 
   ClassDef(OpticalPhoton, 2);

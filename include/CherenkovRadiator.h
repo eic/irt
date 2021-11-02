@@ -29,7 +29,6 @@ class CherenkovRadiator: public TObject {
 
   const G4RadiatorMaterial *GetMaterial( void ) const { return m_Material; };
 
-#if 1//_TODAY_
   ParametricSurface *GetFrontSide(unsigned path) {
     if (m_Borders.find(path) == m_Borders.end()) return 0;
 
@@ -41,7 +40,6 @@ class CherenkovRadiator: public TObject {
     return dynamic_cast<ParametricSurface*>(m_Borders[path].second.GetObject());
   };
   std::map<unsigned, std::pair<TRef, TRef>> m_Borders; 
-#endif
 
  private:
   // Run-time variables for the GEANT pass;

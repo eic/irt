@@ -44,7 +44,7 @@ class CherenkovDetectorCollection: public BitMask {
 
     return radiator;
   };
-  CherenkovRadiator *AddFlatRadiator(CherenkovDetector *det, const char *name, unsigned sector, 
+  CherenkovRadiator *AddFlatRadiator(CherenkovDetector *det, const char *name, unsigned path, 
 				     const G4LogicalVolume *volume, 
 				     const G4RadiatorMaterial *material, const FlatSurface *surface, 
 				     double thickness) {
@@ -55,35 +55,32 @@ class CherenkovDetectorCollection: public BitMask {
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift(( thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(sector, new OpticalBoundary(radiator,                             boundary, true));
-      radiator->m_Borders[sector].first = boundary;
+      det->AddOpticalBoundary(path, new OpticalBoundary(radiator,                  boundary, true));
+      radiator->m_Borders[path].first = boundary;
     }
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift((-thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(sector, new OpticalBoundary(FindRadiator(det->m_ContainerVolume), boundary, true));
-      radiator->m_Borders[sector].second = boundary;
+      det->AddOpticalBoundary(path, new OpticalBoundary(det->GetContainerVolume(), boundary, true));
+
+      radiator->m_Borders[path].second = boundary;
+      // This will most likely be a temporary assignment;
+      det->GetContainerVolume()->m_Borders[path].first = boundary;
     }    
 
     return radiator;
   };
-  void AddPhotonDetector(CherenkovDetector *det, /*unsigned sector,*/ const G4LogicalVolume *lv, 
+  void AddPhotonDetector(CherenkovDetector *det, const G4LogicalVolume *lv, 
 			 CherenkovPhotonDetector *pd) {
     // FIXME: a consistency check!;
     if (FindPhotonDetector(lv)) return;
 
-    det->AddPhotonDetector(/*sector,*/ pd);
+    det->AddPhotonDetector(pd);
 
     m_PhotonDetectorLookup[lv] = pd;
   };
 
   //inline unsigned GetDetectorCount( void ) const { return m_Detectors.size(); };
-  //inline CherenkovDetector *GetDetector(unsigned id) {
-  // return (id < m_Detectors.size() ? m_Detectors[id] : 0);
-  //};
-  //inline CherenkovDetector *GetDetector(unsigned id) {
-  //  return (id < m_Detectors.size() ? m_Detectors[id] : 0);
-  //};
 
   inline CherenkovRadiator *FindRadiator(const G4LogicalVolume *lv) {
     return (m_RadiatorLookup.find(lv) == m_RadiatorLookup.end() ? 0 : m_RadiatorLookup[lv]);
@@ -101,15 +98,16 @@ class CherenkovDetectorCollection: public BitMask {
     return (m_PhotonDetectorLookup.find(lv) == m_PhotonDetectorLookup.end() ? 0 : m_PhotonDetectorLookup[lv]);
   };
 
-  void SetContainerVolume(CherenkovDetector *det, const char *name, unsigned sector, const G4LogicalVolume *lv, 
+  void SetContainerVolume(CherenkovDetector *det, const char *name, unsigned path, const G4LogicalVolume *lv, 
 			  const G4RadiatorMaterial *material, 
 			  /*const*/ ParametricSurface *surface) { 
     auto radiator = FindOrAddRadiator(det, name, lv, material);
     // This is most likely a temporary assignment;
-    radiator->m_Borders[sector].first = surface;
+    radiator->m_Borders[path].first = surface;
 
-    det->AddOpticalBoundary(sector, new OpticalBoundary(FindRadiator(lv), surface, true));
-    det->SetContainerVolume(lv);
+    det->AddOpticalBoundary(path, new OpticalBoundary(FindRadiator(lv), surface, true));
+    //det->SetContainerVolume(lv);
+    det->SetContainerVolume(radiator);
   };
 
   // FIXME: do it more efficient later;
@@ -125,11 +123,6 @@ class CherenkovDetectorCollection: public BitMask {
     if (_m_Detectors.find(name) == _m_Detectors.end()) return 0;
 
     return _m_Detectors[name];
-    //for(auto detector: _m_Detectors)
-    //if (!strcmp(name, detector.first))
-    //	return detector.second;
-    //  
-    //return 0;
   };
 
   // The lookup tables are global of course since the same particle can hit radiators
@@ -139,7 +132,6 @@ class CherenkovDetectorCollection: public BitMask {
   std::map<const G4LogicalVolume*, CherenkovMirror*>         m_MirrorLookup;           //!
   std::map<const G4LogicalVolume*, CherenkovPhotonDetector*> m_PhotonDetectorLookup;   //!
 
-  //std::vector<CherenkovDetector*> m_Detectors;
   std::map<TString, CherenkovDetector*> _m_Detectors;
   
   ClassDef(CherenkovDetectorCollection, 2);

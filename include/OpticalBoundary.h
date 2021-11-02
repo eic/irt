@@ -13,6 +13,7 @@ class OpticalBoundary: public TObject {
 
  public:
  OpticalBoundary(): m_Radiator(0), m_Surface(0), m_Refractive(true) {};
+  // The "0" as a radiator ptr implicitly says "there is no photon life beyond this boundary in IRT";
  OpticalBoundary(/*const*/ CherenkovRadiator *radiator, const ParametricSurface *surface, bool refractive): 
   m_Radiator(radiator), m_Surface(surface), m_Refractive(refractive) {};
   ~OpticalBoundary() {};

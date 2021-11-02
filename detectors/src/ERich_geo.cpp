@@ -136,20 +136,23 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   vesselVol.setVisAttributes(vesselVis);
   gasvolVol.setVisAttributes(gasvolVis);
 
+  // Used in several places;
+  TVector3 nx(1,0,0), ny(0,1,0);
+
+  // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
+  // assuming no rotations involved; [cm];
+  double vesselOffset = (vesselZmin + vesselZmax)/2;
   {
     // FIXME: Z-location does not really matter here, right?; but Z-axis orientation does;
-    auto boundary = new FlatSurface(TVector3(0,0,0), TVector3(1,0,0), TVector3(0,1,0));
+    auto boundary = new FlatSurface(TVector3(0,0,vesselOffset), nx, ny);
 
     // FIXME: have no connection to GEANT G4LogicalVolume pointers; however all is needed 
-    // is to make them unique so that std::map work internally; resort to using integers, 
-    // who cares; material pointer can seemingly be '0', and effective refractive index 
+    // is to make them unique so that std::map works internally; resort to using integers, 
+    // who cares; material pointer can seemingly be '0', and the effective refractive index 
     // for all radiators will be assigned at the end by hand; FIXME: should assign it on 
     // per-photon basis, at birth, like standalone GEANT code does;
     geometry->SetContainerVolume(detector, "GasVolume", 0, (G4LogicalVolume*)(0x0), 0, boundary);
   }
-  // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
-  // assuming no rotations involved; [cm];
-  double vesselOffset = (vesselZmin + vesselZmax)/2;
 
   // reference positions
   // - the vessel is created such that the center of the cylindrical tank volume
@@ -161,11 +164,8 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   auto originFront = Position(0., 0.,  vesselLength/2.0 );
   auto originBack =  Position(0., 0., -vesselLength/2.0 );
 
-
   // sensitive detector type
   sens.setType("photoncounter");
-
-  //Transform3D trans;
 
   // place gas volume
   PlacedVolume gasvolPV = vesselVol.placeVolume(gasvolVol,Position(0, 0, 0));
@@ -215,22 +215,16 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     //aerogelSkin.isValid();
 
     if (!isec) {
-      TVector3 nx(1,0,0), ny(0,1,0);
       auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+aerogelPV.position().z()), nx, ny);
 
       // This call will create a pair of flat refractive surfaces internally; FIXME: should make
       // a small gas gap at the upstream end of the gas volume;
-      auto radiator = geometry->AddFlatRadiator(detector, "Aerogel", isec, (G4LogicalVolume*)(0x1), 0, surface, aerogelThickness/mm);
-      // FIXME: may want to pack into geometry->AddFlatRadiator();
-      detector->GetRadiator("GasVolume")->m_Borders[0].first = radiator->GetRearSide(0);
+      geometry->AddFlatRadiator(detector, "Aerogel", isec, (G4LogicalVolume*)(0x1), 
+				0, surface, aerogelThickness/mm);
     } //if
 
     // filter placement and surface properties
     if(!debug_optics) {
-      //trans = RotationZ(sectorRotation) // rotate about beam axis to sector
-        //  * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
-	//* RotationY(radiatorPitch) // change polar angle
-	//* Translation3D(0., 0., -(aerogelThickness+filterThickness)/2.) ;
       auto filterPV = gasvolVol.placeVolume(filterVol,
             RotationZ(sectorRotation) // rotate about beam axis to sector
           * Translation3D(radiatorPos.x(), radiatorPos.y(), radiatorPos.z()) // re-center to originFront
@@ -239,28 +233,13 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
           );
       DetElement filterDE(det, Form("filter_de%d", isec), isec);
       filterDE.setPlacement(filterPV);
-      {
-	double l[3] = {0.0, 0.0, 0.0}, g[3], m[3];
-	filterPV.ptr()->LocalToMaster(l, g);
-	vesselPV.ptr()->LocalToMaster(g, m);
-	//auto x = (trans * (Position(0, 0, vesselZmin) - originFront)).Translation();//.Vect();
-	//auto rotation    = trans.Rotation();
-	//const TGeoMatrix& localToGlobal = filterDE.nominal().worldTransformation();
-	//localToGlobal.LocalToMaster(l, g);
-	//double xx, yy, zz;
-	//x.GetComponents(xx, yy, zz);
-	printf("@G@ %10.5f %10.5f %10.5f\n", m[0]/mm, m[1]/mm, m[2]/mm);
-	//printf("@G@ %10.5f %10.5f %10.5f\n", xx, yy, zz);//(0), x[1], x[2]);
-      }
       //SkinSurface filterSkin(desc, filterDE, Form("mirror_optical_surface%d", isec), filterSurf, filterVol);
       //filterSkin.isValid();
+
       if (!isec) {
-	TVector3 nx(1,0,0), ny(0,1,0);
-	
 	// FIXME: create a small air gap in the geometry as well;
 	auto surface = new FlatSurface((1/mm)*TVector3(0,0,vesselOffset+filterPV.position().z()-0.01*mm), nx, ny);
-	auto radiator = geometry->AddFlatRadiator(detector, "Filter", isec, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
-	detector->GetRadiator("GasVolume")->m_Borders[0].first = radiator->GetRearSide(0);
+	geometry->AddFlatRadiator(detector, "Filter", isec, (G4LogicalVolume*)(0x2), 0, surface, filterThickness/mm);
       } //if
     } //if
   }; // END SECTOR LOOP //////////////////////////
@@ -284,7 +263,9 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   int imod=0; // module number
   double tBoxMax = vesselRmax1; // sensors will be tiled in tBox, within annular limits
 
+  // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
   auto pd = new CherenkovPhotonDetector(0, 0);
+  // FIXME: '0' stands for the unknown (and irrelevant) G4LogicalVolume;
   geometry->AddPhotonDetector(detector, 0, pd);
 
   // SENSOR MODULE LOOP ------------------------
@@ -319,16 +300,14 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
 	  {
 	    // Assume that photosensors can have different 3D surface parameterizations;
-	    auto surface = new FlatSurface((1/mm)*TVector3(0.0, 0, vesselOffset+sensorPV.position().z()), 
-					   TVector3(1,0,0), TVector3(0,1,0));
+	    auto surface = new FlatSurface((1/mm)*TVector3(0.0, 0, vesselOffset+sensorPV.position().z()), nx, ny);
 
-	    // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
-	    //detector->AddPhotonDetector(0, new CherenkovPhotonDetector(0, 0, surface));
-	    //auto pd = new CherenkovPhotonDetector(0, 0);//, surface));
-	    //geometry->AddPhotonDetector(detector, 0, pd);//new CherenkovPhotonDetector(0, 0, surface));
 	    detector->CreatePhotonDetectorInstance(0, pd, imod, surface);
 
-	    if (!imod) detector->GetRadiator("GasVolume")->m_Borders[0].second = dynamic_cast<ParametricSurface*>(surface);
+	    // Yes, since there are no mirrors in this detector, just close the gas radiator volume by hand (once), 
+	    // assuming that all the sensors will be sitting at roughly the same location along the beam line anyway;
+	    if (!imod) detector->GetRadiator("GasVolume")->m_Borders[0].second = 
+			 dynamic_cast<ParametricSurface*>(surface);
 	  } //if
 
           // properties
@@ -350,28 +329,15 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
   //@@@ Write the geometry out as a custom TObject class instance;
   {
-    // No access to GEANT codes; FIXME: replace by dd4hep interpolation (it should 
-    // be available somewhere, right?); for now assign expected average numbers (after 
-    // the QE-convolution!) by hand; <lambda> is ~470nm for Hamamatsu S13361-3050AE-08
-    // QE curve + aerogel with n ~ 1.02 Cherenkov photon spectrum;
-    //for(auto radiator: det->Radiators())
-    //radiator->SetReferenceRefractiveIndex(radiator->GetMaterial()->RefractiveIndex(eV*_MAGIC_CFF_/_LAMBDA_NOMINAL_));
-    {
-      // C4F10, aerogel, acrylic in this sequence; a second aerogel layer, optionally;
-      // FIXME: import from the geometry database; FIXME: crappy style in general;
-      const char *name[] = {"GasVolume", "Aerogel", "Filter"};
-      double         n[] = {     1.0013,    1.0170,   1.5017};
-
-      for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
-	//assert(0);
-	auto radiator = detector->GetRadiator(name[ir]);
-
-	if (radiator) radiator->SetReferenceRefractiveIndex(n[ir]);
-	//if (ir >= detector->GetRadiatorCount()) break;
-	
-	//detector->Radiators()[ir]->SetReferenceRefractiveIndex(n[ir]);
-      } //for ir
-    }
+    // FIXME: import from the geometry database; FIXME: crappy style in general;
+    const char *name[] = {"GasVolume", "Aerogel", "Filter"};
+    double         n[] = {     1.0013,    1.0170,   1.5017};
+    
+    for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
+      auto radiator = detector->GetRadiator(name[ir]);
+      
+      if (radiator) radiator->SetReferenceRefractiveIndex(n[ir]);
+    } //for ir
 
     geometry->Write();
     fout->Close();

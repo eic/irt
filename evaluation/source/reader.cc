@@ -63,18 +63,16 @@ int main(int argc, char** argv)
     // IRT code expects; FIXME: this is not dramatically efficient; streamline once debugging is over;
     for(auto track: *tracks) {
       // FIXME: consider only primaries here?;
-      if (track.g4Parent /*|| track.pdgID != 211*/) continue;
+      if (track.g4Parent) continue;
 
       auto particle = new ChargedParticle(track.pdgID);
       event->AddChargedParticle(particle);
 
       aerogel->ResetLocations();
 
-      //for(unsigned irad=0; irad<1; irad++) {
       auto history = new RadiatorHistory();
       // FIXME: yes, for now assume all the photons were produced in aerogel; 
       particle->StartRadiatorHistory(std::make_pair(aerogel, history));
-      //particle->StartRadiatorHistory(std::make_pair(gas, history));
       {
 	// FIXME: need it not at vertex, but in the radiator; as coded here, this can 
 	// hardly work once the magnetic field is turned on;
@@ -85,24 +83,17 @@ int main(int argc, char** argv)
 	//auto s1 = detector->m_OpticalBoundaries[1], s2 = detector->m_OpticalBoundaries[2];
 	auto s1 = detector->_m_OpticalBoundaries[0][1];
 	auto s2 = detector->_m_OpticalBoundaries[0][2];
-	//printf("%ld\n", detector->_m_OpticalBoundaries[0].size());
 	  
 	TVector3 from, to;
 	s1->GetSurface()->GetCrossing(x0, n0, &from);
 	s2->GetSurface()->GetCrossing(x0, n0, &to);
 	  
-	//history->AddStep(new ChargedParticleStep(from, p0));
-	//history->AddStep(new ChargedParticleStep(  to, p0));
 	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
 	aerogel->AddLocation(from, p0);
 	aerogel->AddLocation(  to, p0);
-
-	//printf("%f %f %f %f %f %f %f %f %f\n", from.x(), from.y(), from.z(), to.x(), to.y(), to.z(), 
-	//     p0.x(), p0.y(), p0.z());
       }
 
       for(auto hit: *hits) {
-	//printf("New hit!\n");
 	// FIXME: yes, use MC truth here; not really needed I guess; 
 	if (hit.g4ID != track.ID) continue;
 	
@@ -118,7 +109,6 @@ int main(int argc, char** argv)
 	if (gRandom->Uniform(0.0, 1.0) > _AVERAGE_PDE_) continue;
 #endif
 
-	//printf("New hit!\n");
 	auto photon = new OpticalPhoton();
 	
 	{
@@ -132,19 +122,12 @@ int main(int argc, char** argv)
 	//     ((hit.cellID >> 12) & 0xFFFF),
 	//     ((hit.cellID >> 28) & 0xFFFF));
 	unsigned module = (hit.cellID >>  8) & 0x0FFF;
-	//printf("%4d (%d)\n", module, detector->m_PhotonDetectors.size());
-	//if (module < detector->m_PhotonDetectors.size()) {
-	//printf("New hit!\n");
-	photon->SetPhotonDetector(detector->m_PhotonDetectors[0]);//module]);
+	photon->SetPhotonDetector(detector->m_PhotonDetectors[0]);
 	photon->SetDetected(true);
 	photon->SetVolumeCopy(module);
 	
 	history->AddOpticalPhoton(photon);
-	//} //if
       } //for hit
-	//printf("%d %d %d\n", track.ID, track.pdgID, track.g4Parent);
-
-      //continue;
 
       // Now that all internal track-level structures are populated, run IRT code;
       {
@@ -159,8 +142,6 @@ int main(int argc, char** argv)
 	  auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
 	  double wt0 = pion->GetWeight(aerogel), wt1 = kaon->GetWeight(aerogel);
 
-	  //printf("%10.5f (%2d) vs %10.5f (%2d) ...  %3d %d\n", 
-	  //	 wt0, pion->GetNpe(), wt1, kaon->GetNpe(), track.pdgID, wt0 > wt1);
 	  printf("%10.3f (%10.3f) vs %10.3f (%10.3f) ...  %3d %d\n", 
 		 wt0, pion->GetNpe(aerogel), wt1, kaon->GetNpe(aerogel), particle->GetPDG(), wt0 > wt1);
 
@@ -171,6 +152,7 @@ int main(int argc, char** argv)
 
     event->Reset();
   } //for ev
+
   printf("%d false out of %lld\n", false_assignment_stat, t->GetEntries());
 
   return 0;

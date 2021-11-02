@@ -39,11 +39,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	    //printf("--> %d\n", photon->GetVolumeCopy());
 	    solutions[iq] = pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
 								       radiator->m_Locations[iq].second.Unit(), 
-								       // FIXME: beam line as a parameter;
+								       // FIXME: give beam line as a parameter;
 								       phx, TVector3(0,0,1), false);
 	  } //for iq
 	  
-	  //continue;
 	  for(unsigned iq=0; iq<zdim; iq++) {
 	    auto &s0 = solutions[iq], &s1 = solutions[iq+1];
 	    
@@ -94,8 +93,6 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	} //for photon
       }
     } //for rhistory
-    
-    //printf("@W@ %2d -> %7.2f %7.2f %7.2f\n", ih, m, hypothesis->GetNph(), hypothesis->GetWeight());
   } //for ih
 } // ChargedParticle::PIDReconstruction()
 
