@@ -31,7 +31,7 @@ int main(int argc, char** argv)
   // .root file with the IRT configuration;
   auto fcfg  = new TFile(argv[2]);
   auto geometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("CherenkovDetectorCollection"));
-  // Assume a single detector (eRICH), and that aerogel was encoded as raditor#1 in ERich_geo.cpp;
+  // Assume a single detector (eRICH);
   auto detector = geometry->GetDetector("ERICH");
   //auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
@@ -43,6 +43,8 @@ int main(int argc, char** argv)
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
   aerogel->SetUniformSmearing(0.003);
+  // This may be bogus for a blob-like operation mode;
+  //gas    ->SetUniformSmearing(0.003);
 
   // TTree interface variable;
   auto event = new CherenkovEvent();
@@ -58,41 +60,16 @@ int main(int argc, char** argv)
   unsigned false_assignment_stat = 0;
   for(int ev=0; ev<t->GetEntries(); ev++) {
     t->GetEntry(ev);
-
+  
     // Loop through all tracks and populate the internal arrays in a way 
     // IRT code expects; FIXME: this is not dramatically efficient; streamline once debugging is over;
     for(auto track: *tracks) {
       // FIXME: consider only primaries here?;
       if (track.g4Parent) continue;
 
-      auto particle = new ChargedParticle(track.pdgID);
-      event->AddChargedParticle(particle);
-
-      aerogel->ResetLocations();
-
-      auto history = new RadiatorHistory();
-      // FIXME: yes, for now assume all the photons were produced in aerogel; 
-      particle->StartRadiatorHistory(std::make_pair(aerogel, history));
-      {
-	// FIXME: need it not at vertex, but in the radiator; as coded here, this can 
-	// hardly work once the magnetic field is turned on;
-	auto &vtx = track.vs, &p = track.ps;
-	auto x0 = TVector3(vtx.x, vtx.y, vtx.z), p0 = TVector3(p.x, p.y, p.z), n0 = p0.Unit();
-	// So, give the algorithm aerogel surface boundaries as encoded in ERich_geo.cpp;
-	  
-	//auto s1 = detector->m_OpticalBoundaries[1], s2 = detector->m_OpticalBoundaries[2];
-	auto s1 = detector->_m_OpticalBoundaries[0][1];
-	auto s2 = detector->_m_OpticalBoundaries[0][2];
-	  
-	TVector3 from, to;
-	s1->GetSurface()->GetCrossing(x0, n0, &from);
-	s2->GetSurface()->GetCrossing(x0, n0, &to);
-	  
-	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
-	aerogel->AddLocation(from, p0);
-	aerogel->AddLocation(  to, p0);
-      }
-
+      // Create a combined (for all radiators) hit array; eventually will move this
+      // structure out of the track loop;
+      std::vector<OpticalPhoton*> photons;  
       for(auto hit: *hits) {
 	// FIXME: yes, use MC truth here; not really needed I guess; 
 	if (hit.g4ID != track.ID) continue;
@@ -108,7 +85,7 @@ int main(int argc, char** argv)
 #ifdef _AVERAGE_PDE_  
 	if (gRandom->Uniform(0.0, 1.0) > _AVERAGE_PDE_) continue;
 #endif
-
+	
 	auto photon = new OpticalPhoton();
 	
 	{
@@ -126,8 +103,32 @@ int main(int argc, char** argv)
 	photon->SetDetected(true);
 	photon->SetVolumeCopy(module);
 	
-	history->AddOpticalPhoton(photon);
+	photons.push_back(photon);
       } //for hit
+
+      auto particle = new ChargedParticle(track.pdgID);
+      event->AddChargedParticle(particle);
+
+      aerogel->ResetLocations();
+
+      // Create a fake (empty) history; then track locations at the aerogel boundaries;
+      particle->StartRadiatorHistory(std::make_pair(aerogel, new RadiatorHistory()));
+      {
+	// FIXME: need it not at vertex, but in the radiator; as coded here, this can 
+	// hardly work once the magnetic field is turned on;
+	auto &vtx = track.vs, &p = track.ps;
+	auto x0 = TVector3(vtx.x, vtx.y, vtx.z), p0 = TVector3(p.x, p.y, p.z), n0 = p0.Unit();
+
+	// So, give the algorithm aerogel surface boundaries as encoded in ERich_geo.cpp;
+	TVector3 from, to;
+	aerogel->GetFrontSide(0)->GetCrossing(x0, n0, &from);
+	aerogel->GetRearSide (0)->GetCrossing(x0, n0, &to);
+	  
+	// Move the points a bit inwards;
+	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
+	aerogel->AddLocation(from, p0);
+	aerogel->AddLocation(  to, p0);
+      }
 
       // Now that all internal track-level structures are populated, run IRT code;
       {
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
 	pid.AddMassHypothesis(0.140);
 	pid.AddMassHypothesis(0.494);
 
-	particle->PIDReconstruction(pid);
+	particle->PIDReconstruction(pid, &photons);
 	{
 	  auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
 	  double wt0 = pion->GetWeight(aerogel), wt1 = kaon->GetWeight(aerogel);
