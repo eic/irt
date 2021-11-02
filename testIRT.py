@@ -53,8 +53,7 @@ irtrec = IRTAlgorithm(
         QEbins="100",
 
         # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
-        ConfigFile="erich-config.root"#,
-        #Detector="ERICH"
+        ConfigFile="erich-config.root"
         )
 
 # Output ROOT file; keep the input collections as well, append eRICH PID tables;
