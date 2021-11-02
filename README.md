@@ -164,7 +164,7 @@ ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
 ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
 # Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
-npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler=''
+npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
 
 ```
 
