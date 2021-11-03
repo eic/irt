@@ -214,9 +214,22 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Used in several places;
   TVector3 nx(1,0,0), ny(0,-1,0);
 
+  // Get access to the readout structure decoder; may want to simply call desc.readout("DRICHHits");
+  const auto &rdspecs = desc.readouts();
+  if (rdspecs.size() != 1) {
+    printout(FATAL,"DRich_geo","Expect a single readout structure in XML file"); 
+    return det;
+  } //if
+  // Do not mess up with casting of (*desc.readouts().begin()).second; just call desc.readout();
+  const auto decoder = desc.readout((*rdspecs.begin()).first.c_str()).idSpec().decoder();
+  const auto &mvalue = (*decoder)["module"], &svalue = (*decoder)["sector"];
+  uint64_t msmask = mvalue.mask() | svalue.mask();
+  detector->SetReadoutCellMask(msmask);
+  unsigned moffset = mvalue.offset(), soffset = svalue.offset();
+
   {
     // FIXME: Z-location does not really matter here, right?; but Z-axis orientation does;
-    auto boundary = new FlatSurface(TVector3(0,0,vesselZmin), nx, ny);//TVector3(1,0,0), TVector3(0,-1,0));
+    auto boundary = new FlatSurface(TVector3(0,0,vesselZmin), nx, ny);
 
     // FIXME: have no connection to GEANT G4LogicalVolume pointers; however all is needed 
     // is to make them unique so that std::map work internally; resort to using integers, 
@@ -595,33 +608,22 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	      //printf("@G@ %10.5f %10.5f %10.5f\n", xxg[0]/mm, xxg[1]/mm, xxg[2]/mm);
 	      auto surface = new FlatSurface((1/mm)*TVector3(xxg), nx, ny);
 
-	      unsigned imodsec = (imod << 3) | isec;
-
-	      //printf("@S@ %5d\n", imod);
-	      //detector->CreatePhotonDetectorInstance(isec, pd, imod, surface);
-	      // FIXME: and how does one get access to the <readouts> section of the XML file?;
+	      // This is the essential {sector,module} part of the cell index;
+	      uint64_t imodsec = ((uint64_t(imod) << moffset) | (uint64_t(isec) << soffset)) & msmask;
 	      detector->CreatePhotonDetectorInstance(isec, pd, imodsec, surface);
-
-	      //if (!imod) detector->GetRadiator("GasVolume")->m_Borders[0].second = 
-	      //	   dynamic_cast<ParametricSurface*>(surface);
-
-	      // [0,0]: have neither access to G4VSolid nor to G4Material; IRT code does not care; fine;
-	      //detector->AddPhotonDetector(isec, new CherenkovPhotonDetector(0, 0, surface));
-
-	      // generate LUT for module number -> sensor position, for readout mapping tests
-	      //if(isec==0) printf("%d %f %f\n",imod,sensorPV.position().x(),sensorPV.position().y());
 	      
-	      // properties
+	      // properties: {isec,imod} pair will be encoded later on as 'imodsec' bit pattern;
 	      sensorPV.addPhysVolID("sector", isec).addPhysVolID("module", imod);
-	      DetElement sensorDE(det, Form("sensor_de%d_%d", isec, imod), imodsec);//100000*isec+imod);
+	      // Do not mind to use 'imodsec' index here as well; 
+	      DetElement sensorDE(det, Form("sensor_de%d_%d", isec, imod), imodsec);
 	      sensorDE.setPlacement(sensorPV);
 	      if(!debug_optics) {
 		SkinSurface sensorSkin(desc, sensorDE, Form("sensor_optical_surface%d", isec), sensorSurf, sensorVol);
 		sensorSkin.isValid();
 	      };
 
-	      //if (isec == 1)
-	      printf("@S@ -> %4d -> %4d %4d %4d %4d\n", sensorPV.ptr()->GetNumber(), isec, imod, imodsec, sensorDE.id());
+	      //printf("@S@ -> %4d -> %4d %4d %4d %4d\n", sensorPV.ptr()->GetNumber(), 
+	      //     isec, imod, imodsec, sensorDE.id());
 	    }
 	  }
 

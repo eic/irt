@@ -139,6 +139,19 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Used in several places;
   TVector3 nx(1,0,0), ny(0,1,0);
 
+  // Get access to the readout structure decoder; may want to simply call desc.readout("DRICHHits");
+  const auto &rdspecs = desc.readouts();
+  if (rdspecs.size() != 1) {
+    printout(FATAL,"DRich_geo","Expect a single readout structure in XML file"); 
+    return det;
+  } //if
+  // Do not mess up with casting of (*desc.readouts().begin()).second; just call desc.readout();
+  const auto decoder = desc.readout((*rdspecs.begin()).first.c_str()).idSpec().decoder();
+  const auto &mvalue = (*decoder)["module"];
+  uint64_t msmask = mvalue.mask();
+  detector->SetReadoutCellMask(msmask);
+  unsigned moffset = mvalue.offset();
+
   {
     // FIXME: Z-location does not really matter here, right?; but Z-axis orientation does;
     auto boundary = new FlatSurface(TVector3(0,0,vesselZmin), nx, ny);
@@ -303,22 +316,23 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 	    // Assume that photosensors can have different 3D surface parameterizations;
 	    auto surface = new FlatSurface((1/mm)*TVector3(0.0, 0, vesselOffset+sensorPV.position().z()), nx, ny);
 
-	    detector->CreatePhotonDetectorInstance(0, pd, imod, surface);
+	    uint64_t imodsec = (uint64_t(imod) << moffset) & msmask;
+	    detector->CreatePhotonDetectorInstance(0, pd, imodsec, surface);
 
 	    // Yes, since there are no mirrors in this detector, just close the gas radiator volume by hand (once), 
 	    // assuming that all the sensors will be sitting at roughly the same location along the beam line anyway;
 	    if (!imod) detector->GetRadiator("GasVolume")->m_Borders[0].second = 
 			 dynamic_cast<ParametricSurface*>(surface);
-	  } //if
 
-          // properties
-          sensorPV.addPhysVolID("module", imod);
-          DetElement sensorDE(det, Form("sensor_de_%d", imod), imod);//10000*imod); // TODO: what is this 10000?
-          sensorDE.setPlacement(sensorPV);
-          if(!debug_optics) {
-            SkinSurface sensorSkin(desc, sensorDE, "sensor_optical_surface", sensorSurf, sensorVol); // TODO: 3rd arg needs `imod`?
-            sensorSkin.isValid();
-          };
+	    // properties
+	    sensorPV.addPhysVolID("module", imod);
+	    DetElement sensorDE(det, Form("sensor_de_%d", imod), imodsec);
+	    sensorDE.setPlacement(sensorPV);
+	    if(!debug_optics) {
+	      SkinSurface sensorSkin(desc, sensorDE, "sensor_optical_surface", sensorSurf, sensorVol); // TODO: 3rd arg needs `imod`?
+	      sensorSkin.isValid();
+	    };
+	  } 
 
           // increment sensor module number
           imod++;

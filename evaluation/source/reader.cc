@@ -118,16 +118,12 @@ int main(int argc, char** argv)
 	  auto &x = hit.position;
 	  photon->SetDetectionPosition(TVector3(x.x, x.y, x.z));
 	}
-	//<id>system:8,module:12,x:20:16,y:16</id>
-	//printf("%4ld %4ld %4ld %4ld\n", 
-	//     ( hit.cellID        & 0x00FF), 
-	//     ((hit.cellID >>  8) & 0x0FFF),
-	//     ((hit.cellID >> 12) & 0xFFFF),
-	//     ((hit.cellID >> 28) & 0xFFFF));
-	unsigned module = (hit.cellID >>  8) & 0x0FFF;
+
+	// A single photodetector type is used;
 	photon->SetPhotonDetector(detector->m_PhotonDetectors[0]);
 	photon->SetDetected(true);
-	photon->SetVolumeCopy(module);
+	// Get cell index; mask out everything apart from {module,sector};
+	photon->SetVolumeCopy(hit.cellID & detector->GetReadoutCellMask());
 	
 	photons.push_back(photon);
       } //for hit

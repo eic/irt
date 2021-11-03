@@ -36,12 +36,12 @@ class CherenkovPhotonDetector: public G4Object {
 
     m_OpticalBoundaryStorage.push_back(boundary);
   };
-  IRT *AllocateIRT(unsigned icopy) { auto irt = new IRT(); _m_IRT[icopy] = irt; return irt; };
-  IRT *GetIRT(unsigned icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
+  IRT *AllocateIRT(uint64_t icopy) { auto irt = new IRT(); _m_IRT[icopy] = irt; return irt; };
+  IRT *GetIRT(uint64_t icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
 
  private:
   // One optical path for each clone (identified by a logical volume copy);
-  std::map<unsigned, IRT*> _m_IRT;
+  std::map<uint64_t, IRT*> _m_IRT;
 
   // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;
   std::vector<OpticalBoundary*> m_OpticalBoundaryStorage;

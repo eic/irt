@@ -28,7 +28,7 @@ class OpticalPhoton: public TransientParticle {
   inline void SetVertexPosition(const TVector3 &position)      { m_VertexPosition = position; };
   inline void SetVertexMomentum(const TVector3 &momentum)      { m_VertexMomentum = momentum; };
   inline void SetVertexParentMomentum(const TVector3 &momentum){ m_VertexParentMomentum = momentum; };
-  inline void SetVolumeCopy(unsigned copy)                     { m_VolumeCopy = copy; };
+  inline void SetVolumeCopy(uint64_t copy)                     { m_VolumeCopy = copy; };
   inline void SetDetectionPosition(const TVector3 &position)   { m_DetectionPosition = position; };
   inline void SetPhotonDetector(CherenkovPhotonDetector *pd)   { m_PhotonDetector = pd; };
 
@@ -54,7 +54,7 @@ class OpticalPhoton: public TransientParticle {
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
 
   inline bool WasDetected( void )                        const { return m_Detected; };
-  inline unsigned GetVolumeCopy( void )                  const { return m_VolumeCopy; };
+  inline uint64_t GetVolumeCopy( void )                  const { return m_VolumeCopy; };
 
   inline CherenkovPhotonDetector *GetPhotonDetector( void ) const {
     return dynamic_cast<CherenkovPhotonDetector*>(m_PhotonDetector.GetObject());
@@ -74,7 +74,7 @@ class OpticalPhoton: public TransientParticle {
 
   // Photon detector, where photon ended up; volume copy number; position and time;
   TRef m_PhotonDetector;
-  unsigned m_VolumeCopy;
+  uint64_t m_VolumeCopy;
   TVector3 m_DetectionPosition;
   double m_DetectionTime;
 
@@ -85,7 +85,7 @@ class OpticalPhoton: public TransientParticle {
  public:
   std::map<CherenkovRadiator*, VectorPDF> _m_PDF;           //!
 
-  ClassDef(OpticalPhoton, 2);
+  ClassDef(OpticalPhoton, 3);
 };
 
 #endif

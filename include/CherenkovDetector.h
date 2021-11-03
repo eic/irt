@@ -15,7 +15,8 @@ class G4LogicalVolume;
 
 class CherenkovDetector: public TObject {
  public:
- CherenkovDetector(const char *name = 0): /*m_ContainerVolume(0),*/ m_Name(name ? name : "") {};
+ CherenkovDetector(const char *name = 0): /*m_ContainerVolume(0),*/ m_Name(name ? name : ""), 
+    m_ReadoutCellMask(0x0) {};
   ~CherenkovDetector() {};
 
   void AddOpticalBoundary(unsigned sector, OpticalBoundary *boundary) {
@@ -31,8 +32,8 @@ class CherenkovDetector: public TObject {
   void AddPhotonDetector(CherenkovPhotonDetector *pd) { 
     m_PhotonDetectors.push_back(pd); 
   };
-  void CreatePhotonDetectorInstance(unsigned sector, CherenkovPhotonDetector *pd, unsigned icopy, 
-				    ParametricSurface *surface) {
+  void CreatePhotonDetectorInstance(unsigned sector, CherenkovPhotonDetector *pd, 
+				    uint64_t icopy, ParametricSurface *surface) {
     auto irt = pd->AllocateIRT(icopy);
 
     if (_m_OpticalBoundaries.find(sector) != _m_OpticalBoundaries.end())
@@ -65,13 +66,18 @@ class CherenkovDetector: public TObject {
     return _m_Radiators[name];
   };
 
+  void SetReadoutCellMask(uint64_t mask) { m_ReadoutCellMask = mask; };
+  inline uint64_t GetReadoutCellMask( void ) const { return m_ReadoutCellMask; };
+
  private:  
   TString m_Name;
+  // This is needed for dd4hep cell index decoding;
+  uint64_t m_ReadoutCellMask;
 
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   //+std::vector<CherenkovMirrorGroup*> m_MirrorGroups;
 
-  ClassDef(CherenkovDetector, 3);
+  ClassDef(CherenkovDetector, 4);
 };
 
 #endif
