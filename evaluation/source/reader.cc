@@ -19,8 +19,8 @@
 int main(int argc, char** argv) 
 {
   // Command line "parser";
-  if (argc != 3) {
-    printf("usage: %s <root-data-file> <root-config-file>\n", argv[0]);
+  if (argc != 3 && argc != 4) {
+    printf("usage: %s <root-data-file> <root-config-file> [DNAME]\n", argv[0]);
     exit(0);
   } //if
 
@@ -30,9 +30,29 @@ int main(int argc, char** argv)
 
   // .root file with the IRT configuration;
   auto fcfg  = new TFile(argv[2]);
+  CherenkovDetector *detector = 0;
   auto geometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("CherenkovDetectorCollection"));
-  // Assume a single detector (eRICH);
-  auto detector = geometry->GetDetector("ERICH");
+
+  if (argc == 4) 
+    detector = geometry->GetDetector(argv[3]);
+  else {
+    // Assume a single detector (ERICH or DRICH);
+    auto &detectors = geometry->GetDetectors();
+    if (detectors.size() != 1) {
+      printf("More than one detector in the provided IRT geometry config .root file!\n");
+      exit(0);
+    } //if
+
+    //dname = new std::string((*detectors.begin()).first.Data());
+    detector = (*detectors.begin()).second;
+  } //if
+
+  // Either this or that way, the detector should be available;
+  if (!detector) {
+    printf("Was not able to find a valid Cherenkov detector in the provided IRT geometry config .root file!\n");
+    exit(0);
+  } //if
+
   //auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
   //auto acrylic  = detector->GetRadiator("Filter");
@@ -42,7 +62,8 @@ int main(int argc, char** argv)
   aerogel->m_AverageRefractiveIndex = aerogel->n();
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
-  aerogel->SetUniformSmearing(0.003);
+  //aerogel->SetGaussianSmearing(0.002);
+  aerogel->SetUniformSmearing(0.005);
   // Be aware, that AddLocations() part should take this into account;
   aerogel->SetTrajectoryBinCount(1);
   // This may be bogus for a blob-like operation mode;
@@ -56,7 +77,10 @@ int main(int argc, char** argv)
   std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
   std::vector<dd4pod::PhotoMultiplierHitData> *hits   = new std::vector<dd4pod::PhotoMultiplierHitData>();
   t->SetBranchAddress("mcparticles", &tracks);
-  t->SetBranchAddress("ERICHHits",   &hits);
+  {
+    TString hname; hname.Form("%sHits", detector->GetName());
+    t->SetBranchAddress(hname,   &hits);
+  }
 
   // Loop through all events;
   unsigned false_assignment_stat = 0;

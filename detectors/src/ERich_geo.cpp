@@ -139,12 +139,9 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Used in several places;
   TVector3 nx(1,0,0), ny(0,1,0);
 
-  // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
-  // assuming no rotations involved; [cm];
-  double vesselOffset = (vesselZmin + vesselZmax)/2;
   {
     // FIXME: Z-location does not really matter here, right?; but Z-axis orientation does;
-    auto boundary = new FlatSurface(TVector3(0,0,vesselOffset), nx, ny);
+    auto boundary = new FlatSurface(TVector3(0,0,vesselZmin), nx, ny);
 
     // FIXME: have no connection to GEANT G4LogicalVolume pointers; however all is needed 
     // is to make them unique so that std::map works internally; resort to using integers, 
@@ -153,6 +150,10 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
     // per-photon basis, at birth, like standalone GEANT code does;
     geometry->SetContainerVolume(detector, "GasVolume", 0, (G4LogicalVolume*)(0x0), 0, boundary);
   }
+
+  // How about PlacedVolume::transformation2mars(), guys?; FIXME: make it simple for now, 
+  // assuming no rotations involved; [cm];
+  double vesselOffset = (vesselZmin + vesselZmax)/2;
 
   // reference positions
   // - the vessel is created such that the center of the cylindrical tank volume
@@ -312,7 +313,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 
           // properties
           sensorPV.addPhysVolID("module", imod);
-          DetElement sensorDE(det, Form("sensor_de_%d", imod), 10000*imod); // TODO: what is this 10000?
+          DetElement sensorDE(det, Form("sensor_de_%d", imod), imod);//10000*imod); // TODO: what is this 10000?
           sensorDE.setPlacement(sensorPV);
           if(!debug_optics) {
             SkinSurface sensorSkin(desc, sensorDE, "sensor_optical_surface", sensorSurf, sensorVol); // TODO: 3rd arg needs `imod`?

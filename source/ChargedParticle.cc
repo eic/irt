@@ -32,14 +32,18 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	if (!photon->WasDetected()) continue;
 	
 	auto pd = photon->GetPhotonDetector();
-	
+	if (!pd->GetIRT(photon->GetVolumeCopy())) {
+	  printf("No photosensor with this cellID found!\n");
+	  continue;
+	} //if
+
 	TVector3 phx = photon->GetDetectionPosition();
-	
+
 	{
 	  IRTSolution solutions[zdim+1];
 	  
 	  for(unsigned iq=0; iq<zdim+1; iq++) {
-	    //printf("--> %d\n", photon->GetVolumeCopy());
+	    //printf("--> %d -> %d\n", photon->GetVolumeCopy(), pd->GetIRT(photon->GetVolumeCopy()));
 	    solutions[iq] = pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
 								       radiator->m_Locations[iq].second.Unit(), 
 								       // FIXME: give beam line as a parameter;

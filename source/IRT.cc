@@ -73,6 +73,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
 {
   IRTSolution solution; 
   if (!_m_OpticalBoundaries.size()) return solution;
+  //return solution;
 
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);
