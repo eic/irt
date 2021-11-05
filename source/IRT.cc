@@ -73,6 +73,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
 {
   IRTSolution solution; 
   if (!_m_OpticalBoundaries.size()) return solution;
+  //return solution;
 
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);
@@ -115,6 +116,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
     // Check the transported-to-measured 2D distance; if it is small enough, return;
     {
       double dist = sqrt(pow(mc[0] - m0[0], 2) + pow(mc[1] - m0[1], 2));
+      //printf("%10.4f\n", dist);
 
       if (dist < m_Precision) {
 	solution.m_Converged = true;
@@ -129,6 +131,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 
 	  solution.m_Theta = nn.Theta();
 	  solution.m_Phi   = nn.Phi();
+	  //printf(" -> %7.2f [mrad], %7.2f [degree]\n", 1000*solution.m_Theta, (180/M_PI)*solution.m_Phi);
 	}
 
 	// Calculate derivatives if needed; FIXME: coding style;

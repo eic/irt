@@ -46,7 +46,7 @@ class ParametricSurface: public TObject {
   virtual bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const = 0;
 
   // Introduce only the transformations needed for the current task;
-  virtual ParametricSurface *Clone(double angle, const TVector3 &axis) const = 0;
+  virtual ParametricSurface *_Clone(double angle, const TVector3 &axis) const = 0;
   void Shift(const TVector3 &shift) {
     m_Center += shift;
   };
@@ -84,7 +84,7 @@ class SphericalSurface: public ParametricSurface {
   double GetDistance(const TVector3 &xx) const;
 
   void SetConvex( void ) { m_Concave = false; };
-  ParametricSurface *Clone(double angle, const TVector3 &axis) const {
+  ParametricSurface *_Clone(double angle, const TVector3 &axis) const {
     auto copy = new SphericalSurface(*this);
 
     copy->m_Center.Rotate(angle, axis);
@@ -141,7 +141,7 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
 
   bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const;
   double GetDistance(const TVector3 &xx) const;
-  ParametricSurface *Clone(double angle, const TVector3 &axis) const {
+  ParametricSurface *_Clone(double angle, const TVector3 &axis) const {
     auto copy = new FlatSurface(*this);
 
     copy->m_Center.Rotate(angle, axis);

@@ -5,8 +5,8 @@
 <!-- vessel (=snout+tank) geometry -->
 <constant name="DRICH_zmin"               value="190*cm"/> <!-- vessel front -->
 <constant name="DRICH_Length"             value="140*cm"/>  <!-- overall vessel length (including snout) -->
-<constant name="DRICH_rmin0"              value="5*cm"/>  <!-- bore radius at dRICh vessel frontplane -->
-<constant name="DRICH_rmin1"              value="7*cm"/>  <!-- bore radius at dRICh vessel backplane -->
+<constant name="DRICH_rmin0"              value="1*cm"/>  <!-- bore radius at dRICh vessel frontplane -->
+<constant name="DRICH_rmin1"              value="1*cm"/>  <!-- bore radius at dRICh vessel backplane -->
 <constant name="DRICH_wall_thickness"     value="0.5*cm"/>  <!-- thickness of radial walls -->
 <constant name="DRICH_window_thickness"   value="0.1*cm"/>  <!-- thickness of entrance and exit walls -->
 <!-- tank geometry: cylinder, holding the majority of detector components -->
@@ -47,7 +47,7 @@
   name="DRICH"
   type="athena_DRICH"
   readout="DRICHHits"
-  gas="C2F6_DRICH"
+  gas="AirOptical"
   material="Aluminum"
   vis_vessel="DRICH_vessel_vis"
   vis_gas="DRICH_gas_vis"
@@ -206,7 +206,7 @@
 </documentation>
 <sphere
   centerz="-80.0 * cm"
-  centerx="DRICH_rmax2 - 35.0*cm"
+  centerx="DRICH_rmax2 - 50.0*cm"
   radius="100.0 * cm"
   debug="DRICH_debug_sensors"
   />

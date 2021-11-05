@@ -1,16 +1,18 @@
 
-//#include <TRandom.h>
+//
+//  This code is independent of the details of how the trajectory points were 
+//  evaluated; it just expects m_Locations[] vector to be populated for every radiator;
+//
+//  It can also take a pre-mixed vector of all photons rather than using MC truth 
+// information about which photn was produced in which radiator;
+//
 
 #include <ChargedParticle.h>
-//#include <CherenkovDetectorCollection.h>
 
 // -------------------------------------------------------------------------------------
 
-void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
+void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPhoton*> *photons)
 {
-  // FIXME: 'zdim' should be configurable;
-  const unsigned zdim = 10;
-
   // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
   // of emission vertex locations and build kind of a PDF out of that to calculate weights;
   // this approach may not be dramatically efficient, but it would 1) work in case of the 
@@ -19,58 +21,44 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
   // independently and build a sum of their PDFs without much thinking about outlier photon
   // rejection, average theta calculation and such;
   for(auto rhistory: GetRadiatorHistory()) {
-    //+auto radiator = GetRadiator(rhistory);
-    auto history  = GetHistory (rhistory);
+    auto radiator = GetRadiator(rhistory);
+    // FIXME: error message;
+    if (radiator->m_Locations.size() < 2) return;
+
+    const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
+
+    if (radiator->m_Locations.size()) {
+      for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
+	if (!photon->WasDetected()) continue;
 	
-    //+auto det = geometry->GetDetectorByRadiator(radiator);
-    
-    if (history->StepCount() >= 2) {
-      // FIXME: for now consider just the first and the last points;
-      auto from = history->GetStep(0), to = history->GetStep(history->StepCount()-1);
-      TVector3 p = 0.5*(from->GetMomentum() + to->GetMomentum());
-      {
-	for(auto photon: history->Photons()) {
-	  if (!photon->WasDetected()) continue;
+	auto pd = photon->GetPhotonDetector();
+	if (!pd->GetIRT(photon->GetVolumeCopy())) {
+	  printf("No photosensor with this cellID found!\n");
+	  continue;
+	} //if
 
-	  auto pd = photon->GetPhotonDetector();
+	TVector3 phx = photon->GetDetectionPosition();
 
-	  TVector3 phx = photon->GetDetectionPosition();
-	  {
-	    // FIXME: keep the commented out smearing code here for a while; photon detector 
-	    // surface parameterization is available, so one can smear the 3D location in a 
-	    // proper way if needed;
-	    //+double pitch = 3.4;//, xysigma = pitch/sqrt(12.);
-	    //phx += (pitch/2)*TVector3(gRandom->Uniform(-1,1), gRandom->Uniform(-1,1), 0);
-
-	    //double x = pitch*rint(phx.x()/pitch), y = pitch*rint(phx.y()/pitch);
-	    //phx = TVector3(x, y, phx.z());
-
-	    //phx += (pitch/2)*TVector3(gRandom->Uniform(-1,1), gRandom->Uniform(-1,1), 0);
-	    //phx += xysigma*TVector3(gRandom->Gaus(0,1), gRandom->Gaus(0,1), 0);
-	  }
+	{
+	  IRTSolution solutions[zdim+1];
+	  
+	  for(unsigned iq=0; iq<zdim+1; iq++) {
+	    //printf("--> %d -> %d\n", photon->GetVolumeCopy(), pd->GetIRT(photon->GetVolumeCopy()));
+	    solutions[iq] = pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
+								       radiator->m_Locations[iq].second.Unit(), 
+								       // FIXME: give beam line as a parameter;
+								       phx, TVector3(0,0,1), false);
+	  } //for iq
+	  
+	  for(unsigned iq=0; iq<zdim; iq++) {
+	    auto &s0 = solutions[iq], &s1 = solutions[iq+1];
 	    
-	  TVector3 ptnx = (to->GetPosition() - from->GetPosition()).Unit();
-
-	  auto vstart = from->GetPosition() + 0.001*ptnx, vend = to->GetPosition() - 0.001*ptnx;
-	  double vlen = (vend - vstart).Mag(), step = vlen/zdim;
-	  {
-	    IRTSolution solutions[zdim+1];
-
-	    for(unsigned iq=0; iq<zdim+1; iq++) {
-	      solutions[iq] = pd->GetIRT()->Solve(vstart + iq*step*ptnx, ptnx, phx, TVector3(0,0,1), false);
-	      //printf("%2d -> %7.2f\n", iq, 1000*solutions[iq].GetTheta());
-	    } //for iq
-
-	    for(unsigned iq=0; iq<zdim; iq++) {
-	      auto &s0 = solutions[iq], &s1 = solutions[iq+1];
-	      
-	      // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
-	      // in the previous loop; FIXME: add some smearing later;
-	      photon->m_PDF.AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
-	    } //for iq
-	  }
-	} //for photon
-      }
+	    // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
+	    // in the previous loop; FIXME: add some smearing later;
+	    photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	  } //for iq
+	}
+      } //for photon
     } //if
   } //for rhistory
 
@@ -85,31 +73,35 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
     
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
-      auto history  = GetHistory (rhistory);
+      //const unsigned zdim = radiator->GetTrajectoryBinCount();
+      const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
       
-      if (history->StepCount() >= 2) {
-	auto from = history->GetStep(0), to = history->GetStep(history->StepCount()-1);
-	TVector3 p = 0.5*(from->GetMomentum() + to->GetMomentum());
-	
-	double pp = p.Mag(), arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
-	// Threshold check; FIXME: do it better?;
-	if (fabs(arg) > 1.0) continue;
-	
-	{
-	  double theta = acos(arg);
-	  
-	  for(auto photon: history->Photons()) {
-	    if (!photon->WasDetected()) continue;
-	    
-	    hypothesis->IncrementWeight(photon->m_PDF.GetWithinRangeCount(theta), 
-					photon->m_PDF.GetValue           (theta)/zdim);
-	  } //for photon
-	}
-      } //if
-    } //for rhistoty
+      if (!radiator->m_Locations.size()) continue;
 
-    //printf("@W@ %2d -> %7.2f %7.2f %7.2f\n", ih, m, hypothesis->GetNph(), hypothesis->GetWeight());
+      TVector3 p = 0.5*(radiator->m_Locations[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
+	
+      double pp = p.Mag(), arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
+      // Threshold check; FIXME: do it better?;
+      if (fabs(arg) > 1.0) continue;
+      
+      {
+	double theta = acos(arg), dth = radiator->GetSmearing();
+
+	for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
+	  if (!photon->WasDetected()) continue;
+	    
+	  auto pdf = &photon->_m_PDF[radiator];
+
+	  // FIXME: unreadable;
+	  hypothesis->IncrementWeight(radiator, float(pdf->GetWithinRangeCount(theta, radiator->GetSmearing()))/zdim, 
+				      (dth ? (radiator->UseGaussianSmearing() ? pdf->GetGaussianIntegral(theta,dth) :
+					      pdf->GetRangeIntegral(theta - dth, theta + dth)) : 
+				       pdf->GetValue(theta))/zdim);
+	  //printf("@W@ %2d -> %7.2f %7.2f\n", ih, m, 1000*theta);
+	} //for photon
+      }
+    } //for rhistory
   } //for ih
-} // ChargedParticle::Reconstruction()
+} // ChargedParticle::PIDReconstruction()
 
 // -------------------------------------------------------------------------------------

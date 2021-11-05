@@ -36,12 +36,16 @@
 #pragma link C++ class G4Object+;
 #pragma link C++ class G4ObjectCopy+;
 
-#pragma link C++ class MirrorCopy+;
+#pragma link C++ class SurfaceCopy+;
 #pragma link C++ class CherenkovMirror+;
 #pragma link C++ class CherenkovMirrorGroup+;
 #pragma link C++ class FlatMirror+;
 #pragma link C++ class SphericalMirror+;
 
 #pragma link C++ class CherenkovPhotonDetector+;
+
+// Are these two really needed?;
+#pragma link C++ class std::pair<TRef, TRef>+;
+#pragma link C++ class std::vector<TRef>+;
 
 #endif

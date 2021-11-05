@@ -12,8 +12,9 @@ class SinglePDF: public TObject {
   SinglePDF() {};
   ~SinglePDF() {};
 
-  virtual double GetValue   (double x) const = 0;
-  virtual bool   WithinRange(double x) const = 0;
+  virtual double GetValue   (double x)                  const = 0;
+  virtual double GetAverage(void)                       const = 0;
+  virtual bool   WithinRange(double x, double dx = 0.0) const = 0;
 
   ClassDef(SinglePDF, 1);
 };
@@ -25,16 +26,26 @@ class UniformPDF: public SinglePDF {
     if (m_X0 > m_X1) std::swap(m_X0, m_X1);
 
     // FIXME: sanity check;
-    m_Norm = 1.0/(x1 - x0);
+    m_Norm = 1.0/(m_X1 - m_X0);
   };
   ~UniformPDF() {};
 
-  inline bool WithinRange(double x) const {
-    return (x >= m_X0 && x <= m_X1);
+  inline bool WithinRange(double x, double dx = 0.0) const {
+    if (!dx) return (x >= m_X0 && x <= m_X1);
+
+    double xl = x - dx, xr = x + dx;
+    if (xl > m_X1 || xr < m_X0) return false;
+
+    return true;
   };
   inline double GetValue(double x) const {
     return WithinRange(x) ? m_Norm*m_Weight : 0.0;
   };
+  double GetAverage(void) const {
+    return (m_X0 + m_X1)/2;
+  };
+  double GetWeight(void) const { return m_Weight; };
+
   inline double GetRangeIntegral(double x0, double x1) const {
     if (x0 > x1) std::swap(x0, x1);
     
@@ -46,9 +57,10 @@ class UniformPDF: public SinglePDF {
     return m_Norm*m_Weight*(r - l);
   };
   inline double GetGaussianIntegral(double mu, double sigma) const {
-    // FIXME: this is indeed not clean, but kind of make sense;
+    // FIXME: this is indeed not clean, but kind of makes sense;
     if (m_Sigma) sigma = sqrt(sigma*sigma + m_Sigma*m_Sigma);
 
+    // FIXME: need to think about normalization;
     double q0 = (1 - erf((m_X0 - mu)/(sqrt(2.)*sigma)))/2;
     double q1 = (1 - erf((m_X1 - mu)/(sqrt(2.)*sigma)))/2;
     
@@ -67,11 +79,11 @@ class VectorPDF: public TObject {
   ~VectorPDF() {};
   
   void AddMember(UniformPDF *pdf) { m_Members.push_back(pdf); };
-  unsigned GetWithinRangeCount(double x) const {
+  unsigned GetWithinRangeCount(double x, double dx = 0.0) const {
     unsigned ret = 0;
 
     for(auto member: m_Members)
-      if (member->WithinRange(x))
+      if (member->WithinRange(x, dx))
 	ret++;
 
     return ret;
@@ -83,6 +95,16 @@ class VectorPDF: public TObject {
       ret += member->GetValue(x);
 
     return ret;
+  };
+  double GetAverage( void ) const {
+    double avg = 0.0, wtsum = 0.0;
+
+    for(auto member: m_Members) {
+      avg   += member->GetWeight() * member->GetAverage();
+      wtsum += member->GetWeight();
+    } //for member
+
+    return (wtsum ? avg / wtsum : 0.0);
   };
   inline double GetRangeIntegral(double x0, double x1) const {
     double ret = 0.0;

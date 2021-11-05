@@ -7,14 +7,9 @@ PROJECT(athena)
 
 set(CMAKE_CXX_STANDARD 17)
 find_package( DD4hep REQUIRED COMPONENTS DDCore DDG4)
+find_package(IRT REQUIRED)
 
 SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-int-to-pointer-cast")
-
-#-----------------------------------------------------------------------------------
-
-include_directories( 
-  ${IRT}/include/IRT
-)
 
 #-----------------------------------------------------------------------------------
 
@@ -28,7 +23,7 @@ dd4hep_add_plugin(${a_lib_name} SOURCES
   )
 
 target_link_libraries(${a_lib_name}
-  PUBLIC DD4hep::DDCore -L${IRT}/lib IRT
+  PUBLIC DD4hep::DDCore IRT
   )
 
 #-----------------------------------------------------------------------------------

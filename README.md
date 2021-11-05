@@ -97,7 +97,7 @@ make -j2 install
 
 # Install a particular branch of the EIC data model (will become master soon);
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-00
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-01
 cd eicd && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
@@ -113,7 +113,7 @@ Installation
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/irt.git
+git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch ayk-01
 cd irt && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
@@ -164,7 +164,7 @@ ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
 ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
 
 # Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
-npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler=''
+npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
 
 ```
 
@@ -193,7 +193,7 @@ Juggler reconstruction pass
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch irt-init
+git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch ayk-01
 cd juggler && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 
