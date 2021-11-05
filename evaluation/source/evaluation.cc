@@ -87,7 +87,7 @@ int main(int argc, char** argv)
       {
 	const eic::CherenkovPdgHypothesis *best = 0;
 
-	printf("%d %d\n", cherenkov->options_begin, cherenkov->options_end);
+	//printf("%d %d\n", cherenkov->options_begin, cherenkov->options_end);
 	for(unsigned iq=cherenkov->options_begin; iq<cherenkov->options_end; iq++) {
 	  const auto &option = (*options)[iq];
 
@@ -95,7 +95,8 @@ int main(int argc, char** argv)
 	  if (abs(option.pdg) == 11) continue;
 
 	  if (!best || option.weight > best->weight) best = &option;
-	  printf("%3d (%5d): %5d %7.2f\n", iq, option.pdg, option.npe, option.weight);
+	  printf("radiator %3d (pdg %5d): npe %5d, weight %7.2f\n", 
+		 option.radiator, option.pdg, option.npe, option.weight);
 	} //for
 
 	// Check whether the true PDG got a highest score;

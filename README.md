@@ -97,7 +97,7 @@ make -j2 install
 
 # Install a particular branch of the EIC data model (will become master soon);
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-00
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-01
 cd eicd && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
@@ -113,7 +113,7 @@ Installation
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/irt.git
+git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch ayk-01
 cd irt && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
@@ -193,7 +193,7 @@ Juggler reconstruction pass
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch irt-init
+git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch ayk-01
 cd juggler && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 
