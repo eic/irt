@@ -346,7 +346,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   {
     // FIXME: import from the geometry database; FIXME: crappy style in general;
     const char *name[] = {"GasVolume", "Aerogel", "Filter"};
-    double         n[] = {     1.0013,    1.0170,   1.5017};
+    double         n[] = {     1.0000,    1.0195,   1.5017};
     
     for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
       auto radiator = detector->GetRadiator(name[ir]);

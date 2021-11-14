@@ -39,7 +39,7 @@
   name="ERICH"
   type="athena_ERICH"
   readout="ERICHHits"
-  gas="C2F6_DRICH"
+  gas="AirOptical"
   material="Aluminum"
   vis_vessel="DRICH_vessel_vis"
   vis_gas="DRICH_gas_vis"

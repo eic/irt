@@ -63,7 +63,7 @@ int main(int argc, char** argv)
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
   //aerogel->SetGaussianSmearing(0.002);
-  aerogel->SetUniformSmearing(0.005);
+  aerogel->SetUniformSmearing(0.003);
   // Be aware, that AddLocations() part should take this into account;
   aerogel->SetTrajectoryBinCount(1);
   // This may be bogus for a blob-like operation mode;
