@@ -19,8 +19,7 @@ as well as a set of spherical and / or flat mirrors.
  Content:
 
  * [Introduction](#introduction)
- * [Prerequisites](#prerequisites)
- * [Installation](#installation)
+ * [Prerequisites and installation](#prerequisites-and-installation)
  * [eRICH example configuration](#erich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
@@ -58,8 +57,8 @@ hytheses requested by a user.
 
 <br/>
 
-Prerequisites
--------------
+Prerequisites and installation
+------------------------------
 
   It is assumed that a user ia familiar with the [ATHENA software](https://eic.phy.anl.gov/ip6) 
 environment, and a juggler singularity container "jug_xl" is running. It is also assumed 
@@ -82,7 +81,28 @@ block by block.
 # Do not want to mess up with the initial software installation in the container;
 unset ATHENA_PREFIX
 
-# Install "athena" detector description (at least the materials are needed);
+# Install a particular branch of the EIC data model;
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch irt-init-v01
+cd eicd && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+make -j2 install
+```
+
+```
+# Install the IRT library itself;
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch irt-init-v01
+cd irt && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
+make -j2 install
+```
+
+  This compiles the IRT library codes and the executables to be later on used to read the .root
+files with the GEANT hits after *npsim* simulation pass. 
+
+```
+# Install "athena" detector description;
 git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git --branch irt-init-v01
 cd athena && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
@@ -95,36 +115,11 @@ cd ip6 && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
 
-# Install a particular branch of the EIC data model;
-cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch irt-init-v01
-cd eicd && mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
-make -j2 install
-
 ```
-
-<br/>
-
-Installation
-------------
-
-  Now install the IRT library itself, and a particular juggler branch.
-
-```
-cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch irt-init-v01
-cd irt && mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
-make -j2 install
-
-```
-
-  This compiles the IRT library codes and the executables to be later on used to read the .root
-files with the GEANT hits after *npsim* simulation pass. 
 
   The rest of this README builds a minimalistic self-contained example of how to make use of the 
 IRT library in application to a basic ATHENA e-endcap proximity focusing aerogel RICH.
+
 
 <br/>
 
