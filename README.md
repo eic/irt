@@ -81,6 +81,8 @@ block by block.
 # Do not want to mess up with the initial software installation in the container;
 unset ATHENA_PREFIX
 
+export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
+
 # Install a particular branch of the EIC data model;
 cd /tmp/ATHENA
 git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch irt-init-v01
