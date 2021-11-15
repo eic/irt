@@ -1,5 +1,7 @@
 
 // ROOT
+//#include "TH1D.h"
+//#include <TCanvas.h>
 #include "TTree.h"
 #include "TFile.h"
 #include <TRandom.h>
@@ -13,8 +15,8 @@
 #include <CherenkovDetectorCollection.h>
 
 // Optionally: mimic low wave length cutoff and average QE x Geometric sensor efficiency;
-//#define _WAVE_LENGTH_CUTOFF_ (350.0)
-//#define _AVERAGE_PDE_        ( 0.30)
+#define _WAVE_LENGTH_CUTOFF_ (350.0)
+#define _AVERAGE_PDE_        ( 0.30)
 
 int main(int argc, char** argv) 
 {
@@ -53,12 +55,14 @@ int main(int argc, char** argv)
     exit(0);
   } //if
 
-  //auto gas      = detector->GetRadiator("GasVolume");
+  //auto np = new TH1D("np", "Photon count",            50,     0,    50);
+
+  auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
   //auto acrylic  = detector->GetRadiator("Filter");
   // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
   // this may not be true; 
-  //gas    ->m_AverageRefractiveIndex = gas    ->n();
+  gas    ->m_AverageRefractiveIndex = gas    ->n();
   aerogel->m_AverageRefractiveIndex = aerogel->n();
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
@@ -177,6 +181,9 @@ int main(int argc, char** argv)
   } //for ev
 
   printf("%d false out of %lld\n", false_assignment_stat, t->GetEntries());
+
+  //auto cv = new TCanvas("cv", "", 800, 600);
+  //cv->cd(1); np->Draw();
 
   return 0;
 } // main()

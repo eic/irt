@@ -142,7 +142,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Get access to the readout structure decoder; may want to simply call desc.readout("DRICHHits");
   const auto &rdspecs = desc.readouts();
   if (rdspecs.size() != 1) {
-    printout(FATAL,"DRich_geo","Expect a single readout structure in XML file"); 
+    printout(FATAL,"ERich_geo","Expect a single readout structure in XML file"); 
     return det;
   } //if
   // Do not mess up with casting of (*desc.readouts().begin()).second; just call desc.readout();
