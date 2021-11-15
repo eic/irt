@@ -30,9 +30,13 @@ qe_data = [
     (850, 0.06),
     (900, 0.04)
 ]
+qe_30 = [
+    (350, 0.30),
+    (900, 0.30)
+]
 
 radiators = [
-    "Aerogel zbins=5 smearing=uniform 3mrad"
+    "Aerogel zbins=1 smearing=uniform 3mrad"
 ]
 
 podioinput = PodioInput(
@@ -45,16 +49,17 @@ podioinput = PodioInput(
 irtrec = IRTAlgorithm(
         # Input collections: MC truth tracks and eRICH raw hits (photons);
         inputMCParticles="mcparticles",
-        #inputHitCollection="ERICHHits",
 
-        # Output collection: eRICH PID decisions; 
-        #outputCherenkovPID="ERICHPID",
+        #Detector="ERICH",
 
         # SiPM QE and geometric efficiency; FIXME: units.eV coefficient gives extra x1000 (?);
         QEcurve=[ ((1239.84/a), b) for a, b in qe_data ],
-        GeometricEfficiency="0.85",
+        #GeometricEfficiency="0.85",
+        #QEcurve=[ ((1239.84/a), b) for a, b in qe_30 ],
+        GeometricEfficiency="1.00",
         # Rebin the QE in that many equidistant bins;
-        QEbins="100",
+        #QEbins="100",
+        QEbins="2",
 
         # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
         ConfigFile="erich-config.root",
@@ -69,7 +74,7 @@ ApplicationMgr(
         TopAlg = [podioinput, irtrec, out],
         EvtSel = 'NONE',
         # Process that many events;
-        EvtMax = 100,
+        EvtMax = 500,
         ExtSvc = [podioevent],
         OutputLevel = DEBUG,
         PluginDebugLevel = 2

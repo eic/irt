@@ -83,7 +83,7 @@ block by block.
 unset ATHENA_PREFIX
 
 # Install "athena" detector description (at least the materials are needed);
-git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git
+git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git --branch irt-init-v01
 cd athena && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
@@ -95,9 +95,9 @@ cd ip6 && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
 
-# Install a particular branch of the EIC data model (will become master soon);
+# Install a particular branch of the EIC data model;
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-01
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch irt-init-v01
 cd eicd && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
@@ -113,7 +113,7 @@ Installation
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch ayk-01
+git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch irt-init-v01
 cd irt && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
 make -j2 install
@@ -125,25 +125,6 @@ files with the GEANT hits after *npsim* simulation pass.
 
   The rest of this README builds a minimalistic self-contained example of how to make use of the 
 IRT library in application to a basic ATHENA e-endcap proximity focusing aerogel RICH.
-
-<br/>
-
-eRICH example configuration
----------------------------
-
-  See [ERich_geo.cpp](detectors/src/ERich_geo.cpp) for a simple API example, in particular the calls
-which define gas volume and aerogel radiators, as well as the photosensor geometry.
-
-  The following will compile libathena.so plugin with e(d)RICH detectors only. Be aware that it will 
-overwrite /tmp/ATHENA/lib/libathena.so installed earlier.
-
-```
-export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
-cd /tmp/ATHENA/irt/detectors && mkdir -p build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DIRT=/tmp/ATHENA ..
-make -j2 install
-
-```
 
 <br/>
 
@@ -193,7 +174,7 @@ Juggler reconstruction pass
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch ayk-01
+git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch irt-init-v01
 cd juggler && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 
