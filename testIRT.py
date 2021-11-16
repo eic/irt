@@ -30,13 +30,9 @@ qe_data = [
     (850, 0.06),
     (900, 0.04)
 ]
-qe_30 = [
-    (350, 0.30),
-    (900, 0.30)
-]
 
 radiators = [
-    "Aerogel zbins=1 smearing=uniform 3mrad"
+    "Aerogel zbins=1 smearing=uniform 3mrad rindex=1.0190"
 ]
 
 podioinput = PodioInput(
@@ -51,19 +47,17 @@ irtrec = IRTAlgorithm(
         inputMCParticles="mcparticles",
 
         #Detector="ERICH",
-
-        # SiPM QE and geometric efficiency; FIXME: units.eV coefficient gives extra x1000 (?);
-        QEcurve=[ ((1239.84/a), b) for a, b in qe_data ],
-        #GeometricEfficiency="0.85",
-        #QEcurve=[ ((1239.84/a), b) for a, b in qe_30 ],
-        GeometricEfficiency="1.00",
-        # Rebin the QE in that many equidistant bins;
-        #QEbins="100",
-        QEbins="2",
-
         # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
         ConfigFile="erich-config.root",
-        Radiators=[ (r) for r in radiators ]
+        Radiators=[ (r) for r in radiators ],
+
+        # SiPM PDE; FIXME: units.eV coefficient gives extra x1000 (?);
+        QEcurve=[ ((1239.84/a), b) for a, b in qe_data ],
+        # Rebin the QE in that many equidistant bins internally;
+        QEbins="100",
+        # SiPM geometric fill factor and "safety factor" for the photon count estimates;
+        GeometricEfficiency="1.00",
+        SafetyFactor="0.70",
         )
 
 # Output ROOT file; keep the input collections as well, append eRICH PID tables;
