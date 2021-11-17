@@ -90,9 +90,11 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
 IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double m0[2], 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
+  //printf("Here-1!\n");
   IRTSolution solution; if (seed) solution = *seed;
   if (!_m_OpticalBoundaries.size()) return solution;
 
+  //printf("Here-2!\n");
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);
   if (!sensor) return solution;
@@ -103,7 +105,9 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // try solving the initial approximation analytically;
   if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
 
+  //printf("Here-3!\n");
   for(unsigned itr=0; ; itr++ ) {
+    //printf("Here-4!\n");
     if (itr == m_IterationLimit) return solution;
     {
       auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
@@ -111,6 +115,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 			 cos(solution.m_Theta));
       if (!Transport(xfrom, nn)) return solution;
     }
+    //printf("Here-5!\n");
     double mc[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
     
     // Check the transported-to-measured 2D distance; if it is small enough, return;

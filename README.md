@@ -20,10 +20,11 @@ as well as a set of spherical and / or flat mirrors.
 
  * [Introduction](#introduction)
  * [Prerequisites and installation](#prerequisites-and-installation)
- * [eRICH example configuration](#erich-example-configuration)
+ * [ERICH example configuration](#erich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
  * [Juggler reconstruction pass](#juggler-reconstruction-pass)
+ * [DRICH case](#drich-case)
 
 <br/>
 
@@ -185,13 +186,33 @@ make -j1 install
 ```
 cd /tmp/ATHENA/sandbox
 # Run Juggler with a simplified testIRT.py options file provided with IRT distribution; 
-xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
+xenv -x ../Juggler.xenv gaudirun.py ../irt/erich-testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
 /tmp/ATHENA/bin/evaluation erich-reco.root
 
 ```
 
+DRICH case
+----------
+
+It is assumed that 'athena/ip6/compact' links in /tmp/ATHENA/sandbox directory are created already.
+The rest is pretty much similar to the ERICH case, except for perhaps a .C script usage instead 
+of a .cc executable:
+
+```
+cd /tmp/ATHENA/sandbox
+ln -s /tmp/ATHENA/share/athena/compact/drich.xml .
+ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/drich_only.xml .
+```
+
+```
+npsim --compactFile=./drich_only.xml --runType=run -G -N=500 --outputFile=./drich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.27 0.0 1.0" --gun.energy 12*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+```
+```
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'
+```
 
 Updated procedure
 -----------------

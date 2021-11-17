@@ -2,6 +2,7 @@
 void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 {
 #define _AEROGEL_
+#define _DRICH_
 
 // Optionally: mimic low wave length cutoff and average QE x Geometric sensor efficiency;
 #define _WAVE_LENGTH_CUTOFF_MIN_ (350.0)
@@ -61,11 +62,14 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
   // this may not be true; 
   gas    ->m_AverageRefractiveIndex = gas    ->n();
-  aerogel->m_AverageRefractiveIndex = aerogel->n();
+  aerogel->m_AverageRefractiveIndex = 1.020;//aerogel->n();
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
-  //aerogel->SetGaussianSmearing(0.002);
-  aerogel->SetUniformSmearing(0.003);
+  //#ifdef _DRICH_
+  aerogel->SetGaussianSmearing(0.001);
+  //#else
+  //aerogel->SetUniformSmearing(0.005);
+  //#endif
   // Be aware, that AddLocations() part should take this into account;
   aerogel->SetTrajectoryBinCount(1);
   // This may be bogus for a blob-like operation mode;
@@ -113,7 +117,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 
       nq->Fill(stat);
     } 
-    printf("%3ld vs %3ld\n", tracks->size(), hits->size()); 
+    //printf("%3ld vs %3ld\n", tracks->size(), hits->size()); 
     // Loop through all tracks and populate the internal arrays in a way 
     // IRT code expects; FIXME: this is not dramatically efficient; streamline once debugging is over;
     for(auto track: *tracks) {
@@ -131,7 +135,8 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 	{
 	  auto phtrack = (*tracks)[hit.truth.trackID];
 	  //printf("%7.2f\n", phtrack.vs.z);
-	  ep->Fill(phtrack.vs.z + 1515.0);
+	  //ep->Fill(phtrack.vs.z + 1515.0);
+	  ep->Fill(phtrack.vs.z - 1920.0);
 	}
 
 	{
@@ -193,6 +198,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
 	aerogel->AddLocation(from, p0);
 	aerogel->AddLocation(  to, p0);
+	//printf("@@@ %f %f\n", from.z(), to.z());// - from.z());
       }
 
       // Now that all internal track-level structures are populated, run IRT code;

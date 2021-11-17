@@ -52,6 +52,7 @@ class UniformPDF: public SinglePDF {
     if (x0 > m_X1) return 0.0;
     if (x1 < m_X0) return 0.0;
 
+    //printf("%f %f\n", m_Norm, m_Weight);
     double l = (x0 > m_X0 ? x0 : m_X0), r = (x1 < m_X1 ? x1 : m_X1);
 
     return m_Norm*m_Weight*(r - l);

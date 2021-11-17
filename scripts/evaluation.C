@@ -1,40 +1,28 @@
 
-//#include <stdio.h>
-//#include <stdlib.h>
-
-// ROOT
-//#include "TTree.h"
-//#include "TFile.h"
-
-//#define _USE_RECONSTRUCTED_TRACKS_
-
-// NPdet
-//#include "dd4pod/Geant4ParticleCollection.h"
-//#include "eicd/ReconstructedParticleCollection.h"
-//#include "eicd/CherenkovParticleIDCollection.h"
-//#include "eicd/CherenkovPdgHypothesis.h"
 
 void evaluation(const char *dfname)
 {
-  // Command line "parser";
-  //if (argc != 2) {
-  // printf("usage: %s <root-data-file>\n", argv[0]);
-  //exit(0);
-  //} //if
+  //#define _AEROGEL_
+  //#define _USE_RECONSTRUCTED_TRACKS_
 
   // .root file with event tree;
-  auto fdata = new TFile(dfname);//argv[1]);
+  auto fdata = new TFile(dfname);
   if (!fdata) {
-    printf("input file '%s' does not exist\n", dfname);//argv[1]);
+    printf("input file '%s' does not exist\n", dfname);
     exit(0);
   } //if
   TTree *t = dynamic_cast<TTree*>(fdata->Get("events"));
   if (!t) {
-    printf("input file '%s' does not have \"events\" tree\n", dfname);//argv[1]);
+    printf("input file '%s' does not have \"events\" tree\n", dfname);
     exit(0);
   } //if
 
-  auto np = new TH1D("np", "Photon count",            50,     0,    50);
+  auto np = new TH1D("np", "Photon count",            50,     0,     50);
+#ifdef _AEROGEL_
+  auto th = new TH1D("th", "Cherenkov theta",        100,   180,    200);
+#else
+  auto th = new TH1D("th", "Cherenkov theta",        100,    33,     43);
+#endif
 
   // Use MC truth particles for a "main" loop;
   auto mctracks   = new std::vector<dd4pod::Geant4ParticleData>();
@@ -46,12 +34,14 @@ void evaluation(const char *dfname)
 #ifdef _USE_RECONSTRUCTED_TRACKS_
   t->SetBranchAddress("rcparticles", &rctracks);
 #endif
-  t->SetBranchAddress("ERICHPID",   &cherenkov);
+  t->SetBranchAddress("DRICHPID",   &cherenkov);
   auto options = new std::vector<eic::CherenkovPdgHypothesis>();
-  t->SetBranchAddress("ERICHPID_0", &options);
+  t->SetBranchAddress("DRICHPID_0", &options);
+  auto angles  = new std::vector<eic::CherenkovThetaAngleMeasurement>();
+  t->SetBranchAddress("DRICHPID_1", &angles);
 
   // Loop through all events;
-  unsigned false_assignment_stat = 0;
+  unsigned false_assignment_stat[2] = {0};
   for(int ev=0; ev<t->GetEntries(); ev++) {
     t->GetEntry(ev);
 
@@ -90,11 +80,9 @@ void evaluation(const char *dfname)
       {
 	const eic::CherenkovPdgHypothesis *best = 0;
 
-	//printf("%d %d\n", cherenkov->options_begin, cherenkov->options_end);
 	for(unsigned iq=cherenkov->options_begin; iq<cherenkov->options_end; iq++) {
 	  const auto &option = (*options)[iq];
 
-	  //#if _TODAY_
 	  // Skip electron hypothesis; of no interest here;
 	  if (abs(option.pdg) == 11) continue;
 
@@ -103,18 +91,24 @@ void evaluation(const char *dfname)
 	  if (!best || option.weight > best->weight) best = &option;
 	  printf("radiator %3d (pdg %5d): weight %7.2f, npe %7.2f\n", 
 		 option.radiator, option.pdg, option.weight, option.npe);
-	  //#endif
 	} //for
 	printf("\n");
 
 	// Check whether the true PDG got a highest score;
-	if (!best || best->pdg != mctrack.pdgID) false_assignment_stat++;
+	if (!best || best->pdg != mctrack.pdgID) 
+	  false_assignment_stat[best->npe >= 3 ? 0 : 1]++;
       }
+
+      // This assumes of course that at least one radiator was requested in juggler;
+      th->Fill(1000*(*angles)[0].theta);
     } //for track
   } //for ev
 
-  printf("%d false out of %lld\n", false_assignment_stat, t->GetEntries());
+  printf("%3d (%3d) false out of %lld\n", false_assignment_stat[0],
+	 false_assignment_stat[1], t->GetEntries());
 
-  auto cv = new TCanvas("cv", "", 800, 600);
-  cv->cd(1); np->Draw();
+  auto cv = new TCanvas("cv", "", 1200, 600);
+  cv->Divide(2, 1);
+  cv->cd(1); np->Draw(); np->Fit("gaus");
+  cv->cd(2); th->Draw(); th->Fit("gaus");
 } // evaluation()

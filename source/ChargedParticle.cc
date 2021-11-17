@@ -13,6 +13,15 @@
 
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPhoton*> *photons)
 {
+  // Reset individual photon "selected" flags;
+  if (photons) 
+    for(auto photon: *photons)
+      photon->m_Selected = false;
+  else
+    for(auto rhistory: GetRadiatorHistory()) 
+      for(auto photon: GetHistory(rhistory)->Photons())
+	photon->m_Selected = false;
+
   // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
   // of emission vertex locations and build kind of a PDF out of that to calculate weights;
   // this approach may not be dramatically efficient, but it would 1) work in case of the 
@@ -40,19 +49,29 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	TVector3 phx = photon->GetDetectionPosition();
 
 	{
+	  bool all_converged = true;
 	  IRTSolution solutions[zdim+1];
 	  
 	  for(unsigned iq=0; iq<zdim+1; iq++) {
-	    //printf("--> %d -> %d\n", photon->GetVolumeCopy(), pd->GetIRT(photon->GetVolumeCopy()));
-	    solutions[iq] = pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
-								       radiator->m_Locations[iq].second.Unit(), 
-								       // FIXME: give beam line as a parameter;
-								       phx, TVector3(0,0,1), false);
+	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (unsigned long)(pd->GetIRT(photon->GetVolumeCopy())));
+	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (photon->GetVolumeCopy() >> 8) & 0x7);
+	    auto &solution = solutions[iq] = 
+	      pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
+							 radiator->m_Locations[iq].second.Unit(), 
+							 // FIXME: give beam line as a parameter;
+							 phx, TVector3(0,0,1), false);
+	    if (!solution.Converged()) {
+	      all_converged = false;
+	      break;
+	    } //if
 	  } //for iq
 	  
+	  if (!all_converged) continue;
+
 	  for(unsigned iq=0; iq<zdim; iq++) {
 	    auto &s0 = solutions[iq], &s1 = solutions[iq+1];
 	    
+	    //printf("  converged: %d %d\n", s0.Converged(), s1.Converged());
 	    // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
 	    // in the previous loop; FIXME: add some smearing later;
 	    photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
@@ -86,15 +105,22 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
       
       {
 	double theta = acos(arg), dth = radiator->GetSmearing();
+	bool gaussian = radiator->UseGaussianSmearing();
+	// +/-3 sigma; FIXME: do it better later;
+	if (gaussian) dth *= 3;
 
 	for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
 	  if (!photon->WasDetected()) continue;
-	    
+	  
 	  auto pdf = &photon->_m_PDF[radiator];
 
 	  // FIXME: unreadable;
-	  hypothesis->IncrementWeight(radiator, float(pdf->GetWithinRangeCount(theta, radiator->GetSmearing()))/zdim, 
-				      (dth ? (radiator->UseGaussianSmearing() ? pdf->GetGaussianIntegral(theta,dth) :
+	  //printf("-> %7.2f\n", pdf->GetRangeIntegral(theta - dth, theta + dth));
+	  auto within_range = float(pdf->GetWithinRangeCount(theta, dth));
+	  if (within_range) photon->m_Selected = true;
+
+	  hypothesis->IncrementWeight(radiator, within_range/zdim, 
+				      (dth ? (gaussian ? pdf->GetGaussianIntegral(theta,dth) :
 					      pdf->GetRangeIntegral(theta - dth, theta + dth)) : 
 				       pdf->GetValue(theta))/zdim);
 	  //printf("@W@ %2d -> %7.2f %7.2f\n", ih, m, 1000*theta);
