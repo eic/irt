@@ -25,6 +25,7 @@ as well as a set of spherical and / or flat mirrors.
  * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
  * [Juggler reconstruction pass](#juggler-reconstruction-pass)
  * [DRICH case](#drich-case)
+ * [HEPMC writer](#hepmc-writer)
 
 <br/>
 
@@ -213,6 +214,23 @@ npsim --compactFile=./drich_only.xml --runType=run -G -N=500 --outputFile=./dric
 xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
 root -l '../irt/scripts/evaluation.C("drich-reco.root")'
 ```
+
+HEPMC writer
+------------
+
+It is of course way more convenient to create a .hepmc file with a collection of events / tracks, 
+than to use a limited in functionality npsim command line interface. Here is an example:
+
+```
+cd /tmp/ATHENA/sandbox
+root -l '../irt/scripts/drich-hepmc-writer.C("drich-data.hepmc", 300)'
+
+npsim --compactFile=./drich_only.xml --runType=run -G -N=300 --inputFiles ./drich-data.hepmc --outputFile=./drich-data.root --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'
+```
+
 
 Updated procedure
 -----------------

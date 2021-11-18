@@ -2,8 +2,8 @@
 
 void evaluation(const char *dfname)
 {
-#define _DETECTOR_ "ERICH"
-  #define _AEROGEL_
+#define _DETECTOR_ "DRICH"
+#define _AEROGEL_
   //#define _USE_RECONSTRUCTED_TRACKS_
 
   // .root file with event tree;
