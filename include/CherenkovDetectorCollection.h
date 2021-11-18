@@ -98,9 +98,10 @@ class CherenkovDetectorCollection: public BitMask {
     return (m_PhotonDetectorLookup.find(lv) == m_PhotonDetectorLookup.end() ? 0 : m_PhotonDetectorLookup[lv]);
   };
 
-  void SetContainerVolume(CherenkovDetector *det, const char *name, unsigned path, const G4LogicalVolume *lv, 
-			  const G4RadiatorMaterial *material, 
-			  /*const*/ ParametricSurface *surface) { 
+  CherenkovRadiator *SetContainerVolume(CherenkovDetector *det, const char *name, unsigned path, 
+					const G4LogicalVolume *lv, 
+					const G4RadiatorMaterial *material, 
+					/*const*/ ParametricSurface *surface) { 
     auto radiator = FindOrAddRadiator(det, name, lv, material);
     // This is most likely a temporary assignment;
     radiator->m_Borders[path].first = surface;
@@ -108,6 +109,8 @@ class CherenkovDetectorCollection: public BitMask {
     det->AddOpticalBoundary(path, new OpticalBoundary(FindRadiator(lv), surface, true));
     //det->SetContainerVolume(lv);
     det->SetContainerVolume(radiator);
+
+    return radiator;
   };
 
   // FIXME: do it more efficient later;

@@ -36,7 +36,9 @@ class CherenkovPhotonDetector: public G4Object {
 
     m_OpticalBoundaryStorage.push_back(boundary);
   };
-  IRT *AllocateIRT(uint64_t icopy) { auto irt = new IRT(); _m_IRT[icopy] = irt; return irt; };
+  IRT *AllocateIRT(unsigned sector, uint64_t icopy) { 
+    auto irt = new IRT(sector); _m_IRT[icopy] = irt; return irt; 
+  };
   IRT *GetIRT(uint64_t icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
 
  private:
@@ -53,7 +55,7 @@ class CherenkovPhotonDetector: public G4Object {
 
   double m_GeometricEfficiency;
 
-  ClassDef(CherenkovPhotonDetector, 2);
+  ClassDef(CherenkovPhotonDetector, 3);
 };
 
 #endif

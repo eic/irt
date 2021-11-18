@@ -136,7 +136,7 @@ int main(int argc, char** argv)
       event->AddChargedParticle(particle);
 
       aerogel->ResetLocations();
-
+#if 1//_TODAY_
       // Create a fake (empty) history; then track locations at the aerogel boundaries;
       particle->StartRadiatorHistory(std::make_pair(aerogel, new RadiatorHistory()));
       {
@@ -152,8 +152,11 @@ int main(int argc, char** argv)
 	  
 	// Move the points a bit inwards;
 	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
-	aerogel->AddLocation(from, p0);
-	aerogel->AddLocation(  to, p0);
+	// FIXME: will this work for ERICH?;
+	for(unsigned isec=0; isec<6; isec++) {
+	  aerogel->AddLocation(isec, from, p0);
+	  aerogel->AddLocation(isec,   to, p0);
+	} //for isec
       }
 
       // Now that all internal track-level structures are populated, run IRT code;
@@ -175,6 +178,7 @@ int main(int argc, char** argv)
 	  if (wt0 <= wt1) false_assignment_stat++;
 	}
       }
+#endif
     } //for track
 
     event->Reset();

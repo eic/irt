@@ -32,7 +32,7 @@ qe_data = [
 ]
 
 radiators = [
-    #"Aerogel   zbins=1 smearing=gaussian 1mrad rindex=1.0189",
+    "Aerogel   zbins=1 smearing=gaussian 1mrad rindex=1.0189",
     "GasVolume zbins=1 smearing=gaussian 1mrad rindex=1.00080"
 ]
 

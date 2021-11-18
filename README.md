@@ -185,7 +185,7 @@ make -j1 install
 
 ```
 cd /tmp/ATHENA/sandbox
-# Run Juggler with a simplified testIRT.py options file provided with IRT distribution; 
+# Run Juggler with a simplified erich-testIRT.py options file provided with IRT distribution; 
 xenv -x ../Juggler.xenv gaudirun.py ../irt/erich-testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)

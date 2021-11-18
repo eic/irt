@@ -13,6 +13,16 @@
 
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPhoton*> *photons)
 {
+#if 0
+  if (!photons) {
+    photons = new std::vector<OpticalPhoton*>(); 
+
+    for(auto rhistory: GetRadiatorHistory()) 
+      for(auto photon: GetHistory(rhistory)->Photons())
+	photons->push_back(photon);
+  } //if
+#endif
+#if 1//_OLD_
   // Reset individual photon "selected" flags;
   if (photons) 
     for(auto photon: *photons)
@@ -21,6 +31,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
     for(auto rhistory: GetRadiatorHistory()) 
       for(auto photon: GetHistory(rhistory)->Photons())
 	photon->m_Selected = false;
+#endif
+
+  unsigned qzdim = 0;
+  TVector3 momentum;
 
   // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
   // of emission vertex locations and build kind of a PDF out of that to calculate weights;
@@ -32,18 +46,33 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
   for(auto rhistory: GetRadiatorHistory()) {
     auto radiator = GetRadiator(rhistory);
     // FIXME: error message;
-    if (radiator->m_Locations.size() < 2) return;
+    //if (radiator->m_Locations.size() < 2) continue;//return;
+    //if (radiator->_m_Locations.empty() || radiator->_m_Locationssize() < 2) continue;//return;
 
-    const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
-
-    if (radiator->m_Locations.size()) {
+    //const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
+#if 1//_TODAY_
+    //if (radiator->m_Locations.size()) {
       for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
 	if (!photon->WasDetected()) continue;
 	
 	auto pd = photon->GetPhotonDetector();
-	if (!pd->GetIRT(photon->GetVolumeCopy())) {
+	const auto irt = pd->GetIRT(photon->GetVolumeCopy());//vcopy);
+	if (!irt) {//pd->GetIRT(photon->GetVolumeCopy())) {
 	  printf("No photosensor with this cellID found!\n");
 	  continue;
+	} //if
+
+	unsigned isec = irt->GetSector();
+
+	if (radiator->_m_Locations.find(isec) == radiator->_m_Locations.end() ||
+	    radiator->_m_Locations[isec].size() < 2)
+	  continue;
+
+	const unsigned zdim = radiator->_m_Locations[isec].size()-1;//radiator->GetTrajectoryBinCount();
+	if (zdim) {
+	  qzdim = zdim;
+	  momentum = 0.5*(radiator->_m_Locations[isec][0].second + 
+			  radiator->_m_Locations[isec][radiator->_m_Locations[isec].size()-1].second);
 	} //if
 
 	TVector3 phx = photon->GetDetectionPosition();
@@ -56,10 +85,11 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (unsigned long)(pd->GetIRT(photon->GetVolumeCopy())));
 	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (photon->GetVolumeCopy() >> 8) & 0x7);
 	    auto &solution = solutions[iq] = 
-	      pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
-							 radiator->m_Locations[iq].second.Unit(), 
-							 // FIXME: give beam line as a parameter;
-							 phx, TVector3(0,0,1), false);
+	      //pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
+	      irt->Solve(radiator->_m_Locations[isec][iq].first,
+			 radiator->_m_Locations[isec][iq].second.Unit(), 
+			 // FIXME: give beam line as a parameter;
+			 phx, TVector3(0,0,1), false);
 	    if (!solution.Converged()) {
 	      all_converged = false;
 	      break;
@@ -78,7 +108,8 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	  } //for iq
 	}
       } //for photon
-    } //if
+      //} //if
+#endif
   } //for rhistory
 
   // And now that IRT is performed on a grid of possible emission vertex locations, 
@@ -93,13 +124,19 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
       //const unsigned zdim = radiator->GetTrajectoryBinCount();
-      const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
+#if 1//_TODAY_
+      //unsigned isec = irt->GetSector();
       
-      if (!radiator->m_Locations.size()) continue;
+      //auto mloc = radiator->_m_Locations.begin();
+      //+++const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
+      //const unsigned zdim = (*mloc).size()-1;//radiator->GetTrajectoryBinCount();
+      
+      //if (!radiator->m_Locations.size()) continue;
 
-      TVector3 p = 0.5*(radiator->m_Locations[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
+      //+TVector3 p = 0.5*(radiator->m_Locations[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
+      //TVector3 p = 0.5*((*radiator->_m_Locations.begin())[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
 	
-      double pp = p.Mag(), arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
+      double pp = momentum.Mag(), arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
       // Threshold check; FIXME: do it better?;
       if (fabs(arg) > 1.0) continue;
       
@@ -119,13 +156,14 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	  auto within_range = float(pdf->GetWithinRangeCount(theta, dth));
 	  if (within_range) photon->m_Selected = true;
 
-	  hypothesis->IncrementWeight(radiator, within_range/zdim, 
+	  hypothesis->IncrementWeight(radiator, within_range/qzdim, 
 				      (dth ? (gaussian ? pdf->GetGaussianIntegral(theta,dth) :
 					      pdf->GetRangeIntegral(theta - dth, theta + dth)) : 
-				       pdf->GetValue(theta))/zdim);
+				       pdf->GetValue(theta))/qzdim);
 	  //printf("@W@ %2d -> %7.2f %7.2f\n", ih, m, 1000*theta);
 	} //for photon
       }
+#endif
     } //for rhistory
   } //for ih
 } // ChargedParticle::PIDReconstruction()

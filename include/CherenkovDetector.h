@@ -34,7 +34,7 @@ class CherenkovDetector: public TObject {
   };
   void CreatePhotonDetectorInstance(unsigned sector, CherenkovPhotonDetector *pd, 
 				    uint64_t icopy, ParametricSurface *surface) {
-    auto irt = pd->AllocateIRT(icopy);
+    auto irt = pd->AllocateIRT(sector, icopy);
 
     if (_m_OpticalBoundaries.find(sector) != _m_OpticalBoundaries.end())
       for(auto boundary: _m_OpticalBoundaries[sector])

@@ -1,0 +1,8 @@
+
+root -l '../irt/scripts/rich-hepmc-writer.C("drich-data.hepmc", 100)'
+
+npsim --compactFile=./drich_only.xml --runType=run -G -N=100 --inputFiles ./drich-data.hepmc --outputFile=./drich-data.root --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'

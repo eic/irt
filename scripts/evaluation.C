@@ -2,7 +2,8 @@
 
 void evaluation(const char *dfname)
 {
-  //#define _AEROGEL_
+#define _DETECTOR_ "ERICH"
+  #define _AEROGEL_
   //#define _USE_RECONSTRUCTED_TRACKS_
 
   // .root file with event tree;
@@ -17,11 +18,16 @@ void evaluation(const char *dfname)
     exit(0);
   } //if
 
-  auto np = new TH1D("np", "Photon count",            50,     0,     50);
+  auto np = new TH1D("np", "Photon count",            50,       0,       50);
 #ifdef _AEROGEL_
-  auto th = new TH1D("th", "Cherenkov theta",        100,   180,    200);
-#else
-  auto th = new TH1D("th", "Cherenkov theta",        100,    33,     43);
+  unsigned id = 0;
+  auto th = new TH1D("th", "Cherenkov theta",        100,     180,      200);
+  auto ri = new TH1D("ri", "Refractive Index - 1.0", 100,   0.017,    0.022);
+#else 
+  unsigned id = 1;
+  auto th = new TH1D("th", "Cherenkov theta",        100,      33,       43);
+  auto ri = new TH1D("ri", "Refractive Index - 1.0", 100, 0.00074,  0.00079);
+  //auto th = new TH1D("th", "Cherenkov theta",        100,    33,     53);
 #endif
 
   // Use MC truth particles for a "main" loop;
@@ -34,11 +40,11 @@ void evaluation(const char *dfname)
 #ifdef _USE_RECONSTRUCTED_TRACKS_
   t->SetBranchAddress("rcparticles", &rctracks);
 #endif
-  t->SetBranchAddress("DRICHPID",   &cherenkov);
+  t->SetBranchAddress((TString(_DETECTOR_) + "PID").Data(),   &cherenkov);
   auto options = new std::vector<eic::CherenkovPdgHypothesis>();
-  t->SetBranchAddress("DRICHPID_0", &options);
+  t->SetBranchAddress((TString(_DETECTOR_) + "PID_0").Data(), &options);
   auto angles  = new std::vector<eic::CherenkovThetaAngleMeasurement>();
-  t->SetBranchAddress("DRICHPID_1", &angles);
+  t->SetBranchAddress((TString(_DETECTOR_) + "PID_1").Data(), &angles);
 
   // Loop through all events;
   unsigned false_assignment_stat[2] = {0};
@@ -83,6 +89,8 @@ void evaluation(const char *dfname)
 	for(unsigned iq=cherenkov->options_begin; iq<cherenkov->options_end; iq++) {
 	  const auto &option = (*options)[iq];
 
+	  if (option.radiator != id) continue;
+
 	  // Skip electron hypothesis; of no interest here;
 	  if (abs(option.pdg) == 11) continue;
 
@@ -100,15 +108,18 @@ void evaluation(const char *dfname)
       }
 
       // This assumes of course that at least one radiator was requested in juggler;
-      th->Fill(1000*(*angles)[0].theta);
+      th->Fill(1000* (*angles)[id].theta);
+      ri->Fill(      (*angles)[id].rindex - 1.0);
+      printf("%f\n", (*angles)[id].rindex - 1.0);
     } //for track
   } //for ev
 
   printf("%3d (%3d) false out of %lld\n", false_assignment_stat[0],
 	 false_assignment_stat[1], t->GetEntries());
 
-  auto cv = new TCanvas("cv", "", 1200, 600);
-  cv->Divide(2, 1);
+  auto cv = new TCanvas("cv", "", 1500, 600);
+  cv->Divide(3, 1);
   cv->cd(1); np->Draw(); np->Fit("gaus");
   cv->cd(2); th->Draw(); th->Fit("gaus");
+  cv->cd(3); ri->Draw(); ri->Fit("gaus");
 } // evaluation()

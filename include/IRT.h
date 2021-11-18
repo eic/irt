@@ -26,7 +26,7 @@
 
 class IRT: public TObject {
  public:
- IRT(): m_IterationLimit(_IRT_ITERATION_LIMIT_), 
+ IRT(unsigned sector = 0): m_Sector(sector), m_IterationLimit(_IRT_ITERATION_LIMIT_), 
     m_Precision(_IRT_PRECISION_DEFAULT_), m_JacobianStep(_IRT_JACOBIAN_STEP_DEFAULT_) {};
   ~IRT() {};
 
@@ -44,6 +44,8 @@ class IRT: public TObject {
   IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
+  unsigned GetSector( void ) const { return m_Sector; };
+
  private:
   bool Transport(const TVector3 &xfrom, const TVector3 &nfrom); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
@@ -54,6 +56,9 @@ class IRT: public TObject {
   inline OpticalBoundary *tail( void ) const { 
     return _m_OpticalBoundaries.size() ? GetOpticalBoundary(_m_OpticalBoundaries.size()-1) : 0;
   };
+
+  // FIXME: this is not the right place for this variable;
+  unsigned m_Sector;
 
   unsigned m_IterationLimit;
   double m_Precision, m_JacobianStep; 

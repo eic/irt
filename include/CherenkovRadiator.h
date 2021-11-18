@@ -1,9 +1,11 @@
 
 #include <map>
+#include <vector>
 
 #include <TRef.h>
 #include <TObject.h>
 #include <TVector3.h>
+#include <TString.h>
 
 #ifndef _CHERENKOV_RADIATOR_
 #define _CHERENKOV_RADIATOR_
@@ -41,6 +43,12 @@ class CherenkovRadiator: public TObject {
   };
   std::map<unsigned, std::pair<TRef, TRef>> m_Borders; 
 
+  // Material name in dd4hep world;
+  void SetAlternativeMaterialName(const char *name) { m_AlternativeMaterialName = name; };
+  const char *GetAlternativeMaterialName( void ) const { 
+    return m_AlternativeMaterialName.Data();
+  };
+
  private:
   // Run-time variables for the GEANT pass;
   const G4LogicalVolume *m_LogicalVolume;          //!
@@ -49,6 +57,8 @@ class CherenkovRadiator: public TObject {
   // Refractive index calculated for some fixed reference wave length (supposedly the average 
   // one as seen on the detected photon wave length plot);
   double m_ReferenceRefractiveIndex;
+
+  TString m_AlternativeMaterialName;
 
  public:
   void SetTrajectoryBinCount(unsigned bins) { m_TrajectoryBinCount = bins; };
@@ -59,9 +69,10 @@ class CherenkovRadiator: public TObject {
   void SetUniformSmearing (double range) { m_GaussianSmearing = false; m_Smearing = range; }
   bool UseGaussianSmearing( void )  const { return m_GaussianSmearing; };
 
-  void ResetLocations( void ) { m_Locations.clear(); }
-  void AddLocation(const TVector3 &x, const TVector3 &p) { 
-    m_Locations.push_back(std::make_pair(x, p)); 
+  // FIXME: memory leak;
+  void ResetLocations( void ) { _m_Locations.clear(); }
+  void AddLocation(unsigned sector, const TVector3 &x, const TVector3 &p) { 
+    _m_Locations[sector].push_back(std::make_pair(x, p)); 
   };
 
   // Transient variables for the analysis script convenience;
@@ -74,9 +85,11 @@ class CherenkovRadiator: public TObject {
   // This is a hack for now;
   double m_Smearing;                               //!
   bool m_GaussianSmearing;                         //!
-  std::vector<std::pair<TVector3, TVector3>> m_Locations; //!
+  std::map<unsigned, std::vector<std::pair<TVector3, TVector3>>> _m_Locations; //!
 
-  ClassDef(CherenkovRadiator, 3);
+  std::vector<std::pair<double, double>> m_ri_lookup_table; //!
+
+  ClassDef(CherenkovRadiator, 4);
 };
 
 #endif
