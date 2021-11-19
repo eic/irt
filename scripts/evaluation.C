@@ -1,11 +1,11 @@
 
+#define _DETECTOR_ "DRICH"
+//#define _DETECTOR_ "ERICH"
+#define _AEROGEL_
+//#define _USE_RECONSTRUCTED_TRACKS_
 
 void evaluation(const char *dfname)
 {
-#define _DETECTOR_ "DRICH"
-#define _AEROGEL_
-  //#define _USE_RECONSTRUCTED_TRACKS_
-
   // .root file with event tree;
   auto fdata = new TFile(dfname);
   if (!fdata) {
@@ -21,13 +21,15 @@ void evaluation(const char *dfname)
   auto np = new TH1D("np", "Photon count",            50,       0,       50);
 #ifdef _AEROGEL_
   unsigned id = 0;
-  auto th = new TH1D("th", "Cherenkov theta",        100,     180,      200);
-  auto ri = new TH1D("ri", "Refractive Index - 1.0", 100,   0.017,    0.022);
+  auto th = new TH1D("th", "Cherenkov theta",         50,     180,      200);
+  auto ri = new TH1D("ri", "Refractive Index - 1.0",  50,   0.018,    0.020);
+  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -5,        5);
+  //auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -1,        1);
 #else 
   unsigned id = 1;
-  auto th = new TH1D("th", "Cherenkov theta",        100,      33,       43);
-  auto ri = new TH1D("ri", "Refractive Index - 1.0", 100, 0.00074,  0.00079);
-  //auto th = new TH1D("th", "Cherenkov theta",        100,    33,     53);
+  auto th = new TH1D("th", "Cherenkov theta",         50,      35,       39);
+  auto ri = new TH1D("ri", "Refractive Index - 1.0",  50, 0.00075,  0.00077);
+  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -2,        2);
 #endif
 
   // Use MC truth particles for a "main" loop;
@@ -82,6 +84,9 @@ void evaluation(const char *dfname)
 #endif
       if (!cherenkov) continue;
 
+      double pp = mctrack.ps.mag(), m = mctrack.mass;
+      //printf("%f %f\n", mctrack.mass, mctrack.ps.mag());
+
       // Loop through all of the mass hypotheses available for this reconstructed track;
       {
 	const eic::CherenkovPdgHypothesis *best = 0;
@@ -108,18 +113,26 @@ void evaluation(const char *dfname)
       }
 
       // This assumes of course that at least one radiator was requested in juggler;
-      th->Fill(1000* (*angles)[id].theta);
-      ri->Fill(      (*angles)[id].rindex - 1.0);
-      printf("%f\n", (*angles)[id].rindex - 1.0);
+      {
+	double rindex = (*angles)[id].rindex, theta = (*angles)[id].theta;
+	double argument = sqrt(pp*pp + m*m)/(rindex*pp);
+	double thp = fabs(argument) <= 1.0 ? acos(argument) : theta;//sqrt(pp*pp + m*m)/(rindex*pp));
+
+	th->Fill(1000*  theta);
+	dt->Fill(1000* (theta - thp));
+	ri->Fill(      rindex - 1.0);
+	printf("%f\n", rindex - 1.0);
+      }
     } //for track
   } //for ev
 
   printf("%3d (%3d) false out of %lld\n", false_assignment_stat[0],
 	 false_assignment_stat[1], t->GetEntries());
 
-  auto cv = new TCanvas("cv", "", 1500, 600);
-  cv->Divide(3, 1);
+  auto cv = new TCanvas("cv", "", 1500, 500);
+  cv->Divide(4, 1);
   cv->cd(1); np->Draw(); np->Fit("gaus");
   cv->cd(2); th->Draw(); th->Fit("gaus");
   cv->cd(3); ri->Draw(); ri->Fit("gaus");
+  cv->cd(4); dt->Draw(); dt->Fit("gaus");
 } // evaluation()

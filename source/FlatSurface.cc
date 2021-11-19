@@ -3,7 +3,8 @@
 
 // -------------------------------------------------------------------------------------
 
-bool FlatSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const
+bool FlatSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
+			      bool check_normal) const
 {
   double npl = n0.Dot(m_Nz);
 
@@ -11,7 +12,7 @@ bool FlatSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *
   if (!crs || !npl) return false;
 
   // May want to check that approach the surface from a right direction;
-  if (/*check_normal &&*/ n0.Dot(m_Nz) >= 0.0) return false;
+  if (check_normal && n0.Dot(m_Nz) >= 0.0) return false;
 
   {
     TVector3 dx = x0 - GetCenter();

@@ -12,8 +12,9 @@ class ChargedParticleStep: public TObject {
   m_Position(position), m_Momentum(momentum)/*, m_Length(length)*/ {};
   ~ChargedParticleStep() {};
 
-  inline const TVector3 &GetPosition( void ) const { return m_Position; };
-  inline const TVector3 &GetMomentum( void ) const { return m_Momentum; };
+  inline const TVector3 &GetPosition ( void ) const { return m_Position; };
+  inline const TVector3 &GetMomentum ( void ) const { return m_Momentum; };
+  inline       TVector3  GetDirection( void ) const { return m_Momentum.Unit(); };
 
   // Nodes along the particle trajectory; 
  private:

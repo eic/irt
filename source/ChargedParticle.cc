@@ -11,30 +11,17 @@
 
 // -------------------------------------------------------------------------------------
 
-void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPhoton*> *photons)
+void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 {
-#if 0
-  if (!photons) {
-    photons = new std::vector<OpticalPhoton*>(); 
+  std::vector<OpticalPhoton*> photons;
 
-    for(auto rhistory: GetRadiatorHistory()) 
-      for(auto photon: GetHistory(rhistory)->Photons())
-	photons->push_back(photon);
-  } //if
-#endif
-#if 1//_OLD_
-  // Reset individual photon "selected" flags;
-  if (photons) 
-    for(auto photon: *photons)
-      photon->m_Selected = false;
-  else
-    for(auto rhistory: GetRadiatorHistory()) 
-      for(auto photon: GetHistory(rhistory)->Photons())
-	photon->m_Selected = false;
-#endif
+  // Mix all photons together;
+  for(auto rhistory: GetRadiatorHistory()) 
+    for(auto photon: GetHistory(rhistory)->Photons())
+      photons.push_back(photon);
 
-  unsigned qzdim = 0;
-  TVector3 momentum;
+  for(auto photon: photons)
+    photon->_m_Selected.clear();// = false;
 
   // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
   // of emission vertex locations and build kind of a PDF out of that to calculate weights;
@@ -43,74 +30,49 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
   // hypothesis would evaluate each of the detected photons on the aerogel and gas grids
   // independently and build a sum of their PDFs without much thinking about outlier photon
   // rejection, average theta calculation and such;
-  for(auto rhistory: GetRadiatorHistory()) {
-    auto radiator = GetRadiator(rhistory);
-    // FIXME: error message;
-    //if (radiator->m_Locations.size() < 2) continue;//return;
-    //if (radiator->_m_Locations.empty() || radiator->_m_Locationssize() < 2) continue;//return;
+  for(auto photon: photons) {
+    if (!photon->WasDetected()) continue;
 
-    //const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
-#if 1//_TODAY_
-    //if (radiator->m_Locations.size()) {
-      for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
-	if (!photon->WasDetected()) continue;
+    auto pd = photon->GetPhotonDetector();
+    const auto irt = pd->GetIRT(photon->GetVolumeCopy());
+    if (!irt) {
+      printf("No photosensor with this cellID found!\n");
+      continue;
+    } //if
+
+    for(auto rhistory: GetRadiatorHistory()) {
+      auto radiator = GetRadiator(rhistory);
+      unsigned zdim = radiator->GetTrajectoryBinCount();
+      if (radiator->m_Locations.size() != zdim+1) continue;
+      
+      TVector3 phx = photon->GetDetectionPosition();
+      
+      {
+	bool all_converged = true;
+	IRTSolution solutions[zdim+1];
 	
-	auto pd = photon->GetPhotonDetector();
-	const auto irt = pd->GetIRT(photon->GetVolumeCopy());//vcopy);
-	if (!irt) {//pd->GetIRT(photon->GetVolumeCopy())) {
-	  printf("No photosensor with this cellID found!\n");
-	  continue;
-	} //if
-
-	unsigned isec = irt->GetSector();
-
-	if (radiator->_m_Locations.find(isec) == radiator->_m_Locations.end() ||
-	    radiator->_m_Locations[isec].size() < 2)
-	  continue;
-
-	const unsigned zdim = radiator->_m_Locations[isec].size()-1;//radiator->GetTrajectoryBinCount();
-	if (zdim) {
-	  qzdim = zdim;
-	  momentum = 0.5*(radiator->_m_Locations[isec][0].second + 
-			  radiator->_m_Locations[isec][radiator->_m_Locations[isec].size()-1].second);
-	} //if
-
-	TVector3 phx = photon->GetDetectionPosition();
-
-	{
-	  bool all_converged = true;
-	  IRTSolution solutions[zdim+1];
+	for(unsigned iq=0; iq<zdim+1; iq++) {
+	  auto &solution = solutions[iq] = irt->Solve(radiator->m_Locations[iq].first,
+		       // FIXME: give beam line as a parameter;
+		       radiator->m_Locations[iq].second.Unit(), phx, TVector3(0,0,1), false);
+	  if (!solution.Converged()) {
+	    all_converged = false;
+	    break;
+	  } //if
+	} //for iq
+	
+	if (!all_converged) continue;
+	
+	for(unsigned iq=0; iq<zdim; iq++) {
+	  auto &s0 = solutions[iq], &s1 = solutions[iq+1];
 	  
-	  for(unsigned iq=0; iq<zdim+1; iq++) {
-	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (unsigned long)(pd->GetIRT(photon->GetVolumeCopy())));
-	    //printf("--> %ld %ld\n", photon->GetVolumeCopy(), (photon->GetVolumeCopy() >> 8) & 0x7);
-	    auto &solution = solutions[iq] = 
-	      //pd->GetIRT(photon->GetVolumeCopy())->Solve(radiator->m_Locations[iq].first,
-	      irt->Solve(radiator->_m_Locations[isec][iq].first,
-			 radiator->_m_Locations[isec][iq].second.Unit(), 
-			 // FIXME: give beam line as a parameter;
-			 phx, TVector3(0,0,1), false);
-	    if (!solution.Converged()) {
-	      all_converged = false;
-	      break;
-	    } //if
-	  } //for iq
-	  
-	  if (!all_converged) continue;
-
-	  for(unsigned iq=0; iq<zdim; iq++) {
-	    auto &s0 = solutions[iq], &s1 = solutions[iq+1];
-	    
-	    //printf("  converged: %d %d\n", s0.Converged(), s1.Converged());
-	    // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
-	    // in the previous loop; FIXME: add some smearing later;
-	    photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
-	  } //for iq
-	}
-      } //for photon
-      //} //if
-#endif
-  } //for rhistory
+	  // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
+	  // in the previous loop; FIXME: add some smearing later;
+	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	} //for iq
+      }
+    } //for rhistory
+  } //for photon
 
   // And now that IRT is performed on a grid of possible emission vertex locations, 
   // populate the requested mass hypothesis array;
@@ -123,20 +85,12 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
     
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
-      //const unsigned zdim = radiator->GetTrajectoryBinCount();
-#if 1//_TODAY_
-      //unsigned isec = irt->GetSector();
-      
-      //auto mloc = radiator->_m_Locations.begin();
-      //+++const unsigned zdim = radiator->m_Locations.size()-1;//radiator->GetTrajectoryBinCount();
-      //const unsigned zdim = (*mloc).size()-1;//radiator->GetTrajectoryBinCount();
-      
-      //if (!radiator->m_Locations.size()) continue;
-
-      //+TVector3 p = 0.5*(radiator->m_Locations[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
-      //TVector3 p = 0.5*((*radiator->_m_Locations.begin())[0].second + radiator->m_Locations[radiator->m_Locations.size()-1].second);
+      unsigned zdim = radiator->GetTrajectoryBinCount();
+      if (radiator->m_Locations.size() != zdim+1) continue;
 	
-      double pp = momentum.Mag(), arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
+      // Asume this estimate is good enough;
+      double pp = radiator->m_Locations[0].second.Mag();
+      double arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
       // Threshold check; FIXME: do it better?;
       if (fabs(arg) > 1.0) continue;
       
@@ -146,24 +100,22 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, std::vector<OpticalPh
 	// +/-3 sigma; FIXME: do it better later;
 	if (gaussian) dth *= 3;
 
-	for(auto photon: (photons ? *photons : GetHistory(rhistory)->Photons())) {
+	for(auto photon: photons) {
 	  if (!photon->WasDetected()) continue;
 	  
 	  auto pdf = &photon->_m_PDF[radiator];
 
 	  // FIXME: unreadable;
-	  //printf("-> %7.2f\n", pdf->GetRangeIntegral(theta - dth, theta + dth));
 	  auto within_range = float(pdf->GetWithinRangeCount(theta, dth));
-	  if (within_range) photon->m_Selected = true;
+	  //if (within_range) photon->m_Selected = true;
+	  if (within_range) photon->_m_Selected.insert(std::make_pair(ih, radiator));// = true;
 
-	  hypothesis->IncrementWeight(radiator, within_range/qzdim, 
+	  hypothesis->IncrementWeight(radiator, within_range/zdim, 
 				      (dth ? (gaussian ? pdf->GetGaussianIntegral(theta,dth) :
 					      pdf->GetRangeIntegral(theta - dth, theta + dth)) : 
-				       pdf->GetValue(theta))/qzdim);
-	  //printf("@W@ %2d -> %7.2f %7.2f\n", ih, m, 1000*theta);
+				       pdf->GetValue(theta))/zdim);
 	} //for photon
       }
-#endif
     } //for rhistory
   } //for ih
 } // ChargedParticle::PIDReconstruction()

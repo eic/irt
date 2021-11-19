@@ -1,4 +1,5 @@
 
+#include <set>
 #include <map>
 #include <vector>
 
@@ -17,7 +18,7 @@ class OpticalPhoton: public TransientParticle {
  public:
  OpticalPhoton(): TransientParticle(0), m_VertexRefractiveIndex(0.0), m_PhotonDetector(0), 
     m_VolumeCopy(0), m_DetectionTime(0.0), 
-    m_Detected(false), m_Selected(false) {};
+    m_Detected(false) {};//, m_Selected(false) {};
   ~OpticalPhoton() {};
   
   inline bool IsCharged( void )                          const { return false; };
@@ -84,7 +85,8 @@ class OpticalPhoton: public TransientParticle {
   // Transient variables for some convenience in an analysis script;
  public:
   //inline bool WasSelected( void )                        const { return m_Selected; };
-  bool m_Selected;                                          //!
+  //bool m_Selected;                                          //!
+  std::set<std::pair<unsigned, CherenkovRadiator*>> _m_Selected; //!
   std::map<CherenkovRadiator*, VectorPDF> _m_PDF;           //!
 
   ClassDef(OpticalPhoton, 3);

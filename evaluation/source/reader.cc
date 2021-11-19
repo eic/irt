@@ -20,6 +20,7 @@
 
 int main(int argc, char** argv) 
 {
+#if _BACK_
   // Command line "parser";
   if (argc != 3 && argc != 4) {
     printf("usage: %s <root-data-file> <root-config-file> [DNAME]\n", argv[0]);
@@ -188,6 +189,7 @@ int main(int argc, char** argv)
 
   //auto cv = new TCanvas("cv", "", 800, 600);
   //cv->cd(1); np->Draw();
+#endif
 
   return 0;
 } // main()

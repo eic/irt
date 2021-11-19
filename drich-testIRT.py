@@ -32,8 +32,8 @@ qe_data = [
 ]
 
 radiators = [
-    "Aerogel   zbins=1 smearing=gaussian 1mrad rindex=1.0189",
-    "GasVolume zbins=1 smearing=gaussian 1mrad rindex=1.00080"
+    "Aerogel   zbins=1  smearing=gaussian 2mrad rindex=1.0190",
+    "GasVolume zbins=10 smearing=gaussian 1mrad rindex=1.00076"
 ]
 
 podioinput = PodioInput(
