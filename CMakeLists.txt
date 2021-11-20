@@ -74,6 +74,8 @@ if(DEFINED EVALUATION)
   add_subdirectory(evaluation)
 endif()
 
+add_subdirectory(delphes)
+
 #----------------------------------------------------------------------------
 # installation
 
