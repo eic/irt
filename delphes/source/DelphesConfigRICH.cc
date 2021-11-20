@@ -21,7 +21,7 @@ int DelphesConfigRICH::Calculate( void )
       // Assign sigma values;
       for(unsigned ih=0; ih<dim; ih++) {
 	double m = mass[ih];
-	sigma[ih] = mrange->GetSigma(ih);
+	sigma[ih] = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
 
 	double argument = sqrt(pp*pp + m*m)/(m_Rindex*pp);
 	// Convert to [mrad];

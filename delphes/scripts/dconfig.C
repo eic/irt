@@ -15,6 +15,8 @@ void dconfig( void )
 
   // Define radiator refractive index;
   delphes->SetRefractiveIndex(1.019);
+  // Imitate tracker resolution;
+  delphes->SetAdditionalSmearing(1.0);
 
   // Define eta ranges in ascending order;
   {
@@ -23,21 +25,24 @@ void dconfig( void )
     // Arguments [0..1]: momentum ranges for this eta in [GeV] in ascending order without gaps, 
     // Arguments [2..N]: sigma values in [mrad] matching the mass hypotheses above, in the same 
     // ascending order used to call delphes->AddMassHypothesis(); 
-    eta->AddMomentumRange( .9, 10., 1.5, 1.5, 1.0);
+    eta->AddMomentumRange( 8., 10., 1.5, 1.5, 1.0);
     eta->AddMomentumRange(10., 11., 1.0, 1.0, 1.5);
   }
   {
     auto eta = delphes->AddEtaRange(-3.0, -1.7);
 
-    eta->AddMomentumRange( .9, 10., 1.1, 1.2, 1.3);
+    // Well, average bin momentum is used to calculate Cherenkov theta, so the bins
+    // should not be too wide in the areas where dtheta/dp is high for at least one 
+    // of the hypotheses; 
+    eta->AddMomentumRange( 8., 10., 1.1, 1.2, 1.3);
     eta->AddMomentumRange(10., 11., 1.0, 1.0, 1.5);
   }
 
   {
     auto eta = delphes->AddEtaRange(-1.7, -1.5);
 
-    eta->AddMomentumRange( .9,  4., 1.1, 1.2, 1.3);
-    eta->AddMomentumRange( 4., 10., 1.1, 1.2, 1.3);
+    eta->AddMomentumRange( 8.,  9., 1.1, 1.2, 1.3);
+    eta->AddMomentumRange( 9., 10., 1.1, 1.2, 1.3);
     eta->AddMomentumRange(10., 11., 1.0, 1.0, 1.5);
   } 
 
