@@ -16,7 +16,7 @@ void dconfig( void )
   // Define radiator refractive index;
   delphes->SetRefractiveIndex(1.019);
   // Imitate tracker resolution;
-  delphes->SetAdditionalSmearing(1.0);
+  delphes->SetAdditionalSmearing(0.5);
 
   // Define eta ranges in ascending order;
   {
