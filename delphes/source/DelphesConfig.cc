@@ -10,18 +10,20 @@
 DelphesConfig::DelphesConfig(const char *dname): 
   m_Name(dname),  
   m_EtaMin(0.0), m_EtaMax(0.0),
-  m_MomentumMin(0.0), m_MomentumMax(0.0)
+  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false)
 {
   m_DatabasePDG = new TDatabasePDG();
 } // DelphesConfig::DelphesConfig()
 
 // -------------------------------------------------------------------------------------
 
-MassHypothesis *DelphesConfig::AddMassHypothesisCore(TParticlePDG *pdg) 
+MassHypothesis *DelphesConfig::AddMassHypothesisCore(TParticlePDG *pdg, 
+						     double max_contamination_left, 
+						     double max_contamination_right) 
 {
   // Apply certain sanity checks;
   if (!pdg) return 0;
-  auto hypothesis = new MassHypothesis(pdg);
+  auto hypothesis = new MassHypothesis(pdg, max_contamination_left, max_contamination_right);
   if (!hypothesis) return 0;
 
   // Sanity check;
@@ -34,27 +36,102 @@ MassHypothesis *DelphesConfig::AddMassHypothesisCore(TParticlePDG *pdg)
   m_MassHypotheses.push_back(hypothesis);
   //printf("-> %f\n", pdg->Mass());
 
+  if (max_contamination_left != 1.0 || max_contamination_right != 1.0)
+    m_EfficiencyContaminationMode = true;
+
   return hypothesis;
 } // DelphesConfig::AddMassHypothesisCore()
 
 // -------------------------------------------------------------------------------------
 
-MassHypothesis *DelphesConfig::AddMassHypothesis(int pdg) 
+MassHypothesis *DelphesConfig::AddMassHypothesis(int pdg, 
+						 double max_contamination_left, 
+						 double max_contamination_right) 
 {
-  return AddMassHypothesisCore(m_DatabasePDG->GetParticle(pdg));
+  return AddMassHypothesisCore(m_DatabasePDG->GetParticle(pdg), 
+			       max_contamination_left, max_contamination_right);
 } // DelphesConfig::AddMassHypothesis()
 
 // -------------------------------------------------------------------------------------
 
-MassHypothesis *DelphesConfig::AddMassHypothesis(const char *pname) 
+MassHypothesis *DelphesConfig::AddMassHypothesis(const char *pname, 
+						 double max_contamination_left, 
+						 double max_contamination_right) 
 {
-  return AddMassHypothesisCore(m_DatabasePDG->GetParticle(pname));
+  return AddMassHypothesisCore(m_DatabasePDG->GetParticle(pname), 
+			       max_contamination_left, max_contamination_right);
 } // DelphesConfig::AddMassHypothesis()
+
+// -------------------------------------------------------------------------------------
+
+MomentumRange *EtaRange::GetMomentumRange(double min, double max)
+{
+  for(auto mrange: m_MomentumRanges) 
+    if (mrange->GetMin() == min && mrange->GetMax() == max)
+      return mrange;
+
+  auto mrange = new MomentumRange(min, max);
+  m_MomentumRanges.push_back(mrange);
+  
+  return mrange;
+} // EtaRange::GetMomentumRange()
+
+// -------------------------------------------------------------------------------------
+
+bool DelphesConfig::StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma)
+{
+  // Check that at least 'pdg' code is in order;
+  unsigned mdim = mrange->GetSigmaCount();
+
+  // This can not be for sure;
+  if (mdim == m_MassHypotheses.size()) return false;
+
+  if (pdg != m_MassHypotheses[mdim]->PdgCode()) return false;
+
+  mrange->AddSigmaValue(sigma);
+
+  return true;
+} // DelphesConfig::StoreSigmaEntry()
+
+// -------------------------------------------------------------------------------------
+
+void DelphesConfig::AddZeroSigmaEntries( void )
+{
+  for(auto erange: m_EtaRanges) 
+    for(auto mrange: erange->m_MomentumRanges) {
+      unsigned mdim = mrange->GetSigmaCount();
+
+      for(unsigned iq=mdim; iq<m_MassHypotheses.size(); iq++)
+	StoreSigmaEntry(mrange, m_MassHypotheses[iq]->PdgCode(), 0.0);
+    } //for erange..mrange
+} // DelphesConfig::AddZeroSigmaEntries()
+
+// -------------------------------------------------------------------------------------
+
+void DelphesConfig::Print( void )
+{
+  for(auto erange: m_EtaRanges) {
+    printf("eta %4.2f .. %4.2f\n", erange->GetMin(), erange->GetMax());
+ 
+    for(auto mrange: erange->m_MomentumRanges) {
+      printf("   momentum %4.2f .. %4.2f\n        sigma:", mrange->GetMin(), mrange->GetMax());
+      
+      for(unsigned iq=0; iq<mrange->GetSigmaCount(); iq++)
+	printf("      %5.2f (%4d)", mrange->GetSigma(iq), m_MassHypotheses[iq]->PdgCode());
+      printf("\n");
+    } //for mrange
+  } //for erange
+} // DelphesConfig::AddZeroSigmaEntries()
 
 // -------------------------------------------------------------------------------------
 
 EtaRange *DelphesConfig::AddEtaRange(double min, double max) 
 {
+  // First try to find already existing one;
+  for(auto erange: m_EtaRanges) 
+    if (erange->GetMin() == min && erange->GetMax() == max)
+      return erange;
+
   auto erange = new EtaRange(min, max);
   auto prev = m_EtaRanges.size() ? m_EtaRanges.back() : 0;
   if (prev && min != prev->GetMax()){

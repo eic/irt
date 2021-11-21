@@ -9,7 +9,10 @@ class TDatabasePDG;
 
 class MassHypothesis {
  public:
-  MassHypothesis(TParticlePDG *pdg): m_PDG(pdg) {};
+  MassHypothesis(TParticlePDG *pdg, double max_contamination_left, 
+		 double max_contamination_right): m_PDG(pdg),
+    m_MaxContaminationLeft(max_contamination_left), 
+    m_MaxContaminationRight(max_contamination_right) {};
   ~ MassHypothesis() {};
 
   double Mass( void ) const { return m_PDG->Mass(); };
@@ -17,6 +20,8 @@ class MassHypothesis {
 
  private:
   TParticlePDG *m_PDG;
+
+  double m_MaxContaminationLeft, m_MaxContaminationRight;
 };
 
 class MomentumRange {
@@ -48,6 +53,9 @@ class EtaRange {
  EtaRange(double min, double max): m_Min(min), m_Max(max) {
     if (min > max) std::swap(m_Min, m_Max);
   };
+
+  // A hack-like method, to populate PDG entries one by one;
+  MomentumRange *GetMomentumRange(double min, double max);
 
   // This will be the userland AddMomentumRange() wrapper;  
   template<typename... Args> MomentumRange *AddMomentumRange(double min, double max, Args... args) {
@@ -101,11 +109,17 @@ class DelphesConfig {
   DelphesConfig(const char *dname);
   ~DelphesConfig() {};
 
-  MassHypothesis *AddMassHypothesis(int pdg);
-  MassHypothesis *AddMassHypothesis(const char *pname);
+  MassHypothesis *AddMassHypothesis(int pdg, double max_contamination_left = 1.0, 
+				    double max_contamination_right = 1.0);
+  MassHypothesis *AddMassHypothesis(const char *pname, double max_contamination_left = 1.0, 
+				    double max_contamination_right = 1.0);
 
   EtaRange *AddEtaRange(double min, double max);
+  
+  bool StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma);
 
+  void AddZeroSigmaEntries( void );
+  void Print();
   int  Check();
   virtual int  Calculate() = 0;
   void Write();
@@ -122,12 +136,18 @@ class DelphesConfig {
   std::vector<MassHypothesis*> m_MassHypotheses;
 
  private:
-  MassHypothesis *AddMassHypothesisCore(TParticlePDG *pdg);
+  MassHypothesis *AddMassHypothesisCore(TParticlePDG *pdg, double max_contamination_left, 
+				    double max_contamination_right);
 
   void WriteMassHypothesis(FILE *fout, unsigned ih);
 
   double m_EtaMin, m_EtaMax;
   double m_MomentumMin, m_MomentumMax;
+
+ protected:
+  // Yes, this is a global parameter, so that all entries in the output table have 
+  // a consistent meaning;
+  bool m_EfficiencyContaminationMode;
 };
 
 #endif

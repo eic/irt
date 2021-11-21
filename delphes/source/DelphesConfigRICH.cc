@@ -29,36 +29,42 @@ int DelphesConfigRICH::Calculate( void )
 	if (!theta[ih]) sigma[ih] = 0.0;
       } //for ih
 
-      // Go through all pairs and calculate middle points; FIXME: will this work if 
-      // there was only one mass hypothesis?;
-      for(unsigned ih=0; ih<dim-1; ih++) {
-	double t1 = theta[ih], t2 = theta[ih+1], s1 = sigma[ih], s2 = sigma[ih+1];
+      if (m_EfficiencyContaminationMode) {
+	// In this case provide efficiency for the dagonal terms and contamination 
+	// for the off-diagonal ones;
 
-	t0[ih] = s1 && s2 ? (t1*s2*s2 + t2*s1*s1) / (s1*s1 + s2*s2) : 0.0;
-      } //for
-
-      // And now loop through all mass nodes again and calculate erf() tails which 
-      // should be subtracted from the default w=1, either on one or both sides;
-      for(unsigned ih=0; ih<dim; ih++) {
-	double l = 0.0, r = 0.0;
-
-	for(unsigned ip=0; ip<2; ip++) {
-	  int id = ih + ip;
-	  if (!id || id >= dim) continue;
-
-	  // Otherwise perhaps an unphysical value;
-	  if (t0[id-1]) {
-	    double diff = fabs(theta[ih] - t0[id-1]);
-	    (ip ? r : l) = (1.0 - erf(diff/(sqrt(2.)*sigma[ih])))/2;
-	  } //if
-	} //for ip
-
-	if (ih   >   0) 
-	  mrange->m_Matrix[ih*dim+ih-1] = l;
-	mrange  ->m_Matrix[ih*dim+ih  ] = 1.0 - l - r;
-	if (ih+1 < dim) 
-	  mrange->m_Matrix[ih*dim+ih+1] = r;
-      } //for ih
+      } else {
+	// Go through all pairs and calculate middle points; FIXME: will this work if 
+	// there was only one mass hypothesis?;
+	for(unsigned ih=0; ih<dim-1; ih++) {
+	  double t1 = theta[ih], t2 = theta[ih+1], s1 = sigma[ih], s2 = sigma[ih+1];
+	  
+	  t0[ih] = s1 && s2 ? (t1*s2*s2 + t2*s1*s1) / (s1*s1 + s2*s2) : 0.0;
+	} //for
+	
+	// And now loop through all mass nodes again and calculate erf() tails which 
+	// should be subtracted from the default w=1, either on one or both sides;
+	for(unsigned ih=0; ih<dim; ih++) {
+	  double l = 0.0, r = 0.0;
+	  
+	  for(unsigned ip=0; ip<2; ip++) {
+	    int id = ih + ip;
+	    if (!id || id >= dim) continue;
+	    
+	    // Otherwise perhaps an unphysical value;
+	    if (t0[id-1]) {
+	      double diff = fabs(theta[ih] - t0[id-1]);
+	      (ip ? r : l) = (1.0 - erf(diff/(sqrt(2.)*sigma[ih])))/2;
+	    } //if
+	  } //for ip
+	  
+	  if (ih   >   0) 
+	    mrange->m_Matrix[ih*dim+ih-1] = l;
+	  mrange  ->m_Matrix[ih*dim+ih  ] = 1.0 - l - r;
+	  if (ih+1 < dim) 
+	    mrange->m_Matrix[ih*dim+ih+1] = r;
+	} //for ih
+      } //if
     } //for mrange
   } //for erange
 
