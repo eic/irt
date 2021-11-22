@@ -16,11 +16,11 @@
 using namespace HepMC3;
 
 /** Generate single muon event with fixed three momentum **/
-void erich_hepmc_writer(const char* out_fname, int n_events)
+void drich_hepmc_pdg_writer(const char* out_fname, int n_events)
 {
   auto *DatabasePDG = new TDatabasePDG();
-  int pdg = 211;
-  auto *particle = DatabasePDG->GetParticle(pdg);
+  //int pdg = 211;
+  auto *pion = DatabasePDG->GetParticle(211), *kaon = DatabasePDG->GetParticle(321);
 
   WriterAscii hepmc_output(out_fname);
   int events_parsed = 0;
@@ -41,31 +41,28 @@ void erich_hepmc_writer(const char* out_fname, int n_events)
     GenParticlePtr p2 = std::make_shared<GenParticle>(
         FourVector(0.0, 0.0, 100.0, 100.004), 2212, 4); 
 
-    GenVertexPtr v1 = std::make_shared<GenVertex>();//FourVector(0,0,30,0));
+    GenVertexPtr v1 = std::make_shared<GenVertex>();
     v1->add_particle_in(p1);
     v1->add_particle_in(p2);
 
-    // type 1 is final state; 211: pion; FIXME: give a proper mass;
-    for(int iq=0; iq</*2*/1; iq++){  
-      //Double_t eta   = rdmn_gen->Uniform(-2.2, -2.0);
-      //Double_t eta   = rdmn_gen->Uniform(1.5, 1.6);//2.9, 3.0);//2.0, 2.1);
-      //Double_t th    = 2*std::atan(exp(-eta));
-      Double_t th    = rdmn_gen->Uniform(180.0-16.0, 180.0-14.0)*M_PI/180;
-      Double_t p     = rdmn_gen->Uniform(3.0, 3.1);
+    {
+      Double_t eta   = rdmn_gen->Uniform(3.00, 3.01);
+      Double_t th    = 2*std::atan(exp(-eta));
+      Double_t p     = rdmn_gen->Uniform(50.0, 50.1);
       Double_t phi   = rdmn_gen->Uniform(0.0, 2*M_PI);
-      //Double_t phi   = rdmn_gen->Uniform(-20.0, 20.0)*M_PI/180;
 
       Double_t px    = p * std::cos(phi) * std::sin(th);
       Double_t py    = p * std::sin(phi) * std::sin(th);
       Double_t pz    = p * std::cos(th);
 
-      //cout<<"px,py,pz: "<<px<<" "<<py<<" "<<pz<<endl;
+      auto particle = events_parsed%2 ? pion : kaon;
       GenParticlePtr pq = std::make_shared<GenParticle>(FourVector(
 								   px, py, pz,
 								   sqrt(p*p + pow(particle->Mass(), 2))),
-							pdg, 1);
+							particle->PdgCode(), 1);
       v1->add_particle_out(pq);
-    }//iq	
+    }
+
     evt.add_vertex(v1);
 
     if (events_parsed == 0) {

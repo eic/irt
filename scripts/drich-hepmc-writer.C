@@ -18,6 +18,10 @@ using namespace HepMC3;
 /** Generate single muon event with fixed three momentum **/
 void drich_hepmc_writer(const char* out_fname, int n_events)
 {
+  auto *DatabasePDG = new TDatabasePDG();
+  int pdg = 211;
+  auto *particle = DatabasePDG->GetParticle(pdg);
+
   WriterAscii hepmc_output(out_fname);
   int events_parsed = 0;
   GenEvent evt(Units::GEV, Units::MM);
@@ -43,11 +47,11 @@ void drich_hepmc_writer(const char* out_fname, int n_events)
 
     // type 1 is final state; 211: pion; FIXME: give a proper mass;
     for(int iq=0; iq</*2*/1; iq++){  
-      //Double_t eta   = rdmn_gen->Uniform(-2.2, -2.0);
+      Double_t eta   = rdmn_gen->Uniform(1.20, 1.21);
       //Double_t eta   = rdmn_gen->Uniform(1.5, 1.6);//2.9, 3.0);//2.0, 2.1);
-      //Double_t th    = 2*std::atan(exp(-eta));
-      Double_t th    = rdmn_gen->Uniform(15.0, 16.0)*M_PI/180;
-      Double_t p     = rdmn_gen->Uniform(12.0, 12.1);
+      Double_t th    = 2*std::atan(exp(-eta));
+      //Double_t th    = rdmn_gen->Uniform(3.0, 3.1)*M_PI/180;
+      Double_t p     = rdmn_gen->Uniform(30.0, 30.1);
       Double_t phi   = rdmn_gen->Uniform(0.0, 2*M_PI);
       //Double_t phi   = rdmn_gen->Uniform(-5.0+120, 5.0+120)*M_PI/180;
 
@@ -56,10 +60,11 @@ void drich_hepmc_writer(const char* out_fname, int n_events)
       Double_t pz    = p * std::cos(th);
 
       //cout<<"px,py,pz: "<<px<<" "<<py<<" "<<pz<<endl;
+      
       GenParticlePtr pq = std::make_shared<GenParticle>(FourVector(
 								   px, py, pz,
-								   sqrt(p*p + (0.140 * 0.140))),
-							211, 1);
+								   sqrt(p*p + pow(particle->Mass(), 2))),
+							pdg, 1);
       v1->add_particle_out(pq);
     }//iq	
     evt.add_vertex(v1);

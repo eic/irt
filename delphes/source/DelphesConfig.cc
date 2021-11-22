@@ -10,7 +10,8 @@
 DelphesConfig::DelphesConfig(const char *dname): 
   m_Name(dname),  
   m_EtaMin(0.0), m_EtaMax(0.0),
-  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false)
+  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false)//,
+  //m_PionThreshold(0.0), m_KaonThreshold(0.0), m_ProtonThreshold(0.0)
 {
   m_DatabasePDG = new TDatabasePDG();
 } // DelphesConfig::DelphesConfig()
@@ -104,17 +105,41 @@ void DelphesConfig::AddZeroSigmaEntries( void )
       for(unsigned iq=mdim; iq<m_MassHypotheses.size(); iq++)
 	StoreSigmaEntry(mrange, m_MassHypotheses[iq]->PdgCode(), 0.0);
     } //for erange..mrange
+
+  DetermineThresholds();
 } // DelphesConfig::AddZeroSigmaEntries()
+
+// -------------------------------------------------------------------------------------
+
+void DelphesConfig::DetermineThresholds( void )
+{
+  for(unsigned ih=0; ih<m_MassHypotheses.size(); ih++) {
+    auto hypo = m_MassHypotheses[ih];
+
+    // Find the smallest non-zero entry;
+    for(auto erange: m_EtaRanges) 
+      for(auto mrange: erange->m_MomentumRanges) {
+	double min = mrange->GetMin();
+	// Called from DelphesConfig::AddZeroSigmaEntries() internally -> all 
+	// sigma entries for all hypotheses must be present;
+	if (mrange->GetSigma(ih) && (!hypo->GetThreshold() || hypo->GetThreshold() > min))
+	  hypo->SetThreshold(min);
+      } //for erange..mrange
+
+    printf("@T@ %d -> %7.2f\n", hypo->GetThreshold());
+  } //for iq
+} // DelphesConfig::DetermineThresholds()
 
 // -------------------------------------------------------------------------------------
 
 void DelphesConfig::Print( void )
 {
   for(auto erange: m_EtaRanges) {
-    printf("eta %4.2f .. %4.2f\n", erange->GetMin(), erange->GetMax());
+    printf("@D@ eta %4.2f .. %4.2f\n", erange->GetMin(), erange->GetMax());
  
     for(auto mrange: erange->m_MomentumRanges) {
-      printf("   momentum %4.2f .. %4.2f\n        sigma:", mrange->GetMin(), mrange->GetMax());
+      printf("@D@       momentum %5.2f .. %5.2f -> sigma:", 
+	     mrange->GetMin(), mrange->GetMax());
       
       for(unsigned iq=0; iq<mrange->GetSigmaCount(); iq++)
 	printf("      %5.2f (%4d)", mrange->GetSigma(iq), m_MassHypotheses[iq]->PdgCode());
