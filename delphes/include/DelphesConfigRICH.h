@@ -13,6 +13,7 @@ class DelphesConfigRICH: public DelphesConfig {
   void SetRefractiveIndex   (double rindex) { m_Rindex = rindex; }
   void SetAdditionalSmearing(double value)  { m_AdditionalSmearing = value; }
 
+  //bool ApplyThresholdModeLogic() { return true; };
   int  Calculate();
 
  private:

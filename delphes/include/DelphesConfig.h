@@ -51,6 +51,9 @@ class MomentumRange {
   double GetSigma(unsigned ih) const { 
     return ih < m_SigmaValues.size() ? m_SigmaValues[ih] : 0.0; 
   };
+  double GetMeasurement(unsigned ih) const { 
+    return ih < m_MeasurementValues.size() ? m_MeasurementValues[ih] : 0.0; 
+  };
 
   double *m_Matrix;
 
@@ -68,7 +71,7 @@ class EtaRange {
     if (min > max) std::swap(m_Min, m_Max);
   };
 
-  // A hack-like method, to populate PDG entries one by one;
+  // A hack-like method, to populate PDG entries one by one; 
   MomentumRange *GetMomentumRange(double min, double max);
 
   // This will be the userland AddMomentumRange() wrapper;  
@@ -137,7 +140,8 @@ class DelphesConfig {
   void AddZeroSigmaEntries( void );
   void Print();
   int  Check();
-  virtual int  Calculate() = 0;
+  virtual int  Calculate()               = 0;
+  //virtual bool ApplyThresholdModeLogic() = 0;
   void Write();
 
  protected:

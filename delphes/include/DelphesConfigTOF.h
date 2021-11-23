@@ -38,6 +38,8 @@ class DelphesConfigTOF: public DelphesConfig {
   // TOF-specific call (input parameters -> sigma counts);
   int DoSigmaCalculations( void );
 
+  // In this case TOF measurement always exists -> no zero entries expected;
+  //bool ApplyThresholdModeLogic() { return false; };
   // Generic call (sigma -> efficiency);
   int Calculate();
   
