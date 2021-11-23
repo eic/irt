@@ -10,8 +10,9 @@
 DelphesConfig::DelphesConfig(const char *dname): 
   m_Name(dname),  
   m_EtaMin(0.0), m_EtaMax(0.0),
-  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false)//,
+  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false),
   //m_PionThreshold(0.0), m_KaonThreshold(0.0), m_ProtonThreshold(0.0)
+  m_PtMode(false)
 {
   m_DatabasePDG = new TDatabasePDG();
 } // DelphesConfig::DelphesConfig()
@@ -186,15 +187,15 @@ int DelphesConfig::Check( void )
 
     // First eta range: assign momentum range; 
     if (erange == m_EtaRanges.front()) {
-      m_MomentumMin = erange->FirstRange()->GetMin();
-      m_MomentumMax = erange->LastRange ()->GetMax();
+      m_MomentumMin = erange->FirstMomentumRange()->GetMin();
+      m_MomentumMax = erange->LastMomentumRange ()->GetMax();
       
       continue;
     } //if
     
     // Subsequent eta ranges: check that momentum range is the same;
-    if (erange->FirstRange()->GetMin() != m_MomentumMin || 
-	erange->LastRange() ->GetMax() != m_MomentumMax) 
+    if (erange->FirstMomentumRange()->GetMin() != m_MomentumMin || 
+	erange->LastMomentumRange() ->GetMax() != m_MomentumMax) 
       _ERROR_("Full momentum range should be the same in all eta ranges!");
 
     for(auto mrange: erange->m_MomentumRanges) 
@@ -210,7 +211,7 @@ int DelphesConfig::Check( void )
 void DelphesConfig::WriteMassHypothesis(FILE *fout, unsigned ih)
 {
   unsigned dim = m_MassHypotheses.size();
-  const char *pstr = "pt * cosh(eta)";
+  const char *pstr = m_PtMode ? "pt" : "pt * cosh(eta)";
 
   auto prev = ih                              ?     m_MassHypotheses[ih-1] : 0;
   auto hypo =                                       m_MassHypotheses[ih  ];

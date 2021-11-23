@@ -86,10 +86,10 @@ class EtaRange {
   double GetMax( void ) const { return m_Max; };
 
   unsigned GetMomentumRangeCount( void ) const { return m_MomentumRanges.size(); }
-  const MomentumRange *FirstRange( void ) const { 
+  const MomentumRange *FirstMomentumRange( void ) const { 
     return m_MomentumRanges.empty() ? 0 : m_MomentumRanges.front();
   };
-  const MomentumRange *LastRange( void ) const { 
+  const MomentumRange *LastMomentumRange( void ) const { 
     return m_MomentumRanges.empty() ? 0 : m_MomentumRanges.back();
   };
 
@@ -127,6 +127,7 @@ class DelphesConfig {
   
   bool StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma);
 
+  void UsePtMode( void ) { m_PtMode = true; };
   void AddZeroSigmaEntries( void );
   void Print();
   int  Check();
@@ -160,6 +161,8 @@ class DelphesConfig {
   // Yes, this is a global parameter, so that all entries in the output table have 
   // a consistent meaning;
   bool m_EfficiencyContaminationMode;
+
+  bool m_PtMode;
 };
 
 #endif
