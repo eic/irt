@@ -49,6 +49,8 @@ class DelphesConfigTOF: public DelphesConfig {
   double m_MagneticField;
 
   double m_MomentumResolutionA, m_MomentumResolutionB, m_PathLengthResolution;
+
+  double tof(double m, double p, double l);
 };
 
 #endif

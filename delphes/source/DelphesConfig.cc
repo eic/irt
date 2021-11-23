@@ -80,7 +80,8 @@ MomentumRange *EtaRange::GetMomentumRange(double min, double max)
 
 // -------------------------------------------------------------------------------------
 
-bool DelphesConfig::StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma)
+bool DelphesConfig::StoreSigmaEntry(MomentumRange *mrange, int pdg, double measurement, 
+				    double sigma)
 {
   // Check that at least 'pdg' code is in order;
   unsigned mdim = mrange->GetSigmaCount();
@@ -90,9 +91,16 @@ bool DelphesConfig::StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma
 
   if (pdg != m_MassHypotheses[mdim]->PdgCode()) return false;
 
-  mrange->AddSigmaValue(sigma);
+  mrange->AddSigmaValue(measurement, sigma);
 
   return true;
+} // DelphesConfig::StoreSigmaEntry()
+
+// -------------------------------------------------------------------------------------
+
+bool DelphesConfig::StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma)
+{
+  return StoreSigmaEntry(mrange, pdg, 0.0, sigma);
 } // DelphesConfig::StoreSigmaEntry()
 
 // -------------------------------------------------------------------------------------

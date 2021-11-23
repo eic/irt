@@ -38,8 +38,12 @@ class MomentumRange {
     if (min > max) std::swap(m_Min, m_Max);
   }; 
 
-  // Just fill the buffer;
+  // Just fill the buffer; FIXME: eventually will mess up with these two calls;
   void AddSigmaValue(double value) { m_SigmaValues.push_back(value); };
+  void AddSigmaValue(double measurement, double sigma) { 
+    m_MeasurementValues.push_back(measurement); 
+    m_SigmaValues.push_back(sigma); 
+  };
 
   double GetMin( void )             const { return m_Min; };
   double GetMax( void )             const { return m_Max; };
@@ -53,6 +57,7 @@ class MomentumRange {
  private:
   double m_Min, m_Max;
 
+  std::vector<double> m_MeasurementValues;
   std::vector<double> m_SigmaValues;
   MomentumRange::range m_Range;
 };
@@ -126,6 +131,7 @@ class DelphesConfig {
   EtaRange *AddEtaRange(double min, double max);
   
   bool StoreSigmaEntry(MomentumRange *mrange, int pdg, double sigma);
+  bool StoreSigmaEntry(MomentumRange *mrange, int pdg, double measurement, double sigma);
 
   void UsePtMode( void ) { m_PtMode = true; };
   void AddZeroSigmaEntries( void );
