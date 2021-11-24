@@ -42,19 +42,16 @@ int DelphesConfigDIRC::DoSigmaCalculations( void )
       if (2*r < m_InstallationRadius) continue;
 
       // Looks like one should take them in quadrature;
-      double sa = m_TrackerAngularResolutionA / p, sb = m_TrackerAngularResolutionB;
-      double sigma = sqrt(sa*sa + sb*sb);
+      double sa  = m_TrackerAngularResolutionA / p, sb = m_TrackerAngularResolutionB;
+      double str = sqrt(sa*sa + sb*sb);
 
       for(unsigned ih=0; ih<hdim; ih++) {
 	auto hypo = m_MassHypotheses[ih];
 	
-	auto info = dpf->GetInfo(abs(hypo->PdgCode()), p, theta*180/M_PI, sigma);
-	
-	// Just use sigma and central values;
-	double mean  = info.true_cangle;
-	double sigma = info.cctr;
-		
-	bool ret = StoreSigmaEntry(mrange, hypo->PdgCode(), mean, sigma);
+	auto info = dpf->GetInfo(abs(hypo->PdgCode()), p, theta*180/M_PI, str);
+			
+	// Just use central values and overall sigma from DrcPidFast code;
+	bool ret = StoreSigmaEntry(mrange, hypo->PdgCode(), info.true_cangle, info.cctr);
       } //for ih
     } //for ip
   } //for ie
