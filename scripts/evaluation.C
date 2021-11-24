@@ -1,64 +1,61 @@
 
-#define _DETECTOR_ "DRICH"
-//#define _DETECTOR_ "ERICH"
-#define _AEROGEL_
-//#define _USE_RECONSTRUCTED_TRACKS_
+//#define _DETECTOR_ "DRICH"
+#define _DETECTOR_ "ERICH"
 
-void evaluation(const char *dfname)
+#define _AEROGEL_
+
+//#define _NPE_REFERENCE_ 211
+#define _NPE_REFERENCE_ (11)
+//#define _NPE_REFERENCE_ 321
+
+void evaluation(const char *ifname, const char *ofname = 0)
 {
   // .root file with event tree;
-  auto fdata = new TFile(dfname);
-  if (!fdata) {
-    printf("input file '%s' does not exist\n", dfname);
+  auto ifdata = new TFile(ifname);
+  if (!ifdata) {
+    printf("input file '%s' does not exist\n", ifname);
     exit(0);
   } //if
-  TTree *t = dynamic_cast<TTree*>(fdata->Get("events"));
-  if (!t) {
-    printf("input file '%s' does not have \"events\" tree\n", dfname);
+  TTree *it = dynamic_cast<TTree*>(ifdata->Get("events"));
+  if (!it) {
+    printf("input file '%s' does not have \"events\" tree\n", ifname);
     exit(0);
   } //if
+
+  std::vector<double> thvector, npvector;
 
   auto np = new TH1D("np", "Photon count",            50,       0,       50);
 #ifdef _AEROGEL_
   unsigned id = 0;
   auto th = new TH1D("th", "Cherenkov theta",         50,     180,      200);
   auto ri = new TH1D("ri", "Refractive Index - 1.0",  50,   0.018,    0.020);
-  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -5,        5);
+  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,     -10,       10);
   //auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -1,        1);
 #else 
   unsigned id = 1;
-  auto th = new TH1D("th", "Cherenkov theta",         50,      35,       39);
+  auto th = new TH1D("th", "",         50,      35,       41);
+  auto tq = new TH1D("tq", "",         50,      35,       41);
   auto ri = new TH1D("ri", "Refractive Index - 1.0",  50, 0.00075,  0.00077);
-  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -2,        2);
+  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -2,        3);
+  //auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -5,        5);
 #endif
 
   // Use MC truth particles for a "main" loop;
   auto mctracks   = new std::vector<dd4pod::Geant4ParticleData>();
   auto rctracks   = new std::vector<eic::ReconstructedParticleData>();
   auto cherenkov  = new std::vector<eic::CherenkovParticleIDData>();
-  t->SetBranchAddress("mcparticles", &mctracks);
+  it->SetBranchAddress("mcparticles", &mctracks);
 
-  // FIXME: or whatever the branches are called;
-#ifdef _USE_RECONSTRUCTED_TRACKS_
-  t->SetBranchAddress("rcparticles", &rctracks);
-#endif
-  t->SetBranchAddress((TString(_DETECTOR_) + "PID").Data(),   &cherenkov);
+  it->SetBranchAddress((TString(_DETECTOR_) + "PID").Data(),   &cherenkov);
   auto options = new std::vector<eic::CherenkovPdgHypothesis>();
-  t->SetBranchAddress((TString(_DETECTOR_) + "PID_0").Data(), &options);
+  it->SetBranchAddress((TString(_DETECTOR_) + "PID_0").Data(), &options);
   auto angles  = new std::vector<eic::CherenkovThetaAngleMeasurement>();
-  t->SetBranchAddress((TString(_DETECTOR_) + "PID_1").Data(), &angles);
+  it->SetBranchAddress((TString(_DETECTOR_) + "PID_1").Data(), &angles);
 
   // Loop through all events;
   unsigned false_assignment_stat[2] = {0};
-  for(int ev=0; ev<t->GetEntries(); ev++) {
-    t->GetEntry(ev);
-
-#ifdef _USE_RECONSTRUCTED_TRACKS_
-    // First populate the reconstructed-to-simulated particle mapping table;
-    std::map<eic::Index, const eic::ReconstructedParticleData*> mc2rc;
-    for(const auto &rctrack: *rctracks) 
-      mc2rc[rctrack.mcID] = &rctrack;
-#endif
+  for(int ev=0; ev<it->GetEntries(); ev++) {
+    it->GetEntry(ev);
     
     // Then the Cherenkov-to-reconstructed mapping; FIXME: may want to use Cherenkov-to-simulated 
     // mapping to start with, for the debugging purposes;
@@ -66,26 +63,17 @@ void evaluation(const char *dfname)
     for(const auto &pid: *cherenkov) 
       rc2cherenkov[pid.recID] = &pid;
     
-    //printf("Here! %d\n", mctracks->size());
     // Loop through all MC tracks; 
     for(auto mctrack: *mctracks) {
       // FIXME: consider only primaries for now?;
       if (mctrack.g4Parent) continue;
 
-#ifdef _USE_RECONSTRUCTED_TRACKS_
-      // Find a matching reconstructed track;
-      auto rctrack = mc2rc.find(mctrack.ID) == mc2rc.end() ? 0 : mc2rc[mctrack.ID];
-      if (!rctrack) continue;
-
-      // Find a matching Cherenkov PID record;
-      auto cherenkov = rc2cherenkov.find(rctrack.ID) == rc2cherenkov.end() ? 0 : rc2cherenkov[rctrack.ID];
-#else
       auto cherenkov = rc2cherenkov.find(mctrack.ID) == rc2cherenkov.end() ? 0 : rc2cherenkov[mctrack.ID];
-#endif
       if (!cherenkov) continue;
 
       double pp = mctrack.ps.mag(), m = mctrack.mass;
-      //printf("%f %f\n", mctrack.mass, mctrack.ps.mag());
+
+      //printf("m=%5.3f p=%5.1f (%4d) \n", mctrack.mass, mctrack.ps.mag(), mctrack.pdgID);
 
       // Loop through all of the mass hypotheses available for this reconstructed track;
       {
@@ -97,42 +85,72 @@ void evaluation(const char *dfname)
 	  if (option.radiator != id) continue;
 
 	  // Skip electron hypothesis; of no interest here;
-	  if (abs(option.pdg) == 11) continue;
+	  //if (abs(option.pdg) == 11) continue;
 
-	  if (abs(option.pdg) == 211) np->Fill(option.npe);
+	  if (abs(option.pdg) == _NPE_REFERENCE_) {
+	    np->Fill(option.npe);
+
+	    if (ofname) npvector.push_back(option.npe);
+	  } //if
 
 	  if (!best || option.weight > best->weight) best = &option;
 	  printf("radiator %3d (pdg %5d): weight %7.2f, npe %7.2f\n", 
 		 option.radiator, option.pdg, option.weight, option.npe);
-	} //for
+	} //for ih
 	printf("\n");
 
 	// Check whether the true PDG got a highest score;
-	if (!best || best->pdg != mctrack.pdgID) 
-	  false_assignment_stat[best->npe >= 3 ? 0 : 1]++;
-      }
+	if (!best || best->pdg != mctrack.pdgID) false_assignment_stat[best->npe >= 0 ? 0 : 1]++;
 
-      // This assumes of course that at least one radiator was requested in juggler;
-      {
+	// This assumes of course that at least one radiator was requested in juggler;
 	double rindex = (*angles)[id].rindex, theta = (*angles)[id].theta;
 	double argument = sqrt(pp*pp + m*m)/(rindex*pp);
-	double thp = fabs(argument) <= 1.0 ? acos(argument) : theta;//sqrt(pp*pp + m*m)/(rindex*pp));
+	double thp = fabs(argument) <= 1.0 ? acos(argument) : theta;
 
 	th->Fill(1000*  theta);
-	dt->Fill(1000* (theta - thp));
-	ri->Fill(      rindex - 1.0);
-	printf("%f\n", rindex - 1.0);
+	/*if (mctrack.pdgID == 321)*/ dt->Fill(1000* (theta - thp));
+	ri->Fill(rindex - 1.0);
+	printf("<n> ~ %8.6f, <th> = %7.2f [mrad]\n", rindex - 1.0, 1000*thp);
+
+	if (ofname) thvector.push_back(theta - thp);
       }
     } //for track
   } //for ev
 
   printf("%3d (%3d) false out of %lld\n", false_assignment_stat[0],
-	 false_assignment_stat[1], t->GetEntries());
+	 false_assignment_stat[1], it->GetEntries());
 
-  auto cv = new TCanvas("cv", "", 1500, 500);
-  cv->Divide(4, 1);
-  cv->cd(1); np->Draw(); np->Fit("gaus");
-  cv->cd(2); th->Draw(); th->Fit("gaus");
-  cv->cd(3); ri->Draw(); ri->Fit("gaus");
-  cv->cd(4); dt->Draw(); dt->Fit("gaus");
+  if (ofname) {
+    ifdata->Close();
+
+    auto *ofdata = new TFile(ofname, "RECREATE");
+
+    if (!ofdata) {
+      printf("was not able to create output file '%s'\n", ofname);
+      exit(0);
+    } //if
+    auto *ot = new TTree("t", "My tree");
+
+    double thbff, npbff;
+    ot->Branch("th", &thbff, "th/D");
+    ot->Branch("np", &npbff, "np/D");
+
+    for(unsigned iq=0; iq<thvector.size(); iq++) {
+      thbff = thvector[iq];
+      npbff = npvector[iq];
+
+      ot->Fill();
+    } //for iq
+
+    ot->Write();
+    ofdata->Close();
+    exit(0);
+  } else {
+    auto cv = new TCanvas("cv", "", 1500, 500);
+    cv->Divide(4, 1);
+    cv->cd(1); np->Draw();       np->Fit("gaus");
+    cv->cd(2); th->Draw("SAME"); th->Fit("gaus");
+    cv->cd(3); ri->Draw();       ri->Fit("gaus");
+    cv->cd(4); dt->Draw();       dt->Fit("gaus");
+  } //if
 } // evaluation()

@@ -100,10 +100,12 @@ class CherenkovDetector: public TObject {
       auto s1 = radiator->GetFrontSide(isec);
       auto s2 = radiator->GetRearSide (isec);
 
+      //printf("Here-A! %f %f %f\n", x0[0], x0[1], x0[2]);
       TVector3 from, to;
       // Go backwards and ignore surface orientation mismatch;
       bool b1 = s1->GetCrossing(x0, -1*n0, &from, false);
       bool b2 = s2->GetCrossing(x0,    n0, &to);
+      //printf("Here-B %d %d\n", b1, b2);
       if (!b1 || !b2) continue;
 
       if ((x0 - from).Dot(to - x0) > 0.0) return radiator;
