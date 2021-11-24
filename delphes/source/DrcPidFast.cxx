@@ -3,14 +3,12 @@
 DrcPidFast::DrcPidFast(int barid, const char *fmap) {
 
   fMass[0] = 0.000511;
-  fMass[1] = 0.105658;
-  fMass[2] = 0.139570;
-  fMass[3] = 0.49368;
-  fMass[4] = 0.938272;
+  fMass[1] = 0.139570;
+  fMass[2] = 0.49368;
+  fMass[3] = 0.938272;
 
   // read Cherenkov track resolution map
-  //ReadMap("ctr_map_p1_0.95.root");
-  ReadMap(fmap);//"ctr_map_p1_0.95.root");
+  ReadMap(fmap);
 
   // multiple scattering for 17 mm thick radiator at 30 deg
   fMs_mom = new TF1("", "expo(0)+expo(2)+expo(4)");
@@ -38,19 +36,19 @@ void DrcPidFast::ReadMap(TString name) {
 DrcPidInfo DrcPidFast::GetInfo(int pdg, TVector3 mom, double track_err) {
   double p = mom.Mag();
   double theta = mom.Theta() * TMath::RadToDeg();
-  return GetInfo(pdg, p, theta, track_err);
+  return GetInfo(pdg, /*min, max,*/ p, theta, track_err);
 }
 
 DrcPidInfo DrcPidFast::GetInfo(int pdg, double p, double theta, double track_err) {
 
   // double theta = 2.0*atan(exp(-eta))*TMath::RadToDeg();
 
-  const int max = 5;
+  const int dim = 4;//5;
   DrcPidInfo info;
   int pid = get_pid(pdg);
 
   // set default values
-  for (int i = 0; i < max; i++) {
+  for (int i = 0; i < dim; i++) {
     info.probability[i] = 0.25;
     info.sigma[i] = 100;
   }
@@ -82,15 +80,19 @@ DrcPidInfo DrcPidFast::GetInfo(int pdg, double p, double theta, double track_err
 
   // 1.46907 - fused silica
   double true_cangle = acos(sqrt(p * p + fMass[pid] * fMass[pid]) / p / 1.46907);
+  info.true_cangle = true_cangle;
+  info.cctr        = cctr;
+
+  // FIXME: basically ignore this part;
   true_cangle += gRandom->Gaus(0, cctr);
 
   // return default values if momentum below Cherenkov threshold (true_cangle is NaN)
   if (true_cangle != true_cangle) return info;
 
   double cangle, sum = 0, fsum = 0;
-  double delta[max] = {0}, probability[max] = {0};
+  double delta[dim] = {0}, probability[dim] = {0};
 
-  for (int i = 0; i < max; i++) {
+  for (int i = 0; i < dim; i++) {
     cangle = acos(sqrt(p * p + fMass[i] * fMass[i]) / p / 1.46907);
     if (cangle != cangle) continue;
     delta[i] = fabs(cangle - true_cangle);
@@ -99,12 +101,14 @@ DrcPidInfo DrcPidFast::GetInfo(int pdg, double p, double theta, double track_err
     if (i == pid) info.cangle = cangle;
   }
   // normalization
-  for (int i = 0; i < max; i++) {
+  for (int i = 0; i < dim; i++) {
     if (delta[i] > 0) info.probability[i] = sum / delta[i];
     fsum += info.probability[i];
   }
-  for (int i = 0; i < max; i++) info.probability[i] /= fsum;
-  info.cctr = cctr;
+  for (int i = 0; i < dim; i++) info.probability[i] /= fsum;
+
+  //info.cctr        = cctr;
+  //info.true_cangle = true_cangle;
 
   return info;
 }
@@ -112,9 +116,8 @@ DrcPidInfo DrcPidFast::GetInfo(int pdg, double p, double theta, double track_err
 int DrcPidFast::get_pid(int pdg) {
   int pid = 0;
   if (pdg == 11) pid = 0;   // e
-  if (pdg == 13) pid = 1;   // mu
-  if (pdg == 211) pid = 2;  // pi
-  if (pdg == 321) pid = 3;  // K
-  if (pdg == 2212) pid = 4; // p
+  if (pdg == 211) pid = 1;//2;  // pi
+  if (pdg == 321) pid = 2;//3;  // K
+  if (pdg == 2212) pid = 3;//4; // p
   return pid;
 }

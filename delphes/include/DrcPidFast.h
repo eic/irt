@@ -16,10 +16,12 @@
 // sigma - deviation of the determined Cherenkov angle from expected in terms of Cherenkov track
 // resolution cangle - Cherenkov angle cctr -  combined Cherenkov track resolution
 struct DrcPidInfo {
-  double probability[5];
-  double sigma[5];
+  double probability[4];
+  double sigma[4];
   double cangle;
   double cctr;
+
+  double true_cangle;
 };
 
 class DrcPidFast {
@@ -48,7 +50,7 @@ class DrcPidFast {
 
  private:
   TH2F *fTrrMap;
-  double fMass[5];
+  double fMass[4];
   TF1 *fMs_mom, *fMs_thickness;
   double fMs_thickness_max;
 };

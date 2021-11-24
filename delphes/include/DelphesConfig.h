@@ -139,10 +139,10 @@ class DelphesConfig {
   void UsePtMode( void ) { m_PtMode = true; };
   void AddZeroSigmaEntries( void );
   void Print();
-  int  Check();
+  int  Check(bool rigorous = true);
   virtual int  Calculate()               = 0;
   //virtual bool ApplyThresholdModeLogic() = 0;
-  void Write();
+  void Write(bool check = true);
 
  protected:
   std::string m_Name;

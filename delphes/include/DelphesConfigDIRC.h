@@ -38,6 +38,7 @@ class DelphesConfigDIRC: public DelphesConfig {
     m_ParameterizationMap = std::string(fmap);
   };
 
+  int DoSigmaCalculations( void );
   // Generic call; here a direct interface to Roman's DrcPidFast;
   int Calculate();
   

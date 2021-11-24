@@ -180,7 +180,7 @@ EtaRange *DelphesConfig::AddEtaRange(double min, double max)
 
 // -------------------------------------------------------------------------------------
 
-int DelphesConfig::Check( void )
+int DelphesConfig::Check(bool rigorous)
 {
   if (m_EtaRanges.empty()) _ERROR_("No eta ranges defined!");
 
@@ -206,9 +206,10 @@ int DelphesConfig::Check( void )
 	erange->LastMomentumRange() ->GetMax() != m_MomentumMax) 
       _ERROR_("Full momentum range should be the same in all eta ranges!");
 
-    for(auto mrange: erange->m_MomentumRanges) 
-      if (mrange->GetSigmaCount() != m_MassHypotheses.size())
-	_ERROR_("Momentum range entry has wrong number of sigma values!"); 
+    if (rigorous)
+      for(auto mrange: erange->m_MomentumRanges) 
+	if (mrange->GetSigmaCount() != m_MassHypotheses.size())
+	  _ERROR_("Momentum range entry has wrong number of sigma values!"); 
   } //for erange
   
   return 0;
@@ -258,10 +259,11 @@ void DelphesConfig::WriteMassHypothesis(FILE *fout, unsigned ih)
 
 // -------------------------------------------------------------------------------------
 
-void DelphesConfig::Write( void )
+void DelphesConfig::Write(bool check)
 {
   // First check that the configuration is self-consistent;
-  if (Check() || Calculate()) return;
+  if (check && Check()) return;
+  if (Calculate()) return;
 
   auto fout = fopen((m_Name + ".tcl").c_str(), "w");
   if (!fout) {
