@@ -1,6 +1,6 @@
 #include "DrcPidFast.h"
 
-DrcPidFast::DrcPidFast(int barid) {
+DrcPidFast::DrcPidFast(int barid, const char *fmap) {
 
   fMass[0] = 0.000511;
   fMass[1] = 0.105658;
@@ -9,7 +9,8 @@ DrcPidFast::DrcPidFast(int barid) {
   fMass[4] = 0.938272;
 
   // read Cherenkov track resolution map
-  ReadMap("ctr_map_p1_0.95.root");
+  //ReadMap("ctr_map_p1_0.95.root");
+  ReadMap(fmap);//"ctr_map_p1_0.95.root");
 
   // multiple scattering for 17 mm thick radiator at 30 deg
   fMs_mom = new TF1("", "expo(0)+expo(2)+expo(4)");

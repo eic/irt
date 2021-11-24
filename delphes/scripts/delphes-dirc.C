@@ -1,6 +1,6 @@
 
 //
-// Units are [mrad];
+// Units are [mrad], [mm], [T];
 //
 // root -l delphes_dirc.C
 //
@@ -23,36 +23,26 @@ void delphes_dirc( void )
   dirc->AddMassHypothesis("proton");
 #endif
 
-  // Define t0 and detector time resolution is [ps];
-  //dirc->SetT0Resolution        (20.00);
-  //dirc->SetDetectorResolution  (30.00);
-  // dp/p ~ 0.02% * p + 0.5%; take the proposal draft TEMPLATE data; assume holds for Pt;
-
-  // Assume canonic 0.5mrad for the moment;
-  dirc->SetTrackerAngularResolution(0.500);
-
-  // Units are [mm] throughout the code;
-  //dirc->SetPathLengthResolution(1.000);
-
-  // Installation radius in [mm]; constant magnetic field in [T];
-  //dirc->SetInstallationRadius  (500.0);
-  //dirc->SetMagneticField       (3.000);
+  // d(theta) parameterization as taken from Wenqing's 11/23/21 slides, roughly 
+  // averaged over eta;
+  dirc->SetTrackerAngularResolution(0.9, 0.1);
 
   // eta and momentum range and binning; 
-  dirc->SetEtaRange     (-1.05, 1.05,  10);
+  dirc->SetEtaRange     (-1.64, 1.25,  10);
   // Do not mind to use Pt rather than 1/Pt bins; [GeV/c];
 #ifdef _E_PI_SEPARATION_MODE_
-  dirc->SetMomentumRange( 0.22, 0.45,  10);
+  dirc->SetMomentumRange( 0.44, 1.50,  10);
 #else
-  dirc->SetMomentumRange( 0.22, 2.20,  10);
+  dirc->SetMomentumRange( 0.44, 7.00,  10);
 #endif
 
-  // This input is sufficient to allocate the internal tables and calculate 
-  // time of flight for various mass hypotheses;
-  //dirc->DoSigmaCalculations();
-  
+  // Installation radius in [mm]; constant magnetic field in [T];
+  dirc->SetInstallationRadius  (1000.0);
+  dirc->SetMagneticField       ( 3.000);
+
+  dirc->SetParameterizationMap("./ctr_map_p1_0.95.root");
+
   // This is again some generic stuff;
-  //dirc->Print();
-  //dirc->Write();
+  dirc->Write();
   exit(0);
 } // delphes_dirc()

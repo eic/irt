@@ -6,24 +6,22 @@
 
 class DelphesConfigDIRC: public DelphesConfig {
  public:
- DelphesConfigDIRC(const char *dname): DelphesConfig(dname), 
+ DelphesConfigDIRC(const char *dname): DelphesConfig(dname), m_InstallationRadius(0.0),
     m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
     m_EtaBinCount(0), m_MomentumBinCount(0), 
-    m_TrackerAngularResolutionA(0.0), m_TrackerAngularResolutionB(0.0) {};
+    m_TrackerAngularResolutionA(0.0), m_TrackerAngularResolutionB(0.0), 
+    m_MagneticField(0.0) {};
   ~DelphesConfigDIRC() {};
   
-  //void SetT0Resolution        (double value)     { m_T0Resolution         = value; }
-  // dp/p ~ a*p + b; either in momentum or in Pt;
-  //void SetMomentumResolution(double a, double b) { 
-  //m_MomentumResolutionA = a; m_MomentumResolutionB = b;
-  //};
-  //void SetDetectorResolution  (double value)     { m_DetectorResolution   = value; }
-
   // d(theta) ~ a/p + b; 
   void SetTrackerAngularResolution(double a, double b) { 
     m_TrackerAngularResolutionA = a; 
     m_TrackerAngularResolutionB = b; 
   };
+
+  // FIXME: unify TOF and DIRC;
+  void SetInstallationRadius  (double value)     { m_InstallationRadius   = value; }
+  void SetMagneticField       (double value)     { m_MagneticField        = value; }
 
   void SetEtaRange(double min, double max, unsigned ebins) {
     m_EtaMin = min;
@@ -36,16 +34,15 @@ class DelphesConfigDIRC: public DelphesConfig {
     m_MomentumBinCount = ebins;
   };   
 
-  // TOF-specific call (input parameters -> sigma counts);
-  //int DoSigmaCalculations( void );
+  void SetParameterizationMap(const char *fmap) {
+    m_ParameterizationMap = std::string(fmap);
+  };
 
-  // In this case TOF measurement always exists -> no zero entries expected;
-  //bool ApplyThresholdModeLogic() { return false; };
-  // Generic call (sigma -> efficiency);
+  // Generic call; here a direct interface to Roman's DrcPidFast;
   int Calculate();
   
  private:
-  //double m_T0Resolution, m_DetectorResolution, m_InstallationRadius;
+  double m_InstallationRadius;
   double m_EtaMin, m_EtaMax;
   double m_MomentumMin, m_MomentumMax;
   unsigned m_EtaBinCount, m_MomentumBinCount;
@@ -53,9 +50,7 @@ class DelphesConfigDIRC: public DelphesConfig {
 
   double m_TrackerAngularResolutionA, m_TrackerAngularResolutionB;
 
-  //double m_MomentumResolutionA, m_MomentumResolutionB, m_PathLengthResolution;
-
-  //double tof(double m, double p, double l);
+  std::string m_ParameterizationMap;
 };
 
 #endif

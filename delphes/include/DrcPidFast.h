@@ -28,7 +28,7 @@ class DrcPidFast {
 
   // barid = 0 for 17 mm thickness of the radiator
   // barid = 1 for 10 mm thickness of the radiator
-  DrcPidFast(int barid = 0);
+  DrcPidFast(int barid /*= 0*/, const char *fmap);
   ~DrcPidFast() {}
 
   // read Cherenkov track resolution map from a file
@@ -44,8 +44,9 @@ class DrcPidFast {
   DrcPidInfo GetInfo(int pdg, double p, double theta, double track_err = 0);
   TH2F *GetTrrMap() { return fTrrMap; }
 
- private:
   int get_pid(int pdg);
+
+ private:
   TH2F *fTrrMap;
   double fMass[5];
   TF1 *fMs_mom, *fMs_thickness;
