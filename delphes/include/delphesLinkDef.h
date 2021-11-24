@@ -8,5 +8,6 @@
 #pragma link C++ class DelphesConfig+;
 #pragma link C++ class DelphesConfigRICH+;
 #pragma link C++ class DelphesConfigTOF+;
+#pragma link C++ class DelphesConfigDIRC+;
 
 #endif
