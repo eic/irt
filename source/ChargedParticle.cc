@@ -51,6 +51,8 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	bool all_converged = true;
 	IRTSolution solutions[zdim+1];
 	
+	photon->m_Phi[radiator] = 0.0;
+
 	for(unsigned iq=0; iq<zdim+1; iq++) {
 	  auto &solution = solutions[iq] = irt->Solve(radiator->m_Locations[iq].first,
 		       // FIXME: give beam line as a parameter;
@@ -59,16 +61,21 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	    all_converged = false;
 	    break;
 	  } //if
+
+	  photon->m_Phi[radiator] += solution.GetPhi();
 	} //for iq
 	
 	if (!all_converged) continue;
 	
+	photon->m_Phi[radiator] /= (zdim+1);
+
 	for(unsigned iq=0; iq<zdim; iq++) {
 	  auto &s0 = solutions[iq], &s1 = solutions[iq+1];
 	  
 	  // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
 	  // in the previous loop; FIXME: add some smearing later;
 	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), fabs(cos(s0.GetPhi()))));
 	} //for iq
       }
     } //for rhistory
