@@ -47,11 +47,12 @@ void erich_hepmc_writer(const char* out_fname, int n_events)
 
     // type 1 is final state; 211: pion; FIXME: give a proper mass;
     for(int iq=0; iq</*2*/1; iq++){  
-      //Double_t eta   = rdmn_gen->Uniform(-2.2, -2.0);
+      Double_t eta   = rdmn_gen->Uniform(-2.0, -1.9);
+      //Double_t eta   = rdmn_gen->Uniform(1.9, 2.0);//-2.0, -1.9);
       //Double_t eta   = rdmn_gen->Uniform(1.5, 1.6);//2.9, 3.0);//2.0, 2.1);
-      //Double_t th    = 2*std::atan(exp(-eta));
-      Double_t th    = rdmn_gen->Uniform(180.0-16.0, 180.0-14.0)*M_PI/180;
-      Double_t p     = rdmn_gen->Uniform(3.0, 3.1);
+      Double_t th    = 2*std::atan(exp(-eta));
+      //Double_t th    = rdmn_gen->Uniform(180.0-16.0, 180.0-14.0)*M_PI/180;
+      Double_t p     = rdmn_gen->Uniform(10.0, 10.1);
       Double_t phi   = rdmn_gen->Uniform(0.0, 2*M_PI);
       //Double_t phi   = rdmn_gen->Uniform(-20.0, 20.0)*M_PI/180;
 

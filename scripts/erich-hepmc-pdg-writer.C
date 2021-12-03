@@ -1,5 +1,5 @@
 //
-// root -l 'rich-hepmc-writer.cxx("out.hepmc", 100)'
+// root -l 'erich-hepmc-pdg-writer.cxx("out.hepmc", 100)'
 //
 
 #include "HepMC3/GenEvent.h"
@@ -16,11 +16,11 @@
 using namespace HepMC3;
 
 /** Generate single muon event with fixed three momentum **/
-void drich_hepmc_pdg_writer(const char* out_fname, int n_events)
+void erich_hepmc_pdg_writer(const char* out_fname, int n_events)
 {
   auto *DatabasePDG = new TDatabasePDG();
   //int pdg = 211;
-  auto *pion = DatabasePDG->GetParticle(211), *kaon = DatabasePDG->GetParticle(321);
+  auto *pion = DatabasePDG->GetParticle(211);//, *kaon = DatabasePDG->GetParticle(321);
 
   WriterAscii hepmc_output(out_fname);
   int events_parsed = 0;
@@ -46,16 +46,17 @@ void drich_hepmc_pdg_writer(const char* out_fname, int n_events)
     v1->add_particle_in(p2);
 
     {
-      Double_t eta   = rdmn_gen->Uniform(2.40, 2.41);
+      //Double_t eta   = rdmn_gen->Uniform(-2.41, -2.40);
+      Double_t eta   = rdmn_gen->Uniform(-1.71, -1.70);
       Double_t th    = 2*std::atan(exp(-eta));
-      Double_t p     = rdmn_gen->Uniform(50.0, 50.1);
+      Double_t p     = rdmn_gen->Uniform(10.0, 10.1);
       Double_t phi   = rdmn_gen->Uniform(0.0, 2*M_PI);
 
       Double_t px    = p * std::cos(phi) * std::sin(th);
       Double_t py    = p * std::sin(phi) * std::sin(th);
       Double_t pz    = p * std::cos(th);
 
-      auto particle = events_parsed%2 ? pion : kaon;
+      auto particle = pion;//events_parsed%2 ? pion : kaon;
       GenParticlePtr pq = std::make_shared<GenParticle>(FourVector(
 								   px, py, pz,
 								   sqrt(p*p + pow(particle->Mass(), 2))),

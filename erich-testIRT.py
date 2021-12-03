@@ -32,7 +32,9 @@ qe_data = [
 ]
 
 radiators = [
-    "Aerogel zbins=1 smearing=uniform 3mrad rindex=1.0190"
+    #"Aerogel zbins=10 smearing=uniform 12mrad rindex=1.0190"
+    #"Aerogel zbins=10 smearing=gaussian 4mrad rindex=1.0190"
+    "Aerogel zbins=10 smearing=gaussian 4mrad rindex=1.0190 attenuation[mm]=48.0"
 ]
 
 podioinput = PodioInput(
@@ -68,7 +70,7 @@ ApplicationMgr(
         TopAlg = [podioinput, irtrec, out],
         EvtSel = 'NONE',
         # Process that many events;
-        EvtMax = 500,
+        EvtMax = 5000,
         ExtSvc = [podioevent],
         OutputLevel = DEBUG,
         PluginDebugLevel = 2

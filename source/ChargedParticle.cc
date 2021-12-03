@@ -47,9 +47,17 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       
       TVector3 phx = photon->GetDetectionPosition();
       
+      // Get effective attenuation length for this radiator, as well as the 
+      // parameterization of its rear surface in this particular sector; this is
+      // not really a clean procedure for dRICH aerogel, but should be good enough 
+      // in most part of the cases;
+      double attenuation = radiator->GetReferenceAttenuationLength();
+      auto rear = radiator->GetRearSide(irt->GetSector());//photon->GetVolumeCopy());
+
       {
 	bool all_converged = true;
 	IRTSolution solutions[zdim+1];
+	double weights[zdim+1] = {0.0};
 	
 	photon->m_Phi[radiator] = 0.0;
 
@@ -63,6 +71,18 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  } //if
 
 	  photon->m_Phi[radiator] += solution.GetPhi();
+
+	  if (attenuation) {
+	    TVector3 from = radiator->m_Locations[iq].first, to;
+	    bool ok = rear->GetCrossing(from, solution.m_Direction, &to);
+	    if (ok) {
+	      double length = (to - from).Mag();
+	      //printf("%02d -> %7.2f\n", iq, radiator->m_Locations[iq].first.z());
+	      //weights[iq] = 1.0;
+	      weights[iq] = exp(-length / attenuation);
+	    } //if
+	  } else
+	    weights[iq] = 1.0;
 	} //for iq
 	
 	if (!all_converged) continue;
@@ -74,7 +94,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  
 	  // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
 	  // in the previous loop; FIXME: add some smearing later;
-	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
+	  //printf("%2d -> %7.3f\n", iq, weights[iq]);
+	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 
+							    (weights[iq] + weights[iq+1])/2));//1.0));
 	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), fabs(cos(s0.GetPhi()))));
 	} //for iq
       }

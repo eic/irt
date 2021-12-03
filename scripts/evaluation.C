@@ -4,8 +4,8 @@
 
 #define _AEROGEL_
 
-//#define _NPE_REFERENCE_ 211
-#define _NPE_REFERENCE_ (11)
+#define _NPE_REFERENCE_ 211
+//#define _NPE_REFERENCE_ (11)
 //#define _NPE_REFERENCE_ 321
 
 void evaluation(const char *ifname, const char *ofname = 0)
@@ -36,9 +36,10 @@ void evaluation(const char *ifname, const char *ofname = 0)
   auto th = new TH1D("th", "",         50,      35,       41);
   auto tq = new TH1D("tq", "",         50,      35,       41);
   auto ri = new TH1D("ri", "Refractive Index - 1.0",  50, 0.00075,  0.00077);
-  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -2,        3);
+  auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -3,        3);
   //auto dt = new TH1D("dt", "Cherenkov theta diff",    50,      -5,        5);
 #endif
+  auto wl = new TH1D("wl", "Wave length",             50,     350,      900);
 
   // Use MC truth particles for a "main" loop;
   auto mctracks   = new std::vector<dd4pod::Geant4ParticleData>();
@@ -100,16 +101,17 @@ void evaluation(const char *ifname, const char *ofname = 0)
 	printf("\n");
 
 	// Check whether the true PDG got a highest score;
-	if (!best || best->pdg != mctrack.pdgID) false_assignment_stat[best->npe >= 0 ? 0 : 1]++;
+	if (!best || best->pdg != mctrack.pdgID) false_assignment_stat[best->npe >= 5 ? 0 : 1]++;
 
 	// This assumes of course that at least one radiator was requested in juggler;
-	double rindex = (*angles)[id].rindex, theta = (*angles)[id].theta;
+	double rindex = (*angles)[id].rindex, theta = (*angles)[id].theta, lambda = (*angles)[id].wavelength;
 	double argument = sqrt(pp*pp + m*m)/(rindex*pp);
 	double thp = fabs(argument) <= 1.0 ? acos(argument) : theta;
 
-	th->Fill(1000*  theta);
+	th->Fill(1000 * theta);
 	/*if (mctrack.pdgID == 321)*/ dt->Fill(1000* (theta - thp));
 	ri->Fill(rindex - 1.0);
+	wl->Fill(lambda);//rindex - 1.0);
 	printf("<n> ~ %8.6f, <th> = %7.2f [mrad]\n", rindex - 1.0, 1000*thp);
 
 	if (ofname) thvector.push_back(theta - thp);
@@ -146,11 +148,12 @@ void evaluation(const char *ifname, const char *ofname = 0)
     ofdata->Close();
     exit(0);
   } else {
-    auto cv = new TCanvas("cv", "", 1500, 500);
-    cv->Divide(4, 1);
+    auto cv = new TCanvas("cv", "", 1700, 500);
+    cv->Divide(5, 1);
     cv->cd(1); np->Draw();       np->Fit("gaus");
     cv->cd(2); th->Draw("SAME"); th->Fit("gaus");
     cv->cd(3); ri->Draw();       ri->Fit("gaus");
     cv->cd(4); dt->Draw();       dt->Fit("gaus");
+    cv->cd(5); wl->Draw();       //dt->Fit("gaus");
   } //if
 } // evaluation()

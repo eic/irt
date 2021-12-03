@@ -132,6 +132,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	  auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
 			     sin(solution.m_Theta)*sin(solution.m_Phi), 
 			     cos(solution.m_Theta));
+	  solution.m_Direction = nn;
 	  nn.Rotate(slope, axis); 
 
 	  solution.m_Theta = nn.Theta();

@@ -20,16 +20,18 @@ class CherenkovRadiator: public TObject {
   // (at the sector boundary), while there is no good reason to separate these contributions;
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
   m_LogicalVolume(volume), m_Material(material), 
-    m_ReferenceRefractiveIndex(0.0), //+m_ReferenceAbsorbtionLength(0.0), 
+    m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
     m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
     m_GaussianSmearing(false) {};
   ~CherenkovRadiator() {};
 
-  double n( void ) const { return m_ReferenceRefractiveIndex; };
+  double n( void )                               const { return m_ReferenceRefractiveIndex; };
+  double GetReferenceAttenuationLength( void )   const { return m_ReferenceAttenuationLength; };
 
-  void SetReferenceRefractiveIndex(double n) { m_ReferenceRefractiveIndex = n; };
+  void SetReferenceRefractiveIndex(double n)   { m_ReferenceRefractiveIndex   = n; };
+  void SetReferenceAttenuationLength(double l) { m_ReferenceAttenuationLength = l; };
 
-  const G4RadiatorMaterial *GetMaterial( void ) const { return m_Material; };
+  const G4RadiatorMaterial *GetMaterial( void )  const { return m_Material; };
 
   ParametricSurface *GetFrontSide(unsigned path) {
     if (m_Borders.find(path) == m_Borders.end()) return 0;
@@ -57,6 +59,7 @@ class CherenkovRadiator: public TObject {
   // Refractive index calculated for some fixed reference wave length (supposedly the average 
   // one as seen on the detected photon wave length plot);
   double m_ReferenceRefractiveIndex;
+  double m_ReferenceAttenuationLength;
 
   TString m_AlternativeMaterialName;
 
@@ -90,7 +93,7 @@ class CherenkovRadiator: public TObject {
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
-  ClassDef(CherenkovRadiator, 4);
+  ClassDef(CherenkovRadiator, 5);
 };
 
 #endif
