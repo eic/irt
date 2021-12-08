@@ -46,15 +46,16 @@ class IRT: public TObject {
 
   unsigned GetSector( void ) const { return m_Sector; };
 
+  inline OpticalBoundary *tail( void ) const { 
+    return _m_OpticalBoundaries.size() ? GetOpticalBoundary(_m_OpticalBoundaries.size()-1) : 0;
+  };
+
  private:
   bool Transport(const TVector3 &xfrom, const TVector3 &nfrom); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
     //return (id < _m_OpticalBoundaries.size() ? _m_OpticalBoundaries[id] : 0);
-  };
-  inline OpticalBoundary *tail( void ) const { 
-    return _m_OpticalBoundaries.size() ? GetOpticalBoundary(_m_OpticalBoundaries.size()-1) : 0;
   };
 
   // FIXME: this is not the right place for this variable;

@@ -56,7 +56,7 @@ irtrec = IRTAlgorithm(
         # Rebin the QE in that many equidistant bins internally;
         QEbins="100",
         # SiPM geometric fill factor and "safety factor" for the photon count estimates;
-        GeometricEfficiency="1.00",
+        #GeometricEfficiency="1.00",
         SafetyFactor="0.70",
         )
 
