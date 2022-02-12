@@ -47,7 +47,7 @@ irtrec = IRTAlgorithm(
         # Input collections: MC truth tracks and DRICH raw hits (photons);
         inputMCParticles="mcparticles",
 
-        # DRICH optics configuration produced by DRich_geo.cpp code along with the dd4hep XML file;
+        # DRICH optics configuration produced by DRICH_geo.cpp code along with the dd4hep XML file;
         ConfigFile="drich-config.root",
         Radiators=[ (r) for r in radiators ],
 

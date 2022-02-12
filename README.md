@@ -20,7 +20,7 @@ as well as a set of spherical and / or flat mirrors.
 
  * [Introduction](#introduction)
  * [Prerequisites and installation](#prerequisites-and-installation)
- * [ERICH example configuration](#erich-example-configuration)
+ * [pfRICH example configuration](#pfrich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
  * [Juggler reconstruction pass](#juggler-reconstruction-pass)
@@ -140,15 +140,15 @@ ln -s /tmp/ATHENA/share/ip6/ip6 .
 ln -s /tmp/ATHENA/share/athena/compact .
 
 # These two just to simplify 'npsim' command line:
-ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
-ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
+ln -s /tmp/ATHENA/share/athena/compact/pfrich.xml .
+ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/pfrich_only.xml .
 
-# Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
-npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+# Eventually run 'npsim' for 100 events with 8 GeV pions, in a pfRICH-only geometry;
+npsim --compactFile=./pfrich_only.xml --runType=run -G -N=100 --outputFile=./pfrich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
 
 ```
 
-  A pair of ROOT output files is produced: eRICH detector optics configuration and 
+  A pair of ROOT output files is produced: pfRICH detector optics configuration and 
 a file with GEANT tracks and photon hits.
 
 <br/>
@@ -162,7 +162,7 @@ and low wavelength cutoff.
 ```
 cd /tmp/ATHENA/sandbox
 # Loop through the events in the raw GEANT4 hit file. See [reader.cc](evaluation/reader.cc)
-/tmp/ATHENA/bin/reader erich-data.root erich-config.root
+/tmp/ATHENA/bin/reader pfrich-data.root pfrich-config.root
 
 ```
 
@@ -186,11 +186,11 @@ make -j1 install
 
 ```
 cd /tmp/ATHENA/sandbox
-# Run Juggler with a simplified erich-testIRT.py options file provided with IRT distribution; 
-xenv -x ../Juggler.xenv gaudirun.py ../irt/erich-testIRT.py
+# Run Juggler with a simplified pfrich-testIRT.py options file provided with IRT distribution; 
+xenv -x ../Juggler.xenv gaudirun.py ../irt/pfrich-testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
-/tmp/ATHENA/bin/evaluation erich-reco.root
+/tmp/ATHENA/bin/evaluation pfrich-reco.root
 
 ```
 
@@ -198,7 +198,7 @@ DRICH case
 ----------
 
 It is assumed that 'athena/ip6/compact' links in /tmp/ATHENA/sandbox directory are created already.
-The rest is pretty much similar to the ERICH case, except for perhaps a .C script usage instead 
+The rest is pretty much similar to the pfRICH case, except for perhaps a .C script usage instead 
 of a .cc executable:
 
 ```

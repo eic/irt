@@ -21,7 +21,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   if (dtname) 
     detector = geometry->GetDetector(dtname);
   else {
-    // Assume a single detector (ERICH or DRICH);
+    // Assume a single detector (PFRICH or DRICH);
     auto &detectors = geometry->GetDetectors();
     if (detectors.size() != 1) {
       printf("More than one detector in the provided IRT geometry config .root file!\n");
@@ -59,7 +59,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
   //auto acrylic  = detector->GetRadiator("Filter");
-  // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
+  // Assume the reference value was close enough in PFRICH_geo.cpp; since QE was not accounted, 
   // this may not be true; 
   gas    ->m_AverageRefractiveIndex = gas    ->n();
   aerogel->m_AverageRefractiveIndex = 1.020;//aerogel->n();
@@ -78,8 +78,8 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   // TTree interface variable;
   auto event = new CherenkovEvent();
 
-  // Use MC truth particles, and deal with just eRICH hits here; however the interface 
-  // should work for combinations like eRICH+DIRC, eventually; 
+  // Use MC truth particles, and deal with just pfRICH hits here; however the interface 
+  // should work for combinations like pfRICH+DIRC, eventually; 
   std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
   std::vector<dd4pod::PhotoMultiplierHitData> *hits   = new std::vector<dd4pod::PhotoMultiplierHitData>();
   t->SetBranchAddress("mcparticles", &tracks);
@@ -189,7 +189,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 	auto &vtx = track.vs, &p = track.ps;
 	auto x0 = TVector3(vtx.x, vtx.y, vtx.z), p0 = TVector3(p.x, p.y, p.z), n0 = p0.Unit();
 
-	// So, give the algorithm aerogel surface boundaries as encoded in ERich_geo.cpp;
+	// So, give the algorithm aerogel surface boundaries as encoded in PFRICH_geo.cpp;
 	TVector3 from, to;
 	aerogel->GetFrontSide(0)->GetCrossing(x0, n0, &from);
 	aerogel->GetRearSide (0)->GetCrossing(x0, n0, &to);

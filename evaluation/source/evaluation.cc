@@ -44,9 +44,9 @@ int main(int argc, char** argv)
 #ifdef _USE_RECONSTRUCTED_TRACKS_
   t->SetBranchAddress("rcparticles", &rctracks);
 #endif
-  t->SetBranchAddress("ERICHPID",   &cherenkov);
+  t->SetBranchAddress("PFRICHPID",   &cherenkov);
   auto options = new std::vector<eic::CherenkovPdgHypothesis>();
-  t->SetBranchAddress("ERICHPID_0", &options);
+  t->SetBranchAddress("PFRICHPID_0", &options);
 
   // Loop through all events;
   unsigned false_assignment_stat = 0;

@@ -5,14 +5,14 @@ from Configurables import ApplicationMgr, EICDataSvc, PodioOutput, GeoSvc
 from Configurables import PodioInput
 from Configurables import Jug__PID__IRTAlgorithm as IRTAlgorithm 
 
-# Well, for now only need eRICH geometry for this example;
-geo_service = GeoSvc("GeoSvc", detectors=["erich_only.xml"])
+# Well, for now only need pfRICH geometry for this example;
+geo_service = GeoSvc("GeoSvc", detectors=["pfrich_only.xml"])
 
 # Input file after 'npsim' pass;
-podioevent = EICDataSvc("EventDataSvc", inputs=["erich-data.root"])
+podioevent = EICDataSvc("EventDataSvc", inputs=["pfrich-data.root"])
 
 # S13660-3050AE-08 SiPM quantum efficiency [(wavelength [nm], q.e.)]
-# Note: this is consistent with S13361-3050AE-08 (for eRICH)
+# Note: this is consistent with S13361-3050AE-08 (for pfRICH)
 qe_data = [
     (325, 0.04),
     (340, 0.10),
@@ -39,18 +39,18 @@ radiators = [
 
 podioinput = PodioInput(
         "PodioReader",
-        # Input collections: MC truth tracks and eRICH raw hits (photons);
-        collections=["mcparticles", "ERICHHits"],
+        # Input collections: MC truth tracks and pfRICH raw hits (photons);
+        collections=["mcparticles", "PFRICHHits"],
         OutputLevel=DEBUG
         )
 
 irtrec = IRTAlgorithm(
-        # Input collections: MC truth tracks and eRICH raw hits (photons);
+        # Input collections: MC truth tracks and pfRICH raw hits (photons);
         inputMCParticles="mcparticles",
 
-        #Detector="ERICH",
-        # eRICH optics configuration produced by ERich_geo.cpp code along with the dd4hep XML file;
-        ConfigFile="erich-config.root",
+        #Detector="PFRICH",
+        # pfRICH optics configuration produced by PFRICH_geo.cpp code along with the dd4hep XML file;
+        ConfigFile="pfrich-config.root",
         Radiators=[ (r) for r in radiators ],
 
         # SiPM PDE; FIXME: units.eV coefficient gives extra x1000 (?);
@@ -62,8 +62,8 @@ irtrec = IRTAlgorithm(
         SafetyFactor="0.70",
         )
 
-# Output ROOT file; keep the input collections as well, append eRICH PID tables;
-out = PodioOutput("out", filename="erich-reco.root")
+# Output ROOT file; keep the input collections as well, append pfRICH PID tables;
+out = PodioOutput("out", filename="pfrich-reco.root")
 out.outputCommands = ["keep *"]
 
 ApplicationMgr(
