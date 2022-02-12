@@ -18,5 +18,5 @@
   <include ref="compact/display.xml" />
   </display>
 
-  <include ref="./erich.xml" />
+  <include ref="./pfrich.xml" />
 </lccdd>

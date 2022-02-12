@@ -1,6 +1,6 @@
 
 //#define _DETECTOR_ "DRICH"
-#define _DETECTOR_ "ERICH"
+#define _DETECTOR_ "PFRICH"
 
 #define _AEROGEL_
 

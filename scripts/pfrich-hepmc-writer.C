@@ -16,7 +16,7 @@
 using namespace HepMC3;
 
 /** Generate single muon event with fixed three momentum **/
-void erich_hepmc_writer(const char* out_fname, int n_events)
+void pfrich_hepmc_writer(const char* out_fname, int n_events)
 {
   auto *DatabasePDG = new TDatabasePDG();
   int pdg = 211;

@@ -1,5 +1,5 @@
 //
-// root -l 'erich-hepmc-pdg-writer.cxx("out.hepmc", 100)'
+// root -l 'pfrich-hepmc-pdg-writer.cxx("out.hepmc", 100)'
 //
 
 #include "HepMC3/GenEvent.h"
@@ -16,7 +16,7 @@
 using namespace HepMC3;
 
 /** Generate single muon event with fixed three momentum **/
-void erich_hepmc_pdg_writer(const char* out_fname, int n_events)
+void pfrich_hepmc_pdg_writer(const char* out_fname, int n_events)
 {
   auto *DatabasePDG = new TDatabasePDG();
   //int pdg = 211;

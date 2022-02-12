@@ -119,11 +119,11 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // if debugging optics, override some settings
   bool debug_optics = debug_optics_mode > 0;
   if(debug_optics) {
-    printout(WARNING,"DRich_geo","DEBUGGING DRICH OPTICS");
+    printout(WARNING,"DRICH_geo","DEBUGGING DRICH OPTICS");
     switch(debug_optics_mode) {
       case 1: vesselMat = aerogelMat = filterMat = sensorMat = gasvolMat = desc.material("VacuumOptical"); break;
       case 2: vesselMat = aerogelMat = filterMat = sensorMat = desc.material("VacuumOptical"); break;
-      default: printout(FATAL,"DRich_geo","UNKNOWN debug_optics_mode"); return det;
+      default: printout(FATAL,"DRICH_geo","UNKNOWN debug_optics_mode"); return det;
     };
     aerogelVis = sensorVis = mirrorVis;
     gasvolVis = vesselVis = desc.invisible();
@@ -217,7 +217,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Get access to the readout structure decoder; may want to simply call desc.readout("DRICHHits");
   const auto &rdspecs = desc.readouts();
   if (rdspecs.size() != 1) {
-    printout(FATAL,"DRich_geo","Expect a single readout structure in XML file"); 
+    printout(FATAL,"DRICH_geo","Expect a single readout structure in XML file"); 
     return det;
   } //if
   // Do not mess up with casting of (*desc.readouts().begin()).second; just call desc.readout();
@@ -595,7 +595,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
               );
 
 	  {
-	    // nx[] and ny[] orientation should be the same as in eRICH, right?;
+	    // nx[] and ny[] orientation should be the same as in pfRICH, right?;
 	    double xxl[3] = {0.0, 0.0, 0.0}, bff[3], xxg[3], nxl[3] = {1.0, 0.0, 0.0}, nyl[3] = {0.0, 1.0, 0.0}, nxg[3], nyg[3];
 	    sensorPV.ptr()->LocalToMaster(xxl, bff);
 	    vesselPV.ptr()->LocalToMaster(bff, xxg);
@@ -645,9 +645,9 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   }; // END SECTOR LOOP //////////////////////////
 
 
-  //@@@ Write the geometry out as a custom TObject class instance; FIXME: unify eRICH & dRICH;
+  //@@@ Write the geometry out as a custom TObject class instance; FIXME: unify pfRICH & dRICH;
   {
-    // FIXME: ERICH_geo.cpp cut'n'paste; C2F6, aerogel, acrylic in this sequence; 
+    // FIXME: PFRICH_geo.cpp cut'n'paste; C2F6, aerogel, acrylic in this sequence; 
     const char *name[] = {"GasVolume", "Aerogel"};//, "Filter"};
     double         n[] = {     1.0000,    1.0170};//,   1.5017};
     //double n[] = {1.00080, 1.0170, 1.5017};

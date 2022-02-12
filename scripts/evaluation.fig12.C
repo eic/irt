@@ -1,6 +1,6 @@
 
 #define _DETECTOR_ "DRICH"
-//#define _DETECTOR_ "ERICH"
+//#define _DETECTOR_ "PFRICH"
 //#define _AEROGEL_
 //#define _NPE_REFERENCE_ 211
 #define _NPE_REFERENCE_ 321

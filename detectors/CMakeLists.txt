@@ -18,8 +18,8 @@ set(a_lib_name athena)
 dd4hep_configure_output()
 
 dd4hep_add_plugin(${a_lib_name} SOURCES 
-  src/ERich_geo.cpp
-  src/DRich_geo.cpp
+  src/PFRICH_geo.cpp
+  src/DRICH_geo.cpp
   )
 
 target_link_libraries(${a_lib_name}
