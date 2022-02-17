@@ -8,7 +8,7 @@
 
 // NPdet
 #include "dd4pod/Geant4ParticleCollection.h"
-#include "dd4pod/PhotoMultiplierHitCollection.h"
+#include "dd4pod/TrackerHitCollection.h"
 
 // IRT
 #include <CherenkovEvent.h>
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
   // Use MC truth particles, and deal with just pfRICH hits here; however the interface 
   // should work for combinations like pfRICH+DIRC, eventually; 
   std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
-  std::vector<dd4pod::PhotoMultiplierHitData> *hits   = new std::vector<dd4pod::PhotoMultiplierHitData>();
+  std::vector<dd4pod::TrackerHitData> *hits   = new std::vector<dd4pod::TrackerHitData>();
   t->SetBranchAddress("mcparticles", &tracks);
   {
     TString hname; hname.Form("%sHits", detector->GetName());
