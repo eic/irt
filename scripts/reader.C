@@ -81,7 +81,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   // Use MC truth particles, and deal with just pfRICH hits here; however the interface 
   // should work for combinations like pfRICH+DIRC, eventually; 
   std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
-  std::vector<dd4pod::PhotoMultiplierHitData> *hits   = new std::vector<dd4pod::PhotoMultiplierHitData>();
+  std::vector<dd4pod::TrackerHitData> *hits   = new std::vector<dd4pod::TrackerHitData>();
   t->SetBranchAddress("mcparticles", &tracks);
   {
     TString hname; hname.Form("%sHits", detector->GetName());
