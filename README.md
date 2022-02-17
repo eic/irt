@@ -230,16 +230,3 @@ npsim --compactFile=./drich_only.xml --runType=run -G -N=300 --inputFiles ./dric
 xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
 root -l '../irt/scripts/evaluation.C("drich-reco.root")'
 ```
-
-
-Updated procedure
------------------
-
-### Setup and Build
-
-- Start `eic-shell`
-- build with `bin/buildIRT.sh`
-  - build directory is `build` and install directory is `$ATHENA_PREFIX`
-    (change it if you want, or just `cmake` commands)
-  - run `bin/buildIRT.sh clean` for a clean build (`rm -r build`)
-
