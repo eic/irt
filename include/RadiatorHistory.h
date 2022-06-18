@@ -1,4 +1,5 @@
 
+#include <map>
 #include <vector>
 
 #include <TObject.h>
@@ -32,10 +33,44 @@ class RadiatorHistory: public TObject {
   };
   inline unsigned StepCount( void ) { return m_Steps.size(); }; 
 
+  void AddStepBufferPoint(double time, const TVector3 &x) {
+    // Will be in ascending order of time;
+    m_StepBuffer[time] = x;
+  };
+
+  void CalculateSteps(bool dirty = true) {
+    // FIXME: memory leak;
+    m_Steps.clear();
+
+    // Add origin to the top of the buffer; FIXME: can times be negative 
+    // as provided by GEANT?;
+    if (m_StepBuffer.size() == 1) {
+      if (!dirty) return;
+
+      m_StepBuffer[0.0] = TVector3(0,0,0);
+    } //if
+
+    // FIXME: efficiency sucks here;
+    std::vector<TVector3> buffer;
+    for(auto entry: m_StepBuffer) 
+      buffer.push_back(entry.second);
+
+    for(unsigned iq=1; iq<buffer.size(); iq++) {
+      m_Steps.push_back(new ChargedParticleStep(buffer[iq-1], 
+						(buffer[iq] - buffer[iq-1]).Unit()));
+      // Well, would not hurt to add the last point in the same direction;
+      if (iq == buffer.size()-1)
+	m_Steps.push_back(new ChargedParticleStep(buffer[iq], 
+						  (buffer[iq] - buffer[iq-1]).Unit()));
+    } //for iq
+  };
+
   // Charged particle trajectory and optical photons generated in this radiator;
  private:
   std::vector<OpticalPhoton*> m_Photons;
   std::vector<ChargedParticleStep*> m_Steps;
+
+  std::map<double, TVector3> m_StepBuffer; //!
 
   ClassDef(RadiatorHistory, 1);
 };

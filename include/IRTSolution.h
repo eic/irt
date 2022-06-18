@@ -1,4 +1,6 @@
 
+#include <TVector3.h>
+
 #ifndef _IRT_SOLUTION_
 #define _IRT_SOLUTION_
 
@@ -37,6 +39,9 @@ class IRTSolution {
       m_SigmaTheta += pow(sigma[iq]*derivative[iq], 2);
     m_SigmaTheta = sqrt(m_SigmaTheta);
   };
+
+  // This is a reconstructed direction in MARS 3D system; 
+  TVector3 m_Direction;
 
  private:
   bool m_Converged;

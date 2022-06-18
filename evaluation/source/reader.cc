@@ -1,23 +1,26 @@
 
 // ROOT
+//#include "TH1D.h"
+//#include <TCanvas.h>
 #include "TTree.h"
 #include "TFile.h"
 #include <TRandom.h>
 
 // NPdet
 #include "dd4pod/Geant4ParticleCollection.h"
-#include "dd4pod/PhotoMultiplierHitCollection.h"
+#include "dd4pod/TrackerHitCollection.h"
 
 // IRT
 #include <CherenkovEvent.h>
 #include <CherenkovDetectorCollection.h>
 
 // Optionally: mimic low wave length cutoff and average QE x Geometric sensor efficiency;
-//#define _WAVE_LENGTH_CUTOFF_ (350.0)
-//#define _AVERAGE_PDE_        ( 0.30)
+#define _WAVE_LENGTH_CUTOFF_ (350.0)
+#define _AVERAGE_PDE_        ( 0.30)
 
 int main(int argc, char** argv) 
 {
+#if _BACK_
   // Command line "parser";
   if (argc != 3 && argc != 4) {
     printf("usage: %s <root-data-file> <root-config-file> [DNAME]\n", argv[0]);
@@ -36,7 +39,7 @@ int main(int argc, char** argv)
   if (argc == 4) 
     detector = geometry->GetDetector(argv[3]);
   else {
-    // Assume a single detector (ERICH or DRICH);
+    // Assume a single detector (PFRICH or DRICH);
     auto &detectors = geometry->GetDetectors();
     if (detectors.size() != 1) {
       printf("More than one detector in the provided IRT geometry config .root file!\n");
@@ -53,17 +56,19 @@ int main(int argc, char** argv)
     exit(0);
   } //if
 
-  //auto gas      = detector->GetRadiator("GasVolume");
+  //auto np = new TH1D("np", "Photon count",            50,     0,    50);
+
+  auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
   //auto acrylic  = detector->GetRadiator("Filter");
-  // Assume the reference value was close enough in ERich_geo.cpp; since QE was not accounted, 
+  // Assume the reference value was close enough in PFRICH_geo.cpp; since QE was not accounted, 
   // this may not be true; 
-  //gas    ->m_AverageRefractiveIndex = gas    ->n();
+  gas    ->m_AverageRefractiveIndex = gas    ->n();
   aerogel->m_AverageRefractiveIndex = aerogel->n();
   //acrylic->m_AverageRefractiveIndex = acrylic->n();
 
   //aerogel->SetGaussianSmearing(0.002);
-  aerogel->SetUniformSmearing(0.005);
+  aerogel->SetUniformSmearing(0.003);
   // Be aware, that AddLocations() part should take this into account;
   aerogel->SetTrajectoryBinCount(1);
   // This may be bogus for a blob-like operation mode;
@@ -72,10 +77,10 @@ int main(int argc, char** argv)
   // TTree interface variable;
   auto event = new CherenkovEvent();
 
-  // Use MC truth particles, and deal with just eRICH hits here; however the interface 
-  // should work for combinations like eRICH+DIRC, eventually; 
+  // Use MC truth particles, and deal with just pfRICH hits here; however the interface 
+  // should work for combinations like pfRICH+DIRC, eventually; 
   std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
-  std::vector<dd4pod::PhotoMultiplierHitData> *hits   = new std::vector<dd4pod::PhotoMultiplierHitData>();
+  std::vector<dd4pod::TrackerHitData> *hits   = new std::vector<dd4pod::TrackerHitData>();
   t->SetBranchAddress("mcparticles", &tracks);
   {
     TString hname; hname.Form("%sHits", detector->GetName());
@@ -132,7 +137,7 @@ int main(int argc, char** argv)
       event->AddChargedParticle(particle);
 
       aerogel->ResetLocations();
-
+#if 1//_TODAY_
       // Create a fake (empty) history; then track locations at the aerogel boundaries;
       particle->StartRadiatorHistory(std::make_pair(aerogel, new RadiatorHistory()));
       {
@@ -141,15 +146,18 @@ int main(int argc, char** argv)
 	auto &vtx = track.vs, &p = track.ps;
 	auto x0 = TVector3(vtx.x, vtx.y, vtx.z), p0 = TVector3(p.x, p.y, p.z), n0 = p0.Unit();
 
-	// So, give the algorithm aerogel surface boundaries as encoded in ERich_geo.cpp;
+	// So, give the algorithm aerogel surface boundaries as encoded in PFRICH_geo.cpp;
 	TVector3 from, to;
 	aerogel->GetFrontSide(0)->GetCrossing(x0, n0, &from);
 	aerogel->GetRearSide (0)->GetCrossing(x0, n0, &to);
 	  
 	// Move the points a bit inwards;
 	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
-	aerogel->AddLocation(from, p0);
-	aerogel->AddLocation(  to, p0);
+	// FIXME: will this work for pfRICH?;
+	for(unsigned isec=0; isec<6; isec++) {
+	  aerogel->AddLocation(isec, from, p0);
+	  aerogel->AddLocation(isec,   to, p0);
+	} //for isec
       }
 
       // Now that all internal track-level structures are populated, run IRT code;
@@ -171,12 +179,17 @@ int main(int argc, char** argv)
 	  if (wt0 <= wt1) false_assignment_stat++;
 	}
       }
+#endif
     } //for track
 
     event->Reset();
   } //for ev
 
   printf("%d false out of %lld\n", false_assignment_stat, t->GetEntries());
+
+  //auto cv = new TCanvas("cv", "", 800, 600);
+  //cv->cd(1); np->Draw();
+#endif
 
   return 0;
 } // main()

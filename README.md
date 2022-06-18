@@ -19,12 +19,13 @@ as well as a set of spherical and / or flat mirrors.
  Content:
 
  * [Introduction](#introduction)
- * [Prerequisites](#prerequisites)
- * [Installation](#installation)
- * [eRICH example configuration](#erich-example-configuration)
+ * [Prerequisites and installation](#prerequisites-and-installation)
+ * [pfRICH example configuration](#pfrich-example-configuration)
  * [Simulation pass](#simulation-pass)
  * [No-juggler reconstruction pass](#no-juggler-reconstruction-pass)
  * [Juggler reconstruction pass](#juggler-reconstruction-pass)
+ * [DRICH case](#drich-case)
+ * [HEPMC writer](#hepmc-writer)
 
 <br/>
 
@@ -58,8 +59,8 @@ hytheses requested by a user.
 
 <br/>
 
-Prerequisites
--------------
+Prerequisites and installation
+------------------------------
 
   It is assumed that a user ia familiar with the [ATHENA software](https://eic.phy.anl.gov/ip6) 
 environment, and a juggler singularity container "jug_xl" is running. It is also assumed 
@@ -82,8 +83,31 @@ block by block.
 # Do not want to mess up with the initial software installation in the container;
 unset ATHENA_PREFIX
 
-# Install "athena" detector description (at least the materials are needed);
-git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git
+export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
+
+# Install a particular branch of the EIC data model;
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch irt-init-v01
+cd eicd && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
+make -j2 install
+```
+
+```
+# Install the IRT library itself;
+cd /tmp/ATHENA
+git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch irt-init-v01
+cd irt && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
+make -j2 install
+```
+
+  This compiles the IRT library codes and the executables to be later on used to read the .root
+files with the GEANT hits after *npsim* simulation pass. 
+
+```
+# Install "athena" detector description;
+git clone https://eicweb.phy.anl.gov/EIC/detectors/athena.git --branch irt-init-v01
 cd athena && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
@@ -95,55 +119,11 @@ cd ip6 && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 make -j2 install
 
-# Install a particular branch of the EIC data model (will become master soon);
-cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/eicd.git --branch ayk-01
-cd eicd && mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
-make -j2 install
-
 ```
-
-<br/>
-
-Installation
-------------
-
-  Now install the IRT library itself, and a particular juggler branch.
-
-```
-cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/irt.git --branch ayk-01
-cd irt && mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DEVALUATION=YES ..
-make -j2 install
-
-```
-
-  This compiles the IRT library codes and the executables to be later on used to read the .root
-files with the GEANT hits after *npsim* simulation pass. 
 
   The rest of this README builds a minimalistic self-contained example of how to make use of the 
 IRT library in application to a basic ATHENA e-endcap proximity focusing aerogel RICH.
 
-<br/>
-
-eRICH example configuration
----------------------------
-
-  See [ERich_geo.cpp](detectors/src/ERich_geo.cpp) for a simple API example, in particular the calls
-which define gas volume and aerogel radiators, as well as the photosensor geometry.
-
-  The following will compile libathena.so plugin with e(d)RICH detectors only. Be aware that it will 
-overwrite /tmp/ATHENA/lib/libathena.so installed earlier.
-
-```
-export LD_LIBRARY_PATH=/tmp/ATHENA/lib:${LD_LIBRARY_PATH}
-cd /tmp/ATHENA/irt/detectors && mkdir -p build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA -DIRT=/tmp/ATHENA ..
-make -j2 install
-
-```
 
 <br/>
 
@@ -160,15 +140,15 @@ ln -s /tmp/ATHENA/share/ip6/ip6 .
 ln -s /tmp/ATHENA/share/athena/compact .
 
 # These two just to simplify 'npsim' command line:
-ln -s /tmp/ATHENA/share/athena/compact/erich.xml .
-ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/erich_only.xml .
+ln -s /tmp/ATHENA/share/athena/compact/pfrich.xml .
+ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/pfrich_only.xml .
 
-# Eventually run 'npsim' for 100 events with 8 GeV pions, in a eRICH-only geometry;
-npsim --compactFile=./erich_only.xml --runType=run -G -N=100 --outputFile=./erich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+# Eventually run 'npsim' for 100 events with 8 GeV pions, in a pfRICH-only geometry;
+npsim --compactFile=./pfrich_only.xml --runType=run -G -N=100 --outputFile=./pfrich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.2 0.0 -1.0" --gun.energy 8*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
 
 ```
 
-  A pair of ROOT output files is produced: eRICH detector optics configuration and 
+  A pair of ROOT output files is produced: pfRICH detector optics configuration and 
 a file with GEANT tracks and photon hits.
 
 <br/>
@@ -182,7 +162,7 @@ and low wavelength cutoff.
 ```
 cd /tmp/ATHENA/sandbox
 # Loop through the events in the raw GEANT4 hit file. See [reader.cc](evaluation/reader.cc)
-/tmp/ATHENA/bin/reader erich-data.root erich-config.root
+/tmp/ATHENA/bin/reader pfrich-data.root pfrich-config.root
 
 ```
 
@@ -193,7 +173,7 @@ Juggler reconstruction pass
 
 ```
 cd /tmp/ATHENA
-git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch ayk-01
+git clone https://eicweb.phy.anl.gov/EIC/juggler.git --branch irt-init-v01
 cd juggler && mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/tmp/ATHENA ..
 
@@ -206,23 +186,47 @@ make -j1 install
 
 ```
 cd /tmp/ATHENA/sandbox
-# Run Juggler with a simplified testIRT.py options file provided with IRT distribution; 
-xenv -x ../Juggler.xenv gaudirun.py ../irt/testIRT.py
+# Run Juggler with a simplified pfrich-testIRT.py options file provided with IRT distribution; 
+xenv -x ../Juggler.xenv gaudirun.py ../irt/pfrich-testIRT.py
 
 # Loop through the events in the reconstructed file. See [evaluation.cc](evaluation/evaluation.cc)
-/tmp/ATHENA/bin/evaluation erich-reco.root
+/tmp/ATHENA/bin/evaluation pfrich-reco.root
 
 ```
 
+DRICH case
+----------
 
-Updated procedure
------------------
+It is assumed that 'athena/ip6/compact' links in /tmp/ATHENA/sandbox directory are created already.
+The rest is pretty much similar to the pfRICH case, except for perhaps a .C script usage instead 
+of a .cc executable:
 
-### Setup and Build
+```
+cd /tmp/ATHENA/sandbox
+ln -s /tmp/ATHENA/share/athena/compact/drich.xml .
+ln -s /tmp/ATHENA/share/athena/compact/subsystem_views/drich_only.xml .
+```
 
-- Start `eic-shell`
-- build with `bin/buildIRT.sh`
-  - build directory is `build` and install directory is `$ATHENA_PREFIX`
-    (change it if you want, or just `cmake` commands)
-  - run `bin/buildIRT.sh clean` for a clean build (`rm -r build`)
+```
+npsim --compactFile=./drich_only.xml --runType=run -G -N=500 --outputFile=./drich-data.root --gun.position "0.0 0.0 0.0" --gun.direction "0.27 0.0 1.0" --gun.energy 12*GeV --gun.particle="pi+" --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+```
+```
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'
+```
 
+HEPMC writer
+------------
+
+It is of course way more convenient to create a .hepmc file with a collection of events / tracks, 
+than to use a limited in functionality npsim command line interface. Here is an example:
+
+```
+cd /tmp/ATHENA/sandbox
+root -l '../irt/scripts/drich-hepmc-writer.C("drich-data.hepmc", 300)'
+
+npsim --compactFile=./drich_only.xml --runType=run -G -N=300 --inputFiles ./drich-data.hepmc --outputFile=./drich-data.root --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'
+```

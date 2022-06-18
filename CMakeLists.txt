@@ -71,8 +71,10 @@ target_include_directories(${IRT_LIB} PUBLIC
 
 set(ignoreMe "${EVALUATION}")
 if(DEFINED EVALUATION)
-  add_subdirectory(evaluation)
+  # add_subdirectory(evaluation)
 endif()
+
+add_subdirectory(delphes)
 
 #----------------------------------------------------------------------------
 # installation

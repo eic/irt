@@ -1,0 +1,22 @@
+
+root -l '../irt/scripts/rich-hepmc-writer.C("drich-data.hepmc", 100)'
+
+npsim --compactFile=./drich_only.xml --runType=run -G -N=100 --inputFiles ./drich-data.hepmc --outputFile=./drich-data.root --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed
+
+xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py
+
+root -l '../irt/scripts/evaluation.C("drich-reco.root")'
+
+-----------------------------
+
+jug_xl> ayk@portjeff:/tmp/ATHENA/sandbox.from.scratch$
+
+root -l '../irt/scripts/drich-hepmc-loop-writer.C(500)'
+
+for f in HEPMC.A/drich-data.2212*; do time npsim --compactFile=./drich_and_solenoid.xml --runType=run -G -N=500 --inputFiles $f --outputFile=NPSIM.A/`basename $f .hepmc`.root --part.userParticleHandler='' --random.seed 0x12345678 --random.enableEventSeed; done
+
+# ?
+for f in NPSIM/*0211*.root; do ln -sf $f drich-data.root; xenv -x ../Juggler.xenv gaudirun.py ../irt/drich-testIRT.py; mv drich-reco.root JUGGLER/`basename $f .root`.juggler.root; done
+
+# ?
+for f in JUGGLER/*.root; do ln -sf $f drich-reco.root; root -l '../irt/scripts/evaluation.C("drich-reco.root", "drich-tree.root")'; mv drich-tree.root EVALUATION/`basename $f .root`.evaluation.root; done

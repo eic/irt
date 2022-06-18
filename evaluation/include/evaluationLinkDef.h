@@ -6,8 +6,9 @@
 #pragma link off all functions;
 
 #pragma link C++ class std::vector<eic::CherenkovPdgHypothesis>+;
+#pragma link C++ class std::vector<eic::CherenkovThetaAngleMeasurement>+;
 #pragma link C++ class std::vector<eic::CherenkovParticleIDData>+;
 #pragma link C++ class std::vector<dd4pod::Geant4ParticleData>+;
-#pragma link C++ class std::vector<dd4pod::PhotoMultiplierHitData>+;
+#pragma link C++ class std::vector<dd4pod::TrackerHitData>+;
 
 #endif

@@ -44,9 +44,9 @@ int main(int argc, char** argv)
 #ifdef _USE_RECONSTRUCTED_TRACKS_
   t->SetBranchAddress("rcparticles", &rctracks);
 #endif
-  t->SetBranchAddress("ERICHPID",   &cherenkov);
+  t->SetBranchAddress("PFRICHPID",   &cherenkov);
   auto options = new std::vector<eic::CherenkovPdgHypothesis>();
-  t->SetBranchAddress("ERICHPID_0", &options);
+  t->SetBranchAddress("PFRICHPID_0", &options);
 
   // Loop through all events;
   unsigned false_assignment_stat = 0;
@@ -95,9 +95,10 @@ int main(int argc, char** argv)
 	  if (abs(option.pdg) == 11) continue;
 
 	  if (!best || option.weight > best->weight) best = &option;
-	  printf("radiator %3d (pdg %5d): npe %5d, weight %7.2f\n", 
-		 option.radiator, option.pdg, option.npe, option.weight);
+	  printf("radiator %3d (pdg %5d): weight %7.2f, npe %7.2f\n", 
+		 option.radiator, option.pdg, option.weight, option.npe);
 	} //for
+	printf("\n");
 
 	// Check whether the true PDG got a highest score;
 	if (!best || best->pdg != mctrack.pdgID) false_assignment_stat++;

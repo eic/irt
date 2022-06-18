@@ -3,7 +3,8 @@
 
 // -------------------------------------------------------------------------------------
 
-bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs) const
+bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
+				   bool check_normal) const
 {
   TVector3 dx = x0 - GetCenter();
   double a = 1.0, b = 2*dx.Dot(n0), c = dx.Mag2() - pow(m_Radius, 2);
@@ -20,7 +21,7 @@ bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVect
 
       if (t < 0.0) continue;
       *crs = x0 + t*n0;
-      if (n0.Dot(GetNormal(*crs)) >= 0.0) continue;
+      if (check_normal && n0.Dot(GetNormal(*crs)) >= 0.0) continue;
 
       return true;
     } //for iq

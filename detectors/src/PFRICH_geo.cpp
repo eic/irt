@@ -1,5 +1,5 @@
 //----------------------------------
-//  eRICH: Electron endcap RICH
+//  pfRICH: Proximity Focusing RICH
 //  Author: C. Dilks
 //----------------------------------
 
@@ -86,18 +86,18 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // if debugging optics, override some settings
   bool debug_optics = debug_optics_mode > 0;
   if(debug_optics) {
-    printout(WARNING,"ERich_geo","DEBUGGING ERICH OPTICS");
+    printout(WARNING,"PFRICH_geo","DEBUGGING PFRICH OPTICS");
     switch(debug_optics_mode) {
       case 1: vesselMat = aerogelMat = filterMat = sensorMat = gasvolMat = desc.material("VacuumOptical"); break;
       case 2: vesselMat = aerogelMat = filterMat = sensorMat = desc.material("VacuumOptical"); break;
-      default: printout(FATAL,"ERich_geo","UNKNOWN debug_optics_mode"); return det;
+      default: printout(FATAL,"PFRICH_geo","UNKNOWN debug_optics_mode"); return det;
     };
     aerogelVis = sensorVis;
     gasvolVis = vesselVis = desc.invisible();
   };
 
   // BUILD VESSEL //////////////////////////////////////
-  /* - `vessel`: aluminum enclosure, the mother volume of the eRICh
+  /* - `vessel`: aluminum enclosure, the mother volume of the pfRICh
    * - `gasvol`: gas volume, which fills `vessel`; all other volumes defined below
    *   are children of `gasvol`
    */
@@ -142,7 +142,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   // Get access to the readout structure decoder; may want to simply call desc.readout("DRICHHits");
   const auto &rdspecs = desc.readouts();
   if (rdspecs.size() != 1) {
-    printout(FATAL,"DRich_geo","Expect a single readout structure in XML file"); 
+    printout(FATAL,"PFRICH_geo","Expect a single readout structure in XML file"); 
     return det;
   } //if
   // Do not mess up with casting of (*desc.readouts().begin()).second; just call desc.readout();
@@ -346,7 +346,7 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
   {
     // FIXME: import from the geometry database; FIXME: crappy style in general;
     const char *name[] = {"GasVolume", "Aerogel", "Filter"};
-    double         n[] = {     1.0013,    1.0170,   1.5017};
+    double         n[] = {     1.0000,    1.0195,   1.5017};
     
     for(unsigned ir=0; ir<sizeof(n)/sizeof(n[0]); ir++) {
       auto radiator = detector->GetRadiator(name[ir]);
@@ -362,4 +362,4 @@ static Ref_t createDetector(Detector& desc, xml::Handle_t handle, SensitiveDetec
 };
 
 // clang-format off
-DECLARE_DETELEMENT(athena_ERICH, createDetector)
+DECLARE_DETELEMENT(athena_PFRICH, createDetector)
