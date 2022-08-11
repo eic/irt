@@ -20,6 +20,7 @@ class CherenkovDetector: public TObject {
   ~CherenkovDetector() {};
 
   void AddOpticalBoundary(unsigned sector, OpticalBoundary *boundary) {
+    printf("IRTLOG CherenkovDetector::AddOpticalBoundary sector %d boundary %ld\n",sector,_m_OpticalBoundaries[sector].size());
     _m_OpticalBoundaries[sector].push_back(boundary);
   };
 

@@ -8,6 +8,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
+  printf("CALL IRT::Transport\n");
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
@@ -17,6 +18,16 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto surface = boundary->m_Surface;
 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
+    printf(" >>>> surface %d\n",iq);
+    printf("      normal: "); surface->GetNormal(TVector3()).Print();
+    printf("      center: "); surface->GetCenter().Print();
+    // printf("      radius: ");
+    // { auto rad=surface->GetRadius(); if(rad>0) printf("%f\n",rad); else printf("not a sphere\n"); }
+    if(iq==5) {
+      printf("      radius: ");
+      printf("%f\n",((SphericalSurface*)surface)->GetRadius());
+    }
+
 
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
@@ -30,6 +41,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 	continue;
     } //if
     transport_in_progress = true;
+    printf("PROGRESS"); // doesn't happen
 
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
     TVector3 ns = surface->GetNormal(boundary->m_ImpactPoint);
@@ -81,6 +93,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
   
   // XY in the local sensor coordinate system; 
   double m0[2] = {sensor->GetLocalX(xto), sensor->GetLocalY(xto)};
+  printf("  sensor local pos: %5.2f %5.2f\n",m0[0],m0[1]);
 
   return Solve(xfrom, nfrom, m0, beam, derivatives, seed);
 } // IRT::Solve()
@@ -104,6 +117,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // and there can be an additional flat mirror installed, there is no good reason to 
   // try solving the initial approximation analytically;
   if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
+  printf("   theta, phi = %5.5f %5.5f\n",solution.m_Theta*180/3.1415,solution.m_Phi*180/3.1415); // of the track
 
   //printf("Here-3!\n");
   for(unsigned itr=0; ; itr++ ) {
@@ -117,11 +131,17 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
     }
     //printf("Here-5!\n");
     double mc[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
+    // printf("  impact pos mc   : %5.8f %5.8f\n",mc[0],mc[1]);
+    printf("  impact pos mc   : %5.8f %5.8f %5.8f\n",
+        tail()->m_ImpactPoint.x(),
+        tail()->m_ImpactPoint.y(),
+        tail()->m_ImpactPoint.z()); // ZERO
+
     
     // Check the transported-to-measured 2D distance; if it is small enough, return;
     {
       double dist = sqrt(pow(mc[0] - m0[0], 2) + pow(mc[1] - m0[1], 2));
-      //printf("%10.4f\n", dist);
+      // printf("%10.4f\n", dist);
 
       if (dist < m_Precision) {
 	solution.m_Converged = true;
@@ -207,6 +227,9 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	if (!Transport(xfrom, nn)) return solution;
       }
       double mf[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
+
+      printf("  impact pos mt   : %5.8f %5.8f\n",mt[0],mt[1]);
+      printf("  impact pos mf   : %5.8f %5.8f\n",mf[0],mf[1]);
       
       // Calculate Jacobian;
       double jac[2][2], inv[2][2];
@@ -214,6 +237,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	for(unsigned iq=0; iq<2; iq++) 
 	  jac[ip][iq] = ((ip ? mf[iq] : mt[iq]) - mc[iq])/m_JacobianStep;
       double det = jac[0][0]*jac[1][1] - jac[0][1]*jac[1][0];
+      printf("   det -> %f\n",det);
       if (!det) return solution;
       
       // Perform matrix inversion by hand;

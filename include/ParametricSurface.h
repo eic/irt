@@ -40,6 +40,7 @@ class ParametricSurface: public TObject {
     return GetNormal(pt);
   };
   const TVector3 &GetCenter( void ) const { return m_Center; };
+  virtual double GetRadius( void ) const { return -1.0; };
   virtual double GetDistance(const TVector3 &xx) const = 0;
 
   // Crossing with the straight line defined by {x0,n0}; 

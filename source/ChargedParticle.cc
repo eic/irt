@@ -30,6 +30,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
   // hypothesis would evaluate each of the detected photons on the aerogel and gas grids
   // independently and build a sum of their PDFs without much thinking about outlier photon
   // rejection, average theta calculation and such;
+  int phcounter = 0;
   for(auto photon: photons) {
     if (!photon->WasDetected()) continue;
 
@@ -46,6 +47,9 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       if (radiator->m_Locations.size() != zdim+1) continue;
       
       TVector3 phx = photon->GetDetectionPosition();
+      printf("\n");
+      printf("from ChargedParticle::PIDReconstruction: %5d %10.3f %10.3f %10.3f\n",
+          phcounter++,phx.x(),phx.y(),phx.z());
       
       // Get effective attenuation length for this radiator, as well as the 
       // parameterization of its rear surface in this particular sector; this is
@@ -69,6 +73,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	    all_converged = false;
 	    break;
 	  } //if
+          printf("CONVERGENCE\n");
 
 	  photon->m_Phi[radiator] += solution.GetPhi();
 
