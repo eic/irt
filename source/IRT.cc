@@ -8,7 +8,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
-  printf("CALL IRT::Transport\n");
+  printf("\nCALL IRT::Transport\n");
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
@@ -17,8 +17,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto boundary = GetOpticalBoundary(iq), prev = iq ? GetOpticalBoundary(iq-1) : 0;
     auto surface = boundary->m_Surface;
 
-    bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
-    printf(" >>>> surface %d\n",iq);
+    printf(" >>>> surface %d %s\n",iq,surface->GetName());
     printf("      normal: "); surface->GetNormal(TVector3()).Print();
     printf("      center: "); surface->GetCenter().Print();
     // printf("      radius: ");
@@ -27,6 +26,8 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
       printf("      radius: ");
       printf("%f\n",((SphericalSurface*)surface)->GetRadius());
     }
+    bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
+    printf("      crossing ok? %d\n",ok);
 
 
     // The logic here is that the first few boundaries may be irrelenat for this 
