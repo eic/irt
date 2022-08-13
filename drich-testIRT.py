@@ -6,10 +6,10 @@ from Configurables import PodioInput
 from Configurables import Jug__PID__IRTAlgorithm as IRTAlgorithm 
 
 # Well, for now only need DRICH geometry for this example;
-geo_service = GeoSvc("GeoSvc", detectors=["drich_only.xml"])
+geo_service = GeoSvc("GeoSvc", detectors=["epic/epic_drich_only.xml"])
 
 # Input file after 'npsim' pass;
-podioevent = EICDataSvc("EventDataSvc", inputs=["drich-data.root"])
+podioevent = EICDataSvc("EventDataSvc", inputs=["out/irt.root"])
 
 # S13660-3050AE-08 SiPM quantum efficiency [(wavelength [nm], q.e.)]
 # Note: this is consistent with S13361-3050AE-08 (for DRICH)
@@ -39,16 +39,16 @@ radiators = [
 podioinput = PodioInput(
         "PodioReader",
         # Input collections: MC truth tracks and DRICH raw hits (photons);
-        collections=["mcparticles", "DRICHHits"],
+        collections=["MCParticles", "DRICHHits"],
         OutputLevel=DEBUG
         )
 
 irtrec = IRTAlgorithm(
         # Input collections: MC truth tracks and DRICH raw hits (photons);
-        inputMCParticles="mcparticles",
+        inputMCParticles="MCParticles",
 
         # DRICH optics configuration produced by DRICH_geo.cpp code along with the dd4hep XML file;
-        ConfigFile="drich-config.root",
+        ConfigFile="geo/irt-drich.root",
         Radiators=[ (r) for r in radiators ],
 
         # SiPM PDE; FIXME: units.eV coefficient gives extra x1000 (?);
@@ -61,7 +61,7 @@ irtrec = IRTAlgorithm(
         )
 
 # Output ROOT file; keep the input collections as well, append DRICH PID tables;
-out = PodioOutput("out", filename="drich-reco.root")
+out = PodioOutput("out", filename="out/reco.root")
 out.outputCommands = ["keep *"]
 
 ApplicationMgr(
