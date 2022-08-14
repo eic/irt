@@ -118,7 +118,6 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // and there can be an additional flat mirror installed, there is no good reason to 
   // try solving the initial approximation analytically;
   if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
-  printf("   theta, phi = %5.5f %5.5f\n",solution.m_Theta*180/3.1415,solution.m_Phi*180/3.1415); // of the track
 
   //printf("Here-3!\n");
   for(unsigned itr=0; ; itr++ ) {

@@ -48,7 +48,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       
       TVector3 phx = photon->GetDetectionPosition();
       printf("\n");
-      printf("from ChargedParticle::PIDReconstruction: %5d %10.3f %10.3f %10.3f\n",
+      printf("photon %d from ChargedParticle::PIDReconstruction:\n x,y,x = %10.3f %10.3f %10.3f\n",
           phcounter++,phx.x(),phx.y(),phx.z());
       
       // Get effective attenuation length for this radiator, as well as the 
