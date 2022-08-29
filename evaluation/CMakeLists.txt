@@ -23,7 +23,7 @@ SET( EVALUATION_SRC
 
 SET(EVALUATION_ROOTMAP ${CMAKE_CURRENT_BINARY_DIR}/lib${IRTEVAL_LIB}_rdict.pcm ${CMAKE_CURRENT_BINARY_DIR}/lib${IRTEVAL_LIB}.rootmap )
 
-ROOT_GENERATE_DICTIONARY(G__${IRTEVAL_LIB} eicd/CherenkovPdgHypothesis.h eicd/CherenkovThetaAngleMeasurement.h eicd/CherenkovParticleIDData.h dd4pod/TrackerHitData.h dd4pod/Geant4ParticleData.h LINKDEF include/evaluationLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__${IRTEVAL_LIB} edm4eic/CherenkovPdgHypothesis.h edm4eic/CherenkovThetaAngleMeasurement.h edm4eic/CherenkovParticleIDData.h dd4pod/TrackerHitData.h dd4pod/Geant4ParticleData.h LINKDEF include/evaluationLinkDef.h)
 
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ADD_EXECUTABLE( ${READER_EXE} ${READER_SRC} )

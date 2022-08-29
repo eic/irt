@@ -44,7 +44,7 @@ void evaluation(const char *ifname, const char *ofname = 0)
     if(ev%100==0) printf("read event %d\n",ev);
 
     // get collections
-    auto& cherenkovs = podio_store.get<eicd::CherenkovParticleIDCollection>("DRICHPID");
+    auto& cherenkovs = podio_store.get<edm4eic::CherenkovParticleIDCollection>("DRICHPID");
     auto& mctracks   = podio_store.get<edm4hep::MCParticleCollection>("MCParticles");
 
     // Then the Cherenkov-to-reconstructed mapping;
@@ -52,7 +52,7 @@ void evaluation(const char *ifname, const char *ofname = 0)
     // FIXME: if we loop over reconstructed tracks, rather than MC particles, then we
     // have the 1-1 relation edm4hep::ReconstructedParticle::getParticleIDUsed(),
     // which returns the type edm4hep::ParticleID
-    std::map<edm4hep::MCParticle,eicd::CherenkovParticleID> rc2cherenkov;
+    std::map<edm4hep::MCParticle,edm4eic::CherenkovParticleID> rc2cherenkov;
     for(const auto &pid : cherenkovs)
       rc2cherenkov[pid.getAssociatedParticle()] = pid;
 
@@ -61,7 +61,7 @@ void evaluation(const char *ifname, const char *ofname = 0)
       // FIXME: consider only primaries for now?; equivalent to mctrack.getGeneratorStatus()==1?
       if (mctrack.parents_size()>0) continue;
 
-      eicd::CherenkovParticleID cherenkov;
+      edm4eic::CherenkovParticleID cherenkov;
       if(rc2cherenkov.find(mctrack) != rc2cherenkov.end()) cherenkov = rc2cherenkov[mctrack];
       else continue;
 
@@ -72,7 +72,7 @@ void evaluation(const char *ifname, const char *ofname = 0)
 
       // Loop through all of the mass hypotheses available for this reconstructed track;
       {
-        const eicd::CherenkovPdgHypothesis *best = 0;
+        const edm4eic::CherenkovPdgHypothesis *best = 0;
 
         for(const auto &option : cherenkov.getOptions()) {
 

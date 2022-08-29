@@ -46,7 +46,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
 
-  # For now assume that newly installed eicd::(CherenkovPID, ...) event structures are available 
+  # For now assume that newly installed edm4eic::(CherenkovPID, ...) event structures are available 
   # in the same place where IRT is supposed to be installed;
   ${CMAKE_INSTALL_PREFIX}/include 
 )

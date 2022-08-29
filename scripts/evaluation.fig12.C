@@ -47,8 +47,8 @@ void evaluation(const char *ifname, const char *ofname = 0)
 
   // Use MC truth particles for a "main" loop;
   auto mctracks   = new std::vector<dd4pod::Geant4ParticleData>();
-  auto rctracks   = new std::vector<eicd::ReconstructedParticleData>();
-  auto cherenkov  = new std::vector<eicd::CherenkovParticleIDData>();
+  auto rctracks   = new std::vector<edm4eic::ReconstructedParticleData>();
+  auto cherenkov  = new std::vector<edm4eic::CherenkovParticleIDData>();
   it->SetBranchAddress("mcparticles", &mctracks);
 
   // FIXME: or whatever the branches are called;
@@ -56,9 +56,9 @@ void evaluation(const char *ifname, const char *ofname = 0)
   it->SetBranchAddress("rcparticles", &rctracks);
 #endif
   it->SetBranchAddress((TString(_DETECTOR_) + "PID").Data(),   &cherenkov);
-  auto options = new std::vector<eicd::CherenkovPdgHypothesis>();
+  auto options = new std::vector<edm4eic::CherenkovPdgHypothesis>();
   it->SetBranchAddress((TString(_DETECTOR_) + "PID_0").Data(), &options);
-  auto angles  = new std::vector<eicd::CherenkovThetaAngleMeasurement>();
+  auto angles  = new std::vector<edm4eic::CherenkovThetaAngleMeasurement>();
   it->SetBranchAddress((TString(_DETECTOR_) + "PID_1").Data(), &angles);
 
   // Loop through all events;
@@ -68,14 +68,14 @@ void evaluation(const char *ifname, const char *ofname = 0)
 
 #ifdef _USE_RECONSTRUCTED_TRACKS_
     // First populate the reconstructed-to-simulated particle mapping table;
-    std::map<eic::Index, const eicd::ReconstructedParticleData*> mc2rc;
+    std::map<eic::Index, const edm4eic::ReconstructedParticleData*> mc2rc;
     for(const auto &rctrack: *rctracks) 
       mc2rc[rctrack.mcID] = &rctrack;
 #endif
     
     // Then the Cherenkov-to-reconstructed mapping; FIXME: may want to use Cherenkov-to-simulated 
     // mapping to start with, for the debugging purposes;
-    std::map<eic::Index, const eicd::CherenkovParticleIDData*> rc2cherenkov;
+    std::map<eic::Index, const edm4eic::CherenkovParticleIDData*> rc2cherenkov;
     for(const auto &pid: *cherenkov) 
       rc2cherenkov[pid.recID] = &pid;
     
@@ -109,7 +109,7 @@ void evaluation(const char *ifname, const char *ofname = 0)
 
       // Loop through all of the mass hypotheses available for this reconstructed track;
       {
-	const eicd::CherenkovPdgHypothesis *best = 0;
+	const edm4eic::CherenkovPdgHypothesis *best = 0;
 
 	for(unsigned iq=cherenkov->options_begin; iq<cherenkov->options_end; iq++) {
 	  const auto &option = (*options)[iq];
