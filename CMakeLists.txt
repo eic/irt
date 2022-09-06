@@ -8,6 +8,11 @@ project(IRT
 cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 
 #----------------------------------------------------------------------------
+# options
+option(EVALUATION "Build evaluation programs" OFF)
+option(DELPHES    "Delphes card production"   ON)
+
+#----------------------------------------------------------------------------
 # dependencies
 
 find_package(ROOT 6.0.00 REQUIRED COMPONENTS RIO Hist Tree ROOTDataFrame)
@@ -33,7 +38,7 @@ else()
 endif()
 
 #----------------------------------------------------------------------------
-# library
+# IRT library
 
 set(IRT_LIB IRT)
 
@@ -41,7 +46,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
 
-  # For now assume that newly installed eicd::(CherenkovPID, ...) event structures are available 
+  # For now assume that newly installed edm4eic::(CherenkovPID, ...) event structures are available 
   # in the same place where IRT is supposed to be installed;
   ${CMAKE_INSTALL_PREFIX}/include 
 )
@@ -67,14 +72,15 @@ target_include_directories(${IRT_LIB} PUBLIC
 )
 
 #----------------------------------------------------------------------------
-# subdirs, etc.
+# optional targets
 
-set(ignoreMe "${EVALUATION}")
-if(DEFINED EVALUATION)
-  # add_subdirectory(evaluation)
+if(EVALUATION)
+  add_subdirectory(evaluation)
 endif()
 
-add_subdirectory(delphes)
+if(DELPHES)
+  add_subdirectory(delphes)
+endif()
 
 #----------------------------------------------------------------------------
 # installation

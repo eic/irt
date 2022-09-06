@@ -11,8 +11,9 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
 
   // .root file with event tree;
   auto fdata = new TFile(dfname);
-  TTree *t = dynamic_cast<TTree*>(fdata->Get("events"));
-
+  TTree *t = (TTree*)fdata->Get("events");
+  //t->SetMakeClass(1);
+  //t->SetBranchStatus("*", 0);
   // .root file with the IRT configuration;
   auto fcfg  = new TFile(cfname);
   CherenkovDetector *detector = 0;
@@ -37,6 +38,7 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
     exit(0);
   } //if
 
+  auto ed = new TH2D("ed","ed;x[cm];y[cm]",1000,-200,200, 1000,-200,200);
   auto nq = new TH1D("nq", "Photon count",            50,      0,    100);
   auto np = new TH1D("np", "Photon count",            50,      0,    100);
   //auto fi = new TH1D("fi", "Cherenkov phi angle",      30,-180.0,  180.0);
@@ -52,9 +54,10 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   //auto ep = new TH1D("ep", "Emission Point",          100, -70.0,   70.0);
   //auto ri = new TH1D("ri", "1.0 - Refractive Index",  100, 0.015,  0.025);
 #endif
-  auto wl = new TH1D("wl", "Wave Length",             100, 200.0, 1000.0);
+  auto wl = new TH1D("wl", "Wave Length; #{Lambda} (nm)",             100, 200.0, 1000.0);
   //auto th = new TH1D("th", "Cherenkov angle",         100, -10,  10);
   //auto tq = new TH1D("tq", "Average Cherenkov angle", 100, -10,  10);
+  auto p = new TH1D("p","Mom; p(GeV/c)",50,49.,51.);
 
   auto gas      = detector->GetRadiator("GasVolume");
   auto aerogel  = detector->GetRadiator("Aerogel");
@@ -71,174 +74,140 @@ void reader(const char *dfname, const char *cfname, const char *dtname = 0)
   //aerogel->SetUniformSmearing(0.005);
   //#endif
   // Be aware, that AddLocations() part should take this into account;
-  aerogel->SetTrajectoryBinCount(1);
+  aerogel->SetTrajectoryBinCount(2);
   // This may be bogus for a blob-like operation mode;
   //gas    ->SetUniformSmearing(0.003);
 
+
+  int pdg;
+  int q;
   // TTree interface variable;
   auto event = new CherenkovEvent();
 
   // Use MC truth particles, and deal with just pfRICH hits here; however the interface 
   // should work for combinations like pfRICH+DIRC, eventually; 
-  std::vector<dd4pod::Geant4ParticleData>     *tracks = new std::vector<dd4pod::Geant4ParticleData>();
-  std::vector<dd4pod::TrackerHitData> *hits   = new std::vector<dd4pod::TrackerHitData>();
-  t->SetBranchAddress("mcparticles", &tracks);
-  {
-    TString hname; hname.Form("%sHits", detector->GetName());
-    t->SetBranchAddress(hname,   &hits);
-  }
-
+  //edm4hep::MCParticleData  *MCParticle;     //= new std::vector<edm4hep::MCParticleData> ();
+  //std::vector<edm4hep::SimTrackerHitData> *hits   = new std::vector<edm4hep::SimTrackerHitData>();
+  //t->SetBranchAddress("MCParticles",&MCParticle);
+  //t->SetBranchStatus("MCParticles.PDG",1);
+  TTreeReader myReader("events",fdata);
+  TTreeReaderValue <std::vector<edm4hep::MCParticleData>> mcparts(myReader,"MCParticles");
+  TTreeReaderValue <std::vector<edm4hep::SimTrackerHitData>> hits(myReader,"DRICHHits");
+/* 
+  t->SetBranchAddress("MCParticles.PDG", &pdg);
+  t->SetBranchAddress("MCParticles.charge", &q);
+ // {
+   // TString hname; hname.Form("%sHits", detector->GetName());
+   // t->SetBranchAddress(hname,   &hits);
+ // }
+  int myentries = t->GetEntries();
+  printf("Entries: %d\n",myentries);
+  printf("Here!\n");
   // Loop through all events;
-  unsigned false_assignment_stat = 0;
-  for(int ev=0; ev<t->GetEntries(); ev++) {
+  //unsigned false_assignment_stat = 0;
+  for(int ev=0; ev<myentries; ev++) {
     t->GetEntry(ev);
+    //int Size = MCParticle->size();
+    cout<<"EV: "<<ev<<" Charge:  "<<q<<endl;
+    //printf("%d\n", tsize);
 
-    { 
-      unsigned stat = 0;
-
-      for(auto track: *tracks) {
-	if (track.pdgID == -22) {
-	  auto &p = track.ps;
-	  double pmag = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
-	  double wave_length = 1239.84/(1E9*pmag);
-	  
-#ifdef _WAVE_LENGTH_CUTOFF_MIN_ 
-	  if (wave_length < _WAVE_LENGTH_CUTOFF_MIN_) continue;
-#endif
-#ifdef _WAVE_LENGTH_CUTOFF_MAX_ 
-	  if (wave_length > _WAVE_LENGTH_CUTOFF_MAX_) continue;
-#endif
-#ifdef _AVERAGE_PDE_  
-	  if (gRandom->Uniform(0.0, 1.0) > _AVERAGE_PDE_) continue;
-#endif
-	  stat++;
-	} //if
-      } //for track
-
-      nq->Fill(stat);
-    } 
-    //printf("%3ld vs %3ld\n", tracks->size(), hits->size()); 
-    // Loop through all tracks and populate the internal arrays in a way 
-    // IRT code expects; FIXME: this is not dramatically efficient; streamline once debugging is over;
-    for(auto track: *tracks) {
-      // FIXME: consider only primaries here?;
-      if (track.g4Parent) continue;
-
-      // Create a combined (for all radiators) hit array; eventually will move this
-      // structure out of the track loop;
+  }//ev      
+*/
+  int evtcounter =0;
+  while(myReader.Next()){
+    printf("#################\n");
+    //evtcounter++;
+    //cout<<"MC Size: "<<mcparts->size()<<endl;
+    //cout<<"Hit Size: "<<hits->size()<<endl;
+    for(auto  && mcpart : *mcparts){
+       //cout<<val.size()<<endl;
+      if(mcpart.parents_begin!=mcpart.daughters_begin) continue; 
+      {
+         /*if(mcpart.PDG == 22){ 
+           double pmag = TMath::Sqrt(TMath::Power(mcpart.momentum.x,2)+ TMath::Power(mcpart.momentum.y,2) + TMath::Power(mcpart.momentum.z,2));
+           cout<<"EV: "<< evtcounter<< " PDG: "<<mcpart.PDG<<" ep x: "<<pmag<<endl;
+           p->Fill(pmag);
+           double wave_length = 1239.84/(1E9*pmag);
+           wl->Fill(wave_length);
+           cout<<mcpart.vertex.z<<" "<<mcpart.endpoint.z<<endl;   
+         }*/  
+         
+      }
+      int phcounter =0;
       std::vector<OpticalPhoton*> photons;  
-      for(auto hit: *hits) {
-	//printf("%3d %3d\n", hit.g4ID, hit.truth.trackID);//MonteCarlo); 
-	// FIXME: yes, use MC truth here; not really needed I guess; 
-	//if (hit.g4ID != track.ID) continue;
-	  
-	{
-	  auto phtrack = (*tracks)[hit.truth.trackID];
-	  //printf("%7.2f\n", phtrack.vs.z);
-	  //ep->Fill(phtrack.vs.z + 1515.0);
-	  ep->Fill(phtrack.vs.z - 1920.0);
-	}
-
-	{
-	  auto &p = hit.momentum;
-	  double pmag = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
-	  double wave_length = 1239.84/(1E9*pmag);
-	  
-#ifdef _WAVE_LENGTH_CUTOFF_MIN_ 
-	  if (wave_length < _WAVE_LENGTH_CUTOFF_MIN_) continue;
-#endif
-#ifdef _WAVE_LENGTH_CUTOFF_MAX_ 
-	  if (wave_length > _WAVE_LENGTH_CUTOFF_MAX_) continue;
-#endif
-#ifdef _AVERAGE_PDE_  
-	  if (gRandom->Uniform(0.0, 1.0) > _AVERAGE_PDE_) continue;
-#endif
-	  wl->Fill(wave_length);
-	}
-	{
-	  //auto phtrack = tracks[hit.g4ID];
-
-	} 
-	
-	auto photon = new OpticalPhoton();
-	
-	{
-	  auto &x = hit.position;
-	  photon->SetDetectionPosition(TVector3(x.x, x.y, x.z));
-	}
-
-	// A single photodetector type is used;
-	photon->SetPhotonDetector(detector->m_PhotonDetectors[0]);
-	photon->SetDetected(true);
-	// Get cell index; mask out everything apart from {module,sector};
-	photon->SetVolumeCopy(hit.cellID & detector->GetReadoutCellMask());
-	
-	photons.push_back(photon);
-      } //for hit
-
-      auto particle = new ChargedParticle(track.pdgID);
+      for(auto &&hit:*hits){
+        //cout<<"hitsx   "<<hit.momentum.x<<endl;
+        double pmag = TMath::Sqrt(TMath::Power(hit.momentum.x,2)+ TMath::Power(hit.momentum.y,2) + TMath::Power(hit.momentum.z,2));
+        double wave_length = 1239.84/(1E9*pmag);
+        //cout<<"Lambda: "<<wave_length<<endl;
+        auto xx = hit.position.x; auto yy = hit.position.y; 
+        //ed->Fill(xx/10,yy/10);
+        wl->Fill(wave_length); 
+        auto photon = new OpticalPhoton();
+        {
+          auto x = hit.position.x;
+          auto y = hit.position.y;
+          auto z = hit.position.z;
+          printf("Recorded Hit Poistion ------> %f %f %f\n",x,y,z);
+          photon->SetDetectionPosition(TVector3(x, y, z));
+        }
+        // A single photodetector type is used;
+        photon->SetPhotonDetector(detector->m_PhotonDetectors[0]);  //?
+        photon->SetDetected(true); phcounter+=1;
+        // Get cell index; mask out everything apart from {module,sector};
+        photon->SetVolumeCopy(hit.cellID & detector->GetReadoutCellMask());
+        //photon->SetVolumeCopy(hit.cellID & detector->GetReadoutCellMask());
+        photons.push_back(photon);
+      }//hit 
+      printf("Set True Phot: %d\n",phcounter);
+      auto particle = new ChargedParticle(mcpart.PDG);
       event->AddChargedParticle(particle);
-
-      aerogel->ResetLocations();
-
-      // Create a fake (empty) history; then track locations at the aerogel boundaries;
-      particle->StartRadiatorHistory(std::make_pair(aerogel, new RadiatorHistory()));
+      gas->ResetLocations();
+      // Create a fake (empty) history; then track locations at the gas boundaries;
+      particle->StartRadiatorHistory(std::make_pair(gas, new RadiatorHistory()));
       {
-	// FIXME: need it not at vertex, but in the radiator; as coded here, this can 
-	// hardly work once the magnetic field is turned on;
-	auto &vtx = track.vs, &p = track.ps;
-	auto x0 = TVector3(vtx.x, vtx.y, vtx.z), p0 = TVector3(p.x, p.y, p.z), n0 = p0.Unit();
+        // FIXME: need it not at vertex, but in the radiator; as coded here, this can
+        // hardly work once the magnetic field is turned on;
+        auto x0 = TVector3(mcpart.vertex.x, mcpart.vertex.y, mcpart.vertex.z), p0 = TVector3(mcpart.momentum.x, mcpart.momentum.y, mcpart.momentum.z), n0 = p0.Unit();
+        printf("Momentum: %0.2f\n",p0.Mag());
+        // So, give the algorithm gas surface boundaries as encoded in PFRICH_geo.cpp;
+        TVector3 from, to;
+        gas->GetFrontSide(0)->GetCrossing(x0, n0, &from);
+        gas->GetRearSide (0)->GetCrossing(x0, n0, &to);
 
-	// So, give the algorithm aerogel surface boundaries as encoded in PFRICH_geo.cpp;
-	TVector3 from, to;
-	aerogel->GetFrontSide(0)->GetCrossing(x0, n0, &from);
-	aerogel->GetRearSide (0)->GetCrossing(x0, n0, &to);
-	  
-	// Move the points a bit inwards;
-	TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
-	aerogel->AddLocation(from, p0);
-	aerogel->AddLocation(  to, p0);
-	//printf("@@@ %f %f\n", from.z(), to.z());// - from.z());
+        // Move the points a bit inwards;
+        TVector3 nn = (to - from).Unit(); from += (0.010)*nn; to -= (0.010)*nn;
+        gas->AddLocation(from, p0);
+        gas->AddLocation(  to, p0);
+        printf("@@@ %f %f\n", from.z(), to.z());// - from.z());
       }
-
-      // Now that all internal track-level structures are populated, run IRT code;
       {
-	CherenkovPID pid;
+        CherenkovPID pid;
 
-	// Consider just pi/K case for now;
-	pid.AddMassHypothesis(0.140);
-	pid.AddMassHypothesis(0.494);
+        // Consider just pi/K case for now;
+        pid.AddMassHypothesis(0.140);
+        pid.AddMassHypothesis(0.494);
+        
+        printf("Entering PID Rec:%zu\n",photons.size()); 
+        for(auto photon : photons) particle->FindRadiatorHistory(gas)->AddOpticalPhoton(photon);
+        particle->PIDReconstruction(pid);
+        {
+          auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
+          double wt0 = pion->GetWeight(gas), wt1 = kaon->GetWeight(gas);
 
-	particle->PIDReconstruction(pid, &photons);
-	{
-	  auto pion = pid.GetHypothesis(0), kaon = pid.GetHypothesis(1);
-	  double wt0 = pion->GetWeight(aerogel), wt1 = kaon->GetWeight(aerogel);
+          //th->Fill(pion->GetTheta(gas));
 
-	  np->Fill(pion->GetNpe(aerogel));
+          printf("%10.3f (%10.3f) vs %10.3f (%10.3f) ...  %3d %d\n",
+                 wt0, pion->GetNpe(gas), wt1, kaon->GetNpe(gas), particle->GetPDG(), wt0 > wt1);
 
-	  printf("%10.3f (%10.3f) vs %10.3f (%10.3f) ...  %3d %d\n", 
-		 wt0, pion->GetNpe(aerogel), wt1, kaon->GetNpe(aerogel), particle->GetPDG(), wt0 > wt1);
-
-	  if (wt0 <= wt1) false_assignment_stat++;
-	}
+          //if (wt0 <= wt1) false_assignment_stat++;
+        }
       }
-    } //for track
-
-    event->Reset();
-  } //for ev
-  printf("%d false out of %lld\n", false_assignment_stat, t->GetEntries());
-
-  //auto cv = new TCanvas("cv", "", 800, 600);
-  //cv->cd(1); np->Draw();
-  auto cv = new TCanvas("cv", "", 1600, 800);
-  cv->Divide(4,2);
-  //cv->cd(1); th->Draw(); 
-  cv->cd(2); wl->Draw();
-  cv->cd(3); np->Draw();
-  cv->cd(4); nq->Draw();
-  //cv->cd(4); xi->Draw();
-  //cv->cd(5); tq->Draw(); tq->Fit("gaus");
-  //cv->cd(6); fi->Draw();
-  cv->cd(7); ep->Draw();
-  //cv->cd(8); wi->Draw();
+      printf("&&&&&&&&&&&&&&\n");  
+    }//mctrack       
+    cout<<"#################### &&&&&&&&&&&&&   "<< evtcounter   <<"   &&&&&&&&&&&& ######################"<<endl;
+    evtcounter++;
+  }//ev
+  //evtcounter++;
+  np->Draw();
 } // reader()
