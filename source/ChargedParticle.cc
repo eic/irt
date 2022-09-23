@@ -72,7 +72,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 
 	  photon->m_Phi[radiator] += solution.GetPhi();
 
-	  if (attenuation) {
+	  if (attenuation>0.0) {
 	    TVector3 from = radiator->m_Locations[iq].first, to;
 	    bool ok = rear->GetCrossing(from, solution.m_Direction, &to);
 	    if (ok) {
@@ -94,10 +94,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  
 	  // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
 	  // in the previous loop; FIXME: add some smearing later;
-	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
-	  //printf("%2d -> %7.3f\n", iq, weights[iq]);
-	  /*photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 
-							    (weights[iq] + weights[iq+1])/2)); *///1.0));
+          auto weight = attenuation > 0 ?
+            (weights[iq] + weights[iq+1])/2 :
+            1.0;
+	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), weight));
 	  //printf("%2d -> %7.3f\n", iq, weights[iq]);
 	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), fabs(cos(s0.GetPhi()))));
 	} //for iq
