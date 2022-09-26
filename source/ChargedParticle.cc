@@ -98,6 +98,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  //printf("%2d -> %7.3f\n", iq, weights[iq]);
 	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 
 							    (weights[iq] + weights[iq+1])/2));//1.0));
+	  //printf("attenuation=%f  weight=%f\n",attenuation,(weights[iq] + weights[iq+1])/2);
 	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), fabs(cos(s0.GetPhi()))));
 	} //for iq
       }
