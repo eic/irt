@@ -124,7 +124,7 @@ class EtaRange {
 class DelphesConfig {
  public:
   DelphesConfig(const char *dname);
-  ~DelphesConfig() {};
+  virtual ~DelphesConfig() {};
 
   MassHypothesis *AddMassHypothesis(int pdg, double max_contamination_left = 1.0, 
 				    double max_contamination_right = 1.0);

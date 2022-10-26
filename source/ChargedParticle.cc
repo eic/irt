@@ -57,7 +57,8 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       {
 	bool all_converged = true;
 	IRTSolution solutions[zdim+1];
-	double weights[zdim+1] = {0.0};
+	double weights[zdim+1];
+	for(unsigned iw=0; iw<zdim+1; iw++) weights[iw] = 0.0;
 	
 	photon->m_Phi[radiator] = 0.0;
 
