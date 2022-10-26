@@ -16,6 +16,12 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { cc: gcc,   cxx: g++     }
+          - { cc: clang, cxx: clang++ }
     steps:
       - uses: actions/checkout@v3
       - uses: cvmfs-contrib/github-action-cvmfs@v3
@@ -23,12 +29,12 @@ jobs:
         with:
           platform-release: "jug_xl:nightly"
           run: |
-            cmake -S . -B build -DDELPHES=ON -DEVALUATION=OFF -DCMAKE_INSTALL_PREFIX=install
+            CC=${{matrix.cc}} CXX=${{matrix.cxx}} cmake -S . -B build -DDELPHES=ON -DEVALUATION=OFF -DCMAKE_INSTALL_PREFIX=install
             cmake --build build
             cmake --install build
       - uses: actions/upload-artifact@v3
         with:
-          name: install
+          name: install_${{matrix.cc}}
           path: install
           retention-days: 1
           if-no-files-found: error
