@@ -135,7 +135,7 @@ void DelphesConfig::DetermineThresholds( void )
 	  hypo->SetThreshold(min);
       } //for erange..mrange
 
-    printf("@T@ %d -> %7.2f\n", hypo->GetThreshold());
+    printf("@T@ %d -> %7.2f\n", ih, hypo->GetThreshold());
   } //for iq
 } // DelphesConfig::DetermineThresholds()
 

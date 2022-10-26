@@ -51,10 +51,12 @@ class CherenkovRadiator: public TObject {
     return m_AlternativeMaterialName.Data();
   };
 
- private:
+ protected:
   // Run-time variables for the GEANT pass;
   const G4LogicalVolume *m_LogicalVolume;          //!
   const G4RadiatorMaterial *m_Material;            //!
+
+ private:
 
   // Refractive index calculated for some fixed reference wave length (supposedly the average 
   // one as seen on the detected photon wave length plot);

@@ -10,14 +10,14 @@
 
 class ReflectionPoint: public TObject {
  public:
- ReflectionPoint(): m_Mirror(0), m_VolumeCopy(0) {};
+ ReflectionPoint(): m_Mirror(0)/*, m_VolumeCopy(0)*/ {};
  ReflectionPoint(CherenkovMirror *mirror, unsigned vcopy, const TVector3 &position, const TVector3 &momentum):
-  m_Mirror(mirror), m_VolumeCopy(vcopy), m_Position(position), m_Momentum(momentum) {};
+  m_Mirror(mirror), /*m_VolumeCopy(vcopy),*/ m_Position(position), m_Momentum(momentum) {};
   ~ReflectionPoint() {};
 
  private:
   TRef m_Mirror;
-  unsigned m_VolumeCopy;
+  //unsigned m_VolumeCopy; // FIXME: unused
   TVector3 m_Position, m_Momentum;
 
   ClassDef(ReflectionPoint, 1);

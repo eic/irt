@@ -39,6 +39,10 @@ class ParametricSurface: public TObject {
     auto pt = GetSpacePoint(u, v);
     return GetNormal(pt);
   };
+  // default, not overriden by all derived classes
+  virtual TVector3 GetNormal( void ) const {
+    return TVector3(0.0, 0.0, 0.0);
+  };
   const TVector3 &GetCenter( void ) const { return m_Center; };
   virtual double GetDistance(const TVector3 &xx) const = 0;
 
