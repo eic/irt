@@ -52,6 +52,8 @@ class DelphesConfigDIRC: public DelphesConfig {
   double m_TrackerAngularResolutionA, m_TrackerAngularResolutionB;
 
   std::string m_ParameterizationMap;
+
+  ClassDef(DelphesConfigDIRC, 1)
 };
 
 #endif

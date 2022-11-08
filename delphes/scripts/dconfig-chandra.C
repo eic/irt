@@ -89,6 +89,11 @@ void dconfig_chandra( void )
   // This call also makes a guess on the kaon and proton thresholds;
   delphes->AddZeroSigmaEntries();
   delphes->Print();
-  delphes->Write();
+  delphes->WriteTcl();
+  {
+    auto fout = new TFile("pfRICH.root", "RECREATE");
+    delphes->Write();
+    fout->Close();
+  }
   exit(0);
 } // dconfig()

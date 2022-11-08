@@ -16,11 +16,12 @@ int DelphesConfigRICH::Calculate( void )
   double mass[dim];
   for(unsigned ih=0; ih<dim; ih++)
     mass[ih] = m_MassHypotheses[ih]->Mass();
-    
+
   for(auto erange: m_EtaRanges) {
     for(auto mrange: erange->m_MomentumRanges) {
+      mrange->m_MatrixDim = dim*dim;
       // Matrix will be band-diagonal of course;
-      mrange->m_Matrix = new double[dim*dim];
+      mrange->m_Matrix = new double[mrange->m_MatrixDim];//dim*dim];
 
       if (dim == 3 && mrange->GetMax() <= m_MassHypotheses[0]->GetThreshold()) 
 	// Entry below pion threshold -> should not happen; reset to 0;

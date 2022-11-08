@@ -53,6 +53,8 @@ class DelphesConfigTOF: public DelphesConfig {
   double m_MomentumResolutionA, m_MomentumResolutionB, m_PathLengthResolution;
 
   double tof(double m, double p, double l);
+
+  ClassDef(DelphesConfigTOF, 1)
 };
 
 #endif

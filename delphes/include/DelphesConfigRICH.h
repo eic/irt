@@ -6,6 +6,7 @@
 
 class DelphesConfigRICH: public DelphesConfig {
  public:
+ DelphesConfigRICH( void ): DelphesConfig() {};
  DelphesConfigRICH(const char *dname): DelphesConfig(dname), m_Rindex(0.0), 
     m_AdditionalSmearing(0.0) {};
  ~DelphesConfigRICH() {};
@@ -18,6 +19,8 @@ class DelphesConfigRICH: public DelphesConfig {
 
  private:
   double m_Rindex, m_AdditionalSmearing;
+
+  ClassDef(DelphesConfigRICH, 1)
 };
 
 #endif

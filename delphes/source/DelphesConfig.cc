@@ -7,6 +7,22 @@
 
 // -------------------------------------------------------------------------------------
 
+DelphesConfig::DelphesConfig( void )://const char *dname): 
+  //m_Name(dname),  
+  m_DatabasePDG(0),
+  m_EtaMin(0.0), m_EtaMax(0.0),
+  m_MomentumMin(0.0), m_MomentumMax(0.0), m_EfficiencyContaminationMode(false),
+  //m_PionThreshold(0.0), m_KaonThreshold(0.0), m_ProtonThreshold(0.0)
+  m_PtMode(false)
+{
+  //if (dname) {
+  //m_Name = dname;
+  //m_DatabasePDG = new TDatabasePDG();
+  //} //if
+} // DelphesConfig::DelphesConfig()
+
+// -------------------------------------------------------------------------------------
+
 DelphesConfig::DelphesConfig(const char *dname): 
   m_Name(dname),  
   m_EtaMin(0.0), m_EtaMax(0.0),
@@ -14,7 +30,10 @@ DelphesConfig::DelphesConfig(const char *dname):
   //m_PionThreshold(0.0), m_KaonThreshold(0.0), m_ProtonThreshold(0.0)
   m_PtMode(false)
 {
+  //if (dname) {
+  m_Name = dname;
   m_DatabasePDG = new TDatabasePDG();
+  //} //if
 } // DelphesConfig::DelphesConfig()
 
 // -------------------------------------------------------------------------------------
@@ -259,7 +278,7 @@ void DelphesConfig::WriteMassHypothesis(FILE *fout, unsigned ih)
 
 // -------------------------------------------------------------------------------------
 
-void DelphesConfig::Write(bool check)
+void DelphesConfig::WriteTcl(bool check)
 {
   // First check that the configuration is self-consistent;
   if (check && Check()) return;
@@ -288,7 +307,18 @@ void DelphesConfig::Write(bool check)
   fprintf(fout, "}\n");
   
   fclose(fout);
-} // DelphesConfig::Write()
+} // DelphesConfig::WriteTcl()
 
 // -------------------------------------------------------------------------------------
 
+MassHypothesis *DelphesConfig::GetMassHypothesis(int pdg, bool ignore_sign)
+{
+  for(auto hypo: m_MassHypotheses)
+    if (pdg == hypo->PdgCode() || 
+	(ignore_sign && pdg == abs(hypo->PdgCode())))
+      return hypo;
+	
+  return 0;
+} // DelphesConfig::GetMassHypothesis()
+
+// -------------------------------------------------------------------------------------

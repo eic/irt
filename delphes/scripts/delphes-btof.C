@@ -52,6 +52,6 @@ void delphes_btof( void )
   
   // This is again some generic stuff;
   //btof->Print();
-  btof->Write();
+  btof->WriteTcl();
   exit(0);
 } // delphes_btof()

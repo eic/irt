@@ -1,16 +1,19 @@
 
 #include <string>
 
+#include <TObject.h>
+#include <TVector3.h>
+
 class TDatabasePDG;
 #include <TParticlePDG.h>
 
 #ifndef _DELPHES_CONFIG_
 #define _DELPHES_CONFIG_
 
-class MassHypothesis {
+class MassHypothesis: public TObject {
  public:
-  MassHypothesis(TParticlePDG *pdg, double max_contamination_left, 
-		 double max_contamination_right): m_PDG(pdg),
+  MassHypothesis(TParticlePDG *pdg = 0, double max_contamination_left = 0.0, 
+		 double max_contamination_right = 0.0): m_PDG(pdg),
     m_MaxContaminationLeft(max_contamination_left), 
     m_MaxContaminationRight(max_contamination_right), m_Threshold(0.0) {};
   ~ MassHypothesis() {};
@@ -27,13 +30,15 @@ class MassHypothesis {
   double m_MaxContaminationLeft, m_MaxContaminationRight;
 
   double m_Threshold;
+
+  ClassDef(MassHypothesis, 1)
 };
 
-class MomentumRange {
+class MomentumRange: public TObject {
  public:
   enum range {undefined, below_pion_threshold, below_kaon_threshold, below_proton_threshold};
 
- MomentumRange(double min, double max): m_Min(min), m_Max(max), m_Matrix(0), 
+ MomentumRange(double min = 0.0, double max = 0.0): m_Min(min), m_Max(max), m_MatrixDim(0), m_Matrix(0), 
     m_Range(MomentumRange::undefined) {
     if (min > max) std::swap(m_Min, m_Max);
   }; 
@@ -55,7 +60,8 @@ class MomentumRange {
     return ih < m_MeasurementValues.size() ? m_MeasurementValues[ih] : 0.0; 
   };
 
-  double *m_Matrix;
+  unsigned m_MatrixDim;
+  double *m_Matrix; //[m_MatrixDim]
 
  private:
   double m_Min, m_Max;
@@ -63,11 +69,13 @@ class MomentumRange {
   std::vector<double> m_MeasurementValues;
   std::vector<double> m_SigmaValues;
   MomentumRange::range m_Range;
+
+  ClassDef(MomentumRange, 2)
 };
 
-class EtaRange {
+class EtaRange: public TObject {
  public:
- EtaRange(double min, double max): m_Min(min), m_Max(max) {
+ EtaRange(double min = 0.0, double max = 0.0): m_Min(min), m_Max(max) {
     if (min > max) std::swap(m_Min, m_Max);
   };
 
@@ -103,6 +111,15 @@ class EtaRange {
 
   std::vector<MomentumRange*> m_MomentumRanges;
 
+  MomentumRange *GetMomentumRange(double p) const {
+    for(auto mrange: m_MomentumRanges)
+      // Prefer to use '<=' here (help max value?);
+      if (mrange->GetMin() <= p && p <= mrange->GetMax())
+	return mrange;
+
+    return 0;
+  };
+
  private:
   template <typename T, typename... Args> 
     void ArgumentRecursion(MomentumRange *mrange, const T& firstArg, const Args&... args) { 
@@ -119,10 +136,13 @@ class EtaRange {
   void ArgumentRecursion(MomentumRange *mrange) {};
 
   double m_Min, m_Max;
+
+  ClassDef(EtaRange, 1)
 };
 
-class DelphesConfig {
+class DelphesConfig: public TObject {
  public:
+  DelphesConfig( void );
   DelphesConfig(const char *dname);
   virtual ~DelphesConfig() {};
 
@@ -142,7 +162,56 @@ class DelphesConfig {
   int  Check(bool rigorous = true);
   virtual int  Calculate()               = 0;
   //virtual bool ApplyThresholdModeLogic() = 0;
-  void Write(bool check = true);
+  void WriteTcl(bool check = true);
+
+  unsigned GetMassHypothesisCount( void ) const { return m_MassHypotheses.size(); };
+  void GetMassHypotheses(int harr[]) const {
+    unsigned id = 0;
+
+    for(auto hypo: m_MassHypotheses) 
+      harr[id++] = hypo->PdgCode();
+  };
+  MassHypothesis *GetMassHypothesis(int pdg, bool ignore_sign = true);
+
+  double GetEtaMin( void ) {
+    if (!m_EtaRanges.size()) return -99;
+
+    return m_EtaRanges[0]->GetMin();
+  };
+  double GetEtaMax( void ) {
+    if (!m_EtaRanges.size()) return -99;
+
+    return m_EtaRanges[m_EtaRanges.size()-1]->GetMax();
+  };
+
+  EtaRange *GetEtaRange(double eta) const {
+    for(auto erange: m_EtaRanges)
+      // Prefer to use '<=' here (help max value?);
+      if (erange->GetMin() <= eta && eta <= erange->GetMax())
+	return erange;
+
+    return 0;
+  };
+  
+  int GetSmearingMatrix(double eta, double p, double hmtx[]) const {
+    for(unsigned iq=0; iq<m_MassHypotheses.size()*m_MassHypotheses.size(); iq++)
+      hmtx[iq] = 0.0;
+
+    auto erange = GetEtaRange(eta);
+    if (!erange) return -1;
+
+    auto mrange = erange->GetMomentumRange(p);
+    if (!mrange) return -2;
+
+    for(unsigned iq=0; iq<mrange->m_MatrixDim; iq++)
+      hmtx[iq] = mrange->m_Matrix[iq];
+    
+    return 0;
+  };
+
+  int GetSmearingMatrix(const TVector3 p, double hmtx[]) const {
+    return GetSmearingMatrix(p.Eta(), p.Mag(), hmtx);
+  };
 
  protected:
   std::string m_Name;
@@ -173,6 +242,8 @@ class DelphesConfig {
   bool m_EfficiencyContaminationMode;
 
   bool m_PtMode;
+
+  ClassDef(DelphesConfig, 1)
 };
 
 #endif

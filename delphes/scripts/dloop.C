@@ -108,7 +108,7 @@ void dloop(const char *fname = 0)
   
   delphes->AddZeroSigmaEntries();
   delphes->Print();
-  delphes->Write();
+  delphes->WriteTcl();
 
   if (!fname) exit(0);
 } // dconfig()

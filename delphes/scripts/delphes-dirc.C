@@ -48,6 +48,6 @@ void delphes_dirc( void )
 
   dirc->DoSigmaCalculations();
   // This is again some generic stuff;
-  dirc->Write(false);
+  dirc->WriteTcl(false);
   exit(0);
 } // delphes_dirc()

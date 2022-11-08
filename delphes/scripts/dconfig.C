@@ -46,6 +46,6 @@ void dconfig( void )
     eta->AddMomentumRange(10., 11., 1.0, 1.0, 1.5);
   } 
 
-  delphes->Write();
+  delphes->WriteTcl();
   exit(0);
 } // dconfig()
