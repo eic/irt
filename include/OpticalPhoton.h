@@ -49,6 +49,7 @@ class OpticalPhoton: public TransientParticle {
   };
 
   inline double GetVertexRefractiveIndex( void )         const { return m_VertexRefractiveIndex; };
+  inline double GetDetectionTime( void )                 const { return m_DetectionTime; };
   inline const TVector3 &GetVertexPosition( void )       const { return m_VertexPosition; };
   inline const TVector3 &GetVertexMomentum( void )       const { return m_VertexMomentum; };
   inline const TVector3 &GetVertexParentMomentum( void ) const { return m_VertexParentMomentum; };

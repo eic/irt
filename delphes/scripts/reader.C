@@ -9,6 +9,7 @@ void reader( void )
 {
   auto ff = new TFile("pfRICH.root");
   auto dconfig = dynamic_cast<DelphesConfig*>(ff->Get("DelphesConfigRICH"));
+  ff->Close();
 
   auto hypo = dconfig->GetMassHypothesis(211);
   printf("%d %f\n", hypo->PdgCode(), hypo->Mass()); 
