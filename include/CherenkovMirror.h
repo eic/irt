@@ -3,7 +3,13 @@
 #define _CHERENKOV_MIRROR_
 
 #include <G4Object.h>
+#include <FlatSurface.h>
+#include <SphericalSurface.h>
+#include <CylindricalSurface.h>
+#include <ConicalSurface.h>
 #include <ParametricSurface.h>
+
+class CherenkovWaveLengthRange;
 
 class SurfaceCopy: public G4ObjectCopy {
  public:
@@ -20,7 +26,7 @@ class CherenkovMirror: public G4Object {
  CherenkovMirror(G4VSolid *solid = 0, G4Material *material = 0): G4Object(solid, material), m_MirrorSurface(0) {};
   ~CherenkovMirror() {};
 
-  void SetReflectivity( void );
+  void SetReflectivity(double reflectivity, CherenkovWaveLengthRange *wlrange);// void );
 
   G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new SurfaceCopy(phys); };
   
@@ -63,6 +69,27 @@ class SphericalMirror: public CherenkovMirror, public SphericalSurface {
   ClassDef(SphericalMirror, 2);
 };
 
+class CylindricalMirror: public CherenkovMirror, public CylindricalSurface {
+ public:
+ CylindricalMirror() {};
+ CylindricalMirror(G4VSolid *solid, G4Material *material, const TVector3 &x0, const TVector3 &nz, double r0, double dz): 
+ CherenkovMirror(solid, material), CylindricalSurface(x0, nz, r0, dz) {};
+  ~CylindricalMirror() {};
+  
+  ClassDef(CylindricalMirror, 1);
+};
+
+class ConicalMirror: public CherenkovMirror, public ConicalSurface {
+ public:
+ ConicalMirror() {};
+ ConicalMirror(G4VSolid *solid, G4Material *material, const TVector3 &x0, const TVector3 &nz, double r0, double r1, double dz): 
+ CherenkovMirror(solid, material), ConicalSurface(x0, nz, r0, r1, dz) {};
+  ~ConicalMirror() {};
+  
+  ClassDef(ConicalMirror, 1);
+};
+
+#if 0
 class CherenkovMirrorGroup: public TObject {
  public:
   CherenkovMirrorGroup() {};
@@ -75,5 +102,6 @@ class CherenkovMirrorGroup: public TObject {
 
   ClassDef(CherenkovMirrorGroup, 1);
 };
+#endif
 
 #endif

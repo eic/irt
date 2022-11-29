@@ -30,6 +30,8 @@
 
 #pragma link C++ class ParametricSurface+;
 #pragma link C++ class SphericalSurface+;
+#pragma link C++ class CylindricalSurface+;
+#pragma link C++ class ConicalSurface+;
 #pragma link C++ class LocalCoordinatesXY+;
 #pragma link C++ class FlatSurface+;
 
@@ -38,8 +40,10 @@
 
 #pragma link C++ class SurfaceCopy+;
 #pragma link C++ class CherenkovMirror+;
-#pragma link C++ class CherenkovMirrorGroup+;
+//#pragma link C++ class CherenkovMirrorGroup+;
 #pragma link C++ class FlatMirror+;
+#pragma link C++ class ConicalMirror+;
+#pragma link C++ class CylindricalMirror+;
 #pragma link C++ class SphericalMirror+;
 
 #pragma link C++ class CherenkovPhotonDetector+;

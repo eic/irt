@@ -16,7 +16,7 @@ class ReflectionPoint;
 
 class OpticalPhoton: public TransientParticle {
  public:
- OpticalPhoton(): TransientParticle(0), m_VertexRefractiveIndex(0.0), m_PhotonDetector(0), 
+ OpticalPhoton(): TransientParticle(0), m_VertexAttenuationLength(0.0), m_VertexRefractiveIndex(0.0), m_PhotonDetector(0), 
     m_VolumeCopy(0), m_DetectionTime(0.0), 
     m_Detected(false)/*, m_Phi(0.0)*/ {};//, m_Selected(false) {};
   ~OpticalPhoton() {};
@@ -25,6 +25,7 @@ class OpticalPhoton: public TransientParticle {
 
   inline void SetDetected(bool what = true)                    { m_Detected = what; };
   inline void SetDetectionTime(double value)                   { m_DetectionTime = value; };
+  inline void SetVertexAttenuationLength(double value)         { m_VertexAttenuationLength = value; };
   inline void SetVertexRefractiveIndex(double value)           { m_VertexRefractiveIndex = value; };
   inline void SetVertexPosition(const TVector3 &position)      { m_VertexPosition = position; };
   inline void SetVertexMomentum(const TVector3 &momentum)      { m_VertexMomentum = momentum; };
@@ -48,6 +49,7 @@ class OpticalPhoton: public TransientParticle {
     return (id < m_RefractionPoints.size() ? m_RefractionPoints[id] : 0);
   };
 
+  inline double GetVertexAttenuationLength( void )       const { return m_VertexAttenuationLength; };
   inline double GetVertexRefractiveIndex( void )         const { return m_VertexRefractiveIndex; };
   inline double GetDetectionTime( void )                 const { return m_DetectionTime; };
   inline const TVector3 &GetVertexPosition( void )       const { return m_VertexPosition; };
@@ -65,6 +67,9 @@ class OpticalPhoton: public TransientParticle {
  private:
   // Vertex and 3D at birth as given by GEANT; 
   TVector3 m_VertexPosition, m_VertexMomentum, m_VertexParentMomentum;
+
+  // Attenuation length for this wave length (if radiator was known);
+  double m_VertexAttenuationLength;
 
   // Refractive index for this wave length (if radiator was known);
   double m_VertexRefractiveIndex;
@@ -93,7 +98,7 @@ class OpticalPhoton: public TransientParticle {
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                  //!
 
-  ClassDef(OpticalPhoton, 3);
+  ClassDef(OpticalPhoton, 6);
 };
 
 #endif

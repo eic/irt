@@ -5,7 +5,7 @@
 #define _CHERENKOV_PHOTON_DETECTOR_
 
 #include <G4Object.h>
-#include <ParametricSurface.h>
+#include <FlatSurface.h>
 
 class G4DataInterpolation;
 
@@ -37,13 +37,29 @@ class CherenkovPhotonDetector: public G4Object {
     m_OpticalBoundaryStorage.push_back(boundary);
   };
   IRT *AllocateIRT(unsigned sector, uint64_t icopy) { 
-    auto irt = new IRT(sector); _m_IRT[icopy] = irt; return irt; 
+    //+auto irt = new IRT(sector); _m_IRT[icopy] = irt; return irt; 
+    auto irt = new IRT(sector); 
+
+    if (m_IRT.find(icopy) == m_IRT.end()) {
+      std::vector<IRT*> ret;
+      ret.push_back(irt);
+      m_IRT[icopy] = ret;
+    } else {
+      m_IRT[icopy].push_back(irt);
+    } //if
+
+    return irt; 
   };
-  IRT *GetIRT(uint64_t icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
+  //IRT *GetIRT(uint64_t icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
+  IRT *GetIRT(uint64_t icopy) { return (m_IRT.find(icopy) == m_IRT.end() ? 0 : m_IRT[icopy][0]); };
+  std::vector<IRT*> *GetIRTs(uint64_t icopy) { 
+    return (m_IRT.find(icopy) == m_IRT.end() ? 0 : &m_IRT[icopy]); 
+  };
 
  private:
   // One optical path for each clone (identified by a logical volume copy);
-  std::map<uint64_t, IRT*> _m_IRT;
+  //+std::map<uint64_t, IRT*> _m_IRT;
+  std::map<uint64_t, std::vector<IRT*>> m_IRT;
 
   // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;
   std::vector<OpticalBoundary*> m_OpticalBoundaryStorage;
@@ -55,7 +71,7 @@ class CherenkovPhotonDetector: public G4Object {
 
   double m_GeometricEfficiency;
 
-  ClassDef(CherenkovPhotonDetector, 3);
+  ClassDef(CherenkovPhotonDetector, 4);
 };
 
 #endif

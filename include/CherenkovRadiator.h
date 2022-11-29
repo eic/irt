@@ -19,10 +19,12 @@ class CherenkovRadiator: public TObject {
   // NB: do not want to use physical volume here because a particle can cross more than one of them
   // (at the sector boundary), while there is no good reason to separate these contributions;
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
-  m_LogicalVolume(volume), m_Material(material), 
+  /*m_LogicalVolume(volume),*/ m_Material(material), m_OpticalPhotonGenerationEnabled(true),
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
     m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
-    m_GaussianSmearing(false) {};
+    m_GaussianSmearing(false) {
+    m_LogicalVolumes.push_back(volume);
+  };
   ~CherenkovRadiator() {};
 
   double n( void )                               const { return m_ReferenceRefractiveIndex; };
@@ -30,6 +32,8 @@ class CherenkovRadiator: public TObject {
 
   void SetReferenceRefractiveIndex(double n)   { m_ReferenceRefractiveIndex   = n; };
   void SetReferenceAttenuationLength(double l) { m_ReferenceAttenuationLength = l; };
+
+  void AddLogicalVolume(const G4LogicalVolume *volume) { m_LogicalVolumes.push_back(volume); };
 
   const G4RadiatorMaterial *GetMaterial( void )  const { return m_Material; };
 
@@ -51,12 +55,17 @@ class CherenkovRadiator: public TObject {
     return m_AlternativeMaterialName.Data();
   };
 
+  void DisableOpticalPhotonGeneration( void ) { m_OpticalPhotonGenerationEnabled = false; };
+  bool OpticalPhotonGenerationEnabled( void ) const { return m_OpticalPhotonGenerationEnabled; };
+
  protected:
   // Run-time variables for the GEANT pass;
-  const G4LogicalVolume *m_LogicalVolume;          //!
+  //+const G4LogicalVolume *m_LogicalVolume;          //!
+  std::vector<const G4LogicalVolume *> m_LogicalVolumes;          //!
   const G4RadiatorMaterial *m_Material;            //!
 
  private:
+  bool m_OpticalPhotonGenerationEnabled;
 
   // Refractive index calculated for some fixed reference wave length (supposedly the average 
   // one as seen on the detected photon wave length plot);
@@ -95,7 +104,7 @@ class CherenkovRadiator: public TObject {
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
-  ClassDef(CherenkovRadiator, 5);
+  ClassDef(CherenkovRadiator, 6);
 };
 
 #endif

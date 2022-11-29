@@ -64,7 +64,7 @@ class ChargedParticle: public TransientParticle {
   };
 
   // Single particle case for now;
-  void PIDReconstruction(CherenkovPID &pid);
+  void PIDReconstruction(CherenkovPID &pid, bool use_seed = false);
 
  private:
   // Optical photons produced elsewhere;

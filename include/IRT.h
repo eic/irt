@@ -39,9 +39,6 @@ class IRT: public TObject {
   void SetJacobianStep(double value) { m_JacobianStep = value; };
 
   IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, const TVector3 &beam, 
-		    //CherenkovRadiator *derivatives = 0, const IRTSolution *seed = 0);
-		    bool derivatives = false, const IRTSolution *seed = 0);
-  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
   unsigned GetSector( void ) const { return m_Sector; };
@@ -57,6 +54,9 @@ class IRT: public TObject {
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
     //return (id < _m_OpticalBoundaries.size() ? _m_OpticalBoundaries[id] : 0);
   };
+
+  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
+		    bool derivatives = false, const IRTSolution *seed = 0);
 
   // FIXME: this is not the right place for this variable;
   unsigned m_Sector;

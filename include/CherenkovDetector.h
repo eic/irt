@@ -19,8 +19,10 @@ class CherenkovDetector: public TObject {
     m_ReadoutCellMask(0x0)/*, m_SectorBoundaryOffset(0.0)*/ {};
   ~CherenkovDetector() {};
 
-  void AddOpticalBoundary(unsigned sector, OpticalBoundary *boundary) {
-    _m_OpticalBoundaries[sector].push_back(boundary);
+  enum ud {Upstream, Downstream};
+
+  void AddOpticalBoundary(CherenkovDetector::ud where, unsigned sector, OpticalBoundary *boundary) {
+    m_OpticalBoundaries[where][sector].push_back(boundary);
   };
 
   void AddRadiator(const char *name, CherenkovRadiator *radiator) { 
@@ -36,9 +38,10 @@ class CherenkovDetector: public TObject {
 				    uint64_t icopy, ParametricSurface *surface) {
     auto irt = pd->AllocateIRT(sector, icopy);
 
-    if (_m_OpticalBoundaries.find(sector) != _m_OpticalBoundaries.end())
-      for(auto boundary: _m_OpticalBoundaries[sector])
-	irt->AddOpticalBoundary(boundary);
+    for(unsigned ud=0; ud<2; ud++)
+      if (m_OpticalBoundaries[ud].find(sector) != m_OpticalBoundaries[ud].end())
+	for(auto boundary: m_OpticalBoundaries[ud][sector])
+	  irt->AddOpticalBoundary(boundary);
  
     pd->AddItselfToOpticalBoundaries(irt, surface);
   };
@@ -48,7 +51,7 @@ class CherenkovDetector: public TObject {
   std::map<TString, CherenkovRadiator*> &Radiators( void ) { return _m_Radiators; };
 
   //std::vector<std::pair<unsigned, OpticalBoundary*>> _m_OpticalBoundaries;
-  std::map<unsigned, std::vector<OpticalBoundary*>> _m_OpticalBoundaries;
+  std::map<unsigned, std::vector<OpticalBoundary*>> m_OpticalBoundaries[2];
   std::vector<CherenkovPhotonDetector*> m_PhotonDetectors; 
 
   //void SetContainerVolume(const G4LogicalVolume *lv) { m_ContainerVolume = lv; };
@@ -72,7 +75,7 @@ class CherenkovDetector: public TObject {
   // FIXME: not at all clean (uses implicit phase assumptions); 
   unsigned GetSector(const TVector3 &pt) {
     // FIXME: may require tuning for a dual-mirror setup;
-    unsigned nSectors = _m_OpticalBoundaries.size();
+    unsigned nSectors = m_OpticalBoundaries[0].size();
 
     // Either a single "sector" or sector structure not define yet -> return 0;
     if (nSectors <= 1) return 0;
@@ -87,7 +90,7 @@ class CherenkovDetector: public TObject {
   // FIXME: get rid of the second argument here;
   CherenkovRadiator *GuessRadiator(const TVector3 &x0, const TVector3 &n0) {
     // FIXME: may want to do a better check;
-    if (_m_OpticalBoundaries.empty()) return 0;
+    if (m_OpticalBoundaries[0].empty()) return 0;
 
     // Determine sector (in EIC DRICH terminology);
     unsigned isec = GetSector(x0);
@@ -115,17 +118,24 @@ class CherenkovDetector: public TObject {
     return 0;
   };
 
+  void StoreOpticalBoundary(OpticalBoundary *boundary) {
+    m_OpticalBoundaryStorage.push_back(boundary);
+  };
+
  private:  
   TString m_Name;
   // This is needed for dd4hep cell index decoding;
   uint64_t m_ReadoutCellMask;
+
+  // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;
+  std::vector<OpticalBoundary*> m_OpticalBoundaryStorage;
 
   //+double m_SectorBoundaryOffset;
 
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   //+std::vector<CherenkovMirrorGroup*> m_MirrorGroups;
 
-  ClassDef(CherenkovDetector, 5);
+  ClassDef(CherenkovDetector, 6);
 };
 
 #endif

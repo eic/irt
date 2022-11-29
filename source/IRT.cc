@@ -8,6 +8,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
+  //printf("\nIRT::Transport()!\n");
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
@@ -17,6 +18,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto surface = boundary->m_Surface;
 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
+    //printf("Next boundary: %d\n", ok);
 
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
@@ -37,12 +39,15 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 
     boundary->m_OutgoingDirection = boundary->m_IncomingDirection;
     // Must be the sensor dump; FIXME:: do this check better;
+    //if (!boundary->m_Radiator.GetObject()) printf("Sensor!\n");//return true;
     if (!boundary->m_Radiator.GetObject()) return true;
 
     if (boundary->m_Refractive) {
+      //printf("Here: Refractive\n");
       // Will not be able to determine the refractive index;
       if (!prev) return false;
       double n1 = prev->GetRadiator()->n(), n2 = boundary->GetRadiator()->n();
+      //printf("   %7.5f %7.5f\n", n1, n2);
 
       // Refraction; check that the refractive indices are different;
       if (n1 != n2) {
@@ -55,6 +60,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
       } //if
     } else {
       // Reflection;
+      //printf("Here: Reflective!\n");
       boundary->m_OutgoingDirection.Rotate(M_PI - 2*acos(ns.Dot(boundary->m_IncomingDirection)), na);
     } //if
 
@@ -90,8 +96,8 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
 IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double m0[2], 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
-  //printf("Here-1!\n");
-  IRTSolution solution; if (seed) solution = *seed;
+  //printf("Here-1Q!\n");
+  IRTSolution solution; if (seed) solution.Set(seed);// = *seed;
   if (!_m_OpticalBoundaries.size()) return solution;
 
   //printf("Here-2!\n");
@@ -103,9 +109,13 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // to shoot; since the refraction on aerogel/C2F6 boundary kicks propagation out of 2D, 
   // and there can be an additional flat mirror installed, there is no good reason to 
   // try solving the initial approximation analytically;
-  if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
+  if (!seed) {
+    solution.m_Theta = nfrom.Theta(); 
+    solution.m_Phi   = nfrom.Phi();
+  } //if
+  //solution.m_Theta = atan(22.0*M_PI/180.); solution.m_Phi = nfrom.Phi();
 
-  //printf("Here-3!\n");
+  //printf("Here-3! %f %f\n", solution.m_Theta, solution.m_Phi);
   for(unsigned itr=0; ; itr++ ) {
     //printf("Here-4!\n");
     if (itr == m_IterationLimit) return solution;
