@@ -24,6 +24,11 @@ int DelphesConfigDIRC::DoSigmaCalculations( void )
     double eta = m_EtaMin + etaStep*ie;
     double theta = 2*std::atan(exp(-eta));
 
+    // See e-mail from Greg (Roman) on 11/11/2022;
+    double reference_theta = theta*180/M_PI;
+    if (reference_theta <  25.0 ) reference_theta =  25.0;
+    if (reference_theta > 153.0 ) reference_theta = 153.0;
+
     // Assign eta range; avoid machine accuracy issues when checking continuity;
     auto erange = AddEtaRange(ie ? m_EtaRanges.back()->GetMax() : eta,  eta + etaStep);
 
@@ -48,7 +53,7 @@ int DelphesConfigDIRC::DoSigmaCalculations( void )
       for(unsigned ih=0; ih<hdim; ih++) {
 	auto hypo = m_MassHypotheses[ih];
 	
-	auto info = dpf->GetInfo(abs(hypo->PdgCode()), p, theta*180/M_PI, str);
+	auto info = dpf->GetInfo(abs(hypo->PdgCode()), p, reference_theta, str);
 			
 	// Just use central values and overall sigma from DrcPidFast code;
 	bool ret = StoreSigmaEntry(mrange, hypo->PdgCode(), info.true_cangle, info.cctr);

@@ -6,6 +6,12 @@
 
 class DelphesConfigTOF: public DelphesConfig {
  public:
+  // FIXME: do it better later;
+ DelphesConfigTOF( void ): DelphesConfig(), 
+    m_T0Resolution(0.0), m_DetectorResolution(0.0), m_InstallationRadius(0.0),
+    m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
+    m_EtaBinCount(0), m_MomentumBinCount(0), m_MagneticField(0.0), 
+    m_MomentumResolutionA(0.0), m_MomentumResolutionB(0.0), m_PathLengthResolution(0.0) {};
  DelphesConfigTOF(const char *dname): DelphesConfig(dname), 
     m_T0Resolution(0.0), m_DetectorResolution(0.0), m_InstallationRadius(0.0),
     m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),

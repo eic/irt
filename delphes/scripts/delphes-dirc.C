@@ -26,12 +26,11 @@ void delphes_dirc( void )
 #endif
 
   // "d(theta) ~ a/p + b" parameterization as taken from Wenqing's 11/23/21 slides, 
-  // roughly averaged over eta;
+  // roughly averaged over eta; 12/05/2022: still use the same, for the time being;
   dirc->SetTrackerAngularResolution(0.9, 0.1);
 
   // eta and momentum range and binning; 
-  dirc->SetEtaRange     (-1.64, 1.25,  10);
-  //dirc->SetEtaRange     ( 1.0,  1.01,   1);
+  dirc->SetEtaRange     (-1.55, 1.79,  10);
   // Do not mind to use Pt rather than 1/Pt bins; [GeV/c];
 #ifdef _E_PI_SEPARATION_MODE_
   dirc->SetMomentumRange( 0.44, 3.00,  10);
@@ -41,13 +40,18 @@ void delphes_dirc( void )
 #endif
 
   // Installation radius in [mm]; constant magnetic field in [T];
-  dirc->SetInstallationRadius  (1060.0);
-  dirc->SetMagneticField       ( 3.000);
+  dirc->SetInstallationRadius  (729.6);
+  dirc->SetMagneticField       ( 1.700);
 
   dirc->SetParameterizationMap("./ctr_map_p1_0.95.root");
 
   dirc->DoSigmaCalculations();
   // This is again some generic stuff;
   dirc->WriteTcl(false);
+  {
+    auto fout = new TFile("barrelDIRC.root", "RECREATE");
+    dirc->Write();
+    fout->Close();
+  }
   exit(0);
 } // delphes_dirc()
