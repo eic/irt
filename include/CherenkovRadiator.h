@@ -21,7 +21,7 @@ class CherenkovRadiator: public TObject {
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
   m_LogicalVolume(volume), m_Material(material), 
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
-    m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
+    m_ID(0), m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
     m_GaussianSmearing(false) {};
   ~CherenkovRadiator() {};
 
@@ -81,6 +81,7 @@ class CherenkovRadiator: public TObject {
   };
 
   // Transient variables for the analysis script convenience;
+  unsigned m_ID;                                   //!
   unsigned m_Stat;                                 //!
   double m_AverageTheta;                           //!
   TVector3 m_AverageVertexPosition;                //!
