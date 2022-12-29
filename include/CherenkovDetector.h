@@ -115,11 +115,8 @@ class CherenkovDetector: public TObject {
     return 0;
   };
 
-  // readout ID -> pixel position converter (overridable externally)
-  std::function<TVector3(long long int)> m_ReadoutIDToPosition = [] (long long int i) {
-    fprintf(stderr,"ERROR: CherenkovRadiator::m_ReadoutIDToPosition not defined\n");
-    return TVector3(0.,0.,0.);
-  };
+  // readout ID -> pixel position converter (for external usage)
+  std::function<TVector3(long long int)> m_ReadoutIDToPosition; //!
 
  private:  
   TString m_Name;
