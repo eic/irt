@@ -36,7 +36,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
     auto pd = photon->GetPhotonDetector();
     const auto irt = pd->GetIRT(photon->GetVolumeCopy());
     if (!irt) {
-      printf("No photosensor with this cellID found!\n");
+      printf("No photosensor with this VolumeCopy=%ld found!\n",photon->GetVolumeCopy());
       continue;
     } //if
 
