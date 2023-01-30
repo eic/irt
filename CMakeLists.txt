@@ -15,7 +15,9 @@ option(DELPHES    "Delphes card production"   ON)
 #----------------------------------------------------------------------------
 # dependencies
 
-find_package(ROOT 6.0.00 REQUIRED COMPONENTS RIO Hist Tree ROOTDataFrame)
+list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+find_package(ROOT 6 REQUIRED COMPONENTS Core RIO Hist Tree)
 include(${ROOT_USE_FILE})
 
 #----------------------------------------------------------------------------
@@ -64,7 +66,7 @@ set(IRT_ROOTMAP ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}_rdict.pcm ${CMAKE_CURR
 root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
 
 add_library(${IRT_LIB} SHARED ${IRT_SRC} )
-target_link_libraries(${IRT_LIB} ${ROOT_LIBRARIES} )
+target_link_libraries(${IRT_LIB} ROOT::Core)
 target_compile_options(${IRT_LIB} PRIVATE -Wall -Wno-misleading-indentation)
 target_include_directories(${IRT_LIB} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
