@@ -116,7 +116,10 @@ class CherenkovDetector: public TObject {
   };
 
   // readout ID -> pixel position converter (for external usage)
-  std::function<TVector3(long long int)> m_ReadoutIDToPosition; //!
+  std::function<TVector3(long long int)> m_ReadoutIDToPixelPosition; //!
+  // readout ID -> sensor position converter (for external usage)
+  std::function<TVector3(long long int)> m_ReadoutIDToSensorPosition; //!
+
 
  private:  
   TString m_Name;
