@@ -1,5 +1,4 @@
 .*.sw*
 build
 athena
-*.root
 sim/macro/tmp*.mac
