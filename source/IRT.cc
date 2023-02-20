@@ -6,11 +6,12 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 // -------------------------------------------------------------------------------------
 
-bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
+bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length)
 {
   //printf("\nIRT::Transport()!\n");
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
+  if (length) *length = 0.0;
   // Just go through the optical boundaries, and calculate either reflection 
   // or refraction on that particular surface;
   for(unsigned iq=0; iq<_m_OpticalBoundaries.size(); iq++) {
@@ -18,7 +19,6 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto surface = boundary->m_Surface;
 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
-    //printf("Next boundary: %d\n", ok);
 
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
@@ -33,12 +33,22 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     } //if
     transport_in_progress = true;
 
+    {
+      //auto *radiator = prev->GetRadiator();//m_Radiator.GetObject();
+      //printf("Next boundary: %d, %f, %f\n", ok, (boundary->m_ImpactPoint - x0).Mag(), radiator->n());
+    }
+    if (length) {
+      auto *radiator = prev ? prev->GetRadiator() : 0;
+
+      *length += (boundary->m_ImpactPoint - x0).Mag()*(radiator ? radiator->n() : 1.0);
+    } //if
+
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
     TVector3 ns = surface->GetNormal(boundary->m_ImpactPoint);
     TVector3 na = ns.Cross(boundary->m_IncomingDirection);
 
     boundary->m_OutgoingDirection = boundary->m_IncomingDirection;
-    // Must be the sensor dump; FIXME:: do this check better;
+    // Must be the sensor dump; FIXME: do this check better;
     //if (!boundary->m_Radiator.GetObject()) printf("Sensor!\n");//return true;
     if (!boundary->m_Radiator.GetObject()) return true;
 
@@ -117,13 +127,14 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 
   //printf("Here-3! %f %f\n", solution.m_Theta, solution.m_Phi);
   for(unsigned itr=0; ; itr++ ) {
+    double length;
     //printf("Here-4!\n");
     if (itr == m_IterationLimit) return solution;
     {
       auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
 			 sin(solution.m_Theta)*sin(solution.m_Phi), 
 			 cos(solution.m_Theta));
-      if (!Transport(xfrom, nn)) return solution;
+      if (!Transport(xfrom, nn, &length)) return solution;
     }
     //printf("Here-5!\n");
     double mc[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
@@ -135,6 +146,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 
       if (dist < m_Precision) {
 	solution.m_Converged = true;
+	solution.m_Length = length;
 
 	{ 
 	  double slope = acos(nfrom.Dot(beam));

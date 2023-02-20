@@ -182,3 +182,102 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, bool use_seed)
 } // ChargedParticle::PIDReconstruction()
 
 // -------------------------------------------------------------------------------------
+
+void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed)
+{
+  // Loop through all digitized hits of a given event; apply IRT on a fixed grid 
+  // of emission vertex locations and build kind of a PDF out of that to calculate weights;
+  // this approach may not be dramatically efficient, but it does 1) work in case of the 
+  // magnetic field bending, 2) allow easy extention to a dRICH case where each mass 
+  // hypothesis would evaluate each of the detected photons on the aerogel and gas grids
+  // independently and build a sum of their PDFs without much thinking about outlier photon
+  // rejection, average theta calculation and such;
+  //
+  // FIXME: add orphan (a la DCR) photons;
+  for(auto &hit: hits) {
+    // Loop through all optical paths for this photosensor;
+    for(auto irt: *hit.m_IRTs) {
+      for(auto rhistory: GetRadiatorHistory()) {
+	auto radiator = GetRadiator(rhistory);
+
+	auto tag = std::make_pair(radiator, irt);
+
+	unsigned zdim = radiator->GetTrajectoryBinCount();
+	if (radiator->m_Locations.size() != zdim+1) continue;
+	
+	TVector3 phx = hit.m_DetectionPosition;//();
+	
+	// Get effective attenuation length for this radiator, as well as the 
+	// parameterization of its rear surface in this particular sector; this is
+	// not really a clean procedure for dRICH aerogel, but should be good enough 
+	// in most part of the cases;
+	double attenuation = radiator->GetReferenceAttenuationLength();
+	auto rear = radiator->GetRearSide(irt->GetSector());//photon->GetVolumeCopy());
+	
+	{
+	  bool all_converged = true;
+	  IRTSolution solutions[zdim+1], seed;
+	  double weights[zdim+1];
+	  for(unsigned iw=0; iw<zdim+1; iw++) 
+	    weights[iw] = 0.0;
+	  
+	  // FIXME: try them all until converge (or ultimately fail);
+	  if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[0]);//photon->GetVertexMomentum().Unit());
+	  //+photon->m_Phi[radiator] = 0.0;
+	  
+	  for(unsigned iq=0; iq<zdim+1; iq++) {
+	    auto &solution = solutions[iq] = 
+	      irt->Solve(radiator->m_Locations[iq].first,
+			 // FIXME: give beam line as a parameter;
+			 radiator->m_Locations[iq].second.Unit(), phx, TVector3(0,0,1), 
+			 false, use_seed ? &seed : 0);
+	    if (!solution.Converged()) {
+	      all_converged = false;
+	      break;
+	    } //if
+	    
+	    //+photon->m_Phi[radiator] += solution.GetPhi();
+	    
+	    if (attenuation) {
+	      TVector3 from = radiator->m_Locations[iq].first, to;
+	      bool ok = rear->GetCrossing(from, solution.m_Direction, &to);
+	      if (ok) {
+		double length = (to - from).Mag();
+		weights[iq] = exp(-length / attenuation);
+	      } //if
+	    } else
+	      weights[iq] = 1.0;
+	  } //for iq
+	  
+	  //printf("Converged: %d\n", all_converged);
+	  if (!all_converged) continue;
+	  
+	  //+photon->m_Phi[radiator] /= (zdim+1);
+	  
+	  double tavg = 0.0, wtsum = 0.0;;
+	  for(unsigned iq=0; iq<zdim; iq++) {
+	    auto &s0 = solutions[iq], &s1 = solutions[iq+1];
+	    
+	    // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
+	    // in the previous loop; FIXME: add some smearing later;
+	    hit.m_PDF[tag].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 
+						    (weights[iq] + weights[iq+1])/2));
+
+	    double wt = (weights[iq] + weights[iq+1])/2;
+	    // FIXME: 300 mm/ns, etc;
+	    //printf("%f %f\n", s0.m_Length, s1.m_Length);
+	    double t = (radiator->m_Times[iq  ] + s0.m_Length/300 + 
+			radiator->m_Times[iq+1] + s1.m_Length/300)/2;
+	    wtsum += wt;
+	    tavg  += wt*t;
+	  } //for iq
+
+	  //tavg /= wtsum;
+	  hit.m_ExpectedTime = tavg / wtsum; 
+	}
+      } //for rhistory
+    } //for irt
+  } //for hit
+} // ChargedParticle::ProcessHits()
+
+// -------------------------------------------------------------------------------------

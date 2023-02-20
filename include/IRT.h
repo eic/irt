@@ -48,7 +48,7 @@ class IRT: public TObject {
   };
 
  private:
-  bool Transport(const TVector3 &xfrom, const TVector3 &nfrom); 
+  bool Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length = 0); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);

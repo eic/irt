@@ -79,6 +79,13 @@ class VectorPDF: public TObject {
   VectorPDF() {};
   ~VectorPDF() {};
   
+  void Reset( void ) {
+    for(auto member: m_Members)
+      delete member;
+    
+    m_Members.clear();
+  };
+
   void AddMember(UniformPDF *pdf) { m_Members.push_back(pdf); };
   unsigned GetMemberCount( void ) const { return m_Members.size(); };
   unsigned GetWithinRangeCount(double x, double dx = 0.0) const {

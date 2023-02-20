@@ -52,4 +52,6 @@
 #pragma link C++ class std::pair<TRef, TRef>+;
 #pragma link C++ class std::vector<TRef>+;
 
+#pragma link C++ class DigitizedHit+;
+
 #endif

@@ -85,9 +85,11 @@ class CherenkovRadiator: public TObject {
 
   // FIXME: memory leak;
   void ResetLocations( void ) { m_Locations.clear(); }
+  void ResetTimes( void ) { m_Times.clear(); }
   void AddLocation(/*unsigned sector,*/ const TVector3 &x, const TVector3 &n) { 
     m_Locations/*[sector]*/.push_back(std::make_pair(x, n)); 
   };
+  void AddTime(double value) { m_Times.push_back(value); };
 
   // Transient variables for the analysis script convenience;
   unsigned m_Stat;                                 //!
@@ -101,10 +103,11 @@ class CherenkovRadiator: public TObject {
   bool m_GaussianSmearing;                         //!
   //std::map<unsigned, std::vector<std::pair<TVector3, TVector3>>> _m_Locations; //!
   std::vector<std::pair<TVector3, TVector3>> m_Locations; //!
+  std::vector<double> m_Times;                     //!
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
-  ClassDef(CherenkovRadiator, 6);
+  ClassDef(CherenkovRadiator, 7);
 };
 
 #endif

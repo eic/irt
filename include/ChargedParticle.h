@@ -10,6 +10,7 @@
 #include <RadiatorHistory.h>
 #include <TransientParticle.h>
 #include <CherenkovPID.h>
+#include <DigitizedHit.h>
 
 class ChargedParticle: public TransientParticle {
  public:
@@ -65,6 +66,8 @@ class ChargedParticle: public TransientParticle {
 
   // Single particle case for now;
   void PIDReconstruction(CherenkovPID &pid, bool use_seed = false);
+  // Multi-particle case;
+  void ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed = false);
 
  private:
   // Optical photons produced elsewhere;

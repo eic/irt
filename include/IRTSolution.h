@@ -8,7 +8,7 @@ class IRTSolution {
   friend class IRT;
 
   public:
- IRTSolution(): m_Converged(false), m_Theta(0.0), m_SigmaTheta(0.0), m_Phi(0.0), 
+ IRTSolution(): m_Converged(false), m_Theta(0.0), m_SigmaTheta(0.0), m_Phi(0.0), m_Length(0.0),
     m_DtDx(0.0), m_DtDy(0.0), m_DtDz(0.0), /*m_DtDn(0.0),*/m_DtDt(0.0), m_DtDf(0.0), 
     m_SigmaDx(0.0), m_SigmaDy(0.0), m_SigmaDz(0.0), m_SigmaDt(0.0), m_SigmaDf(0.0) {};
   ~IRTSolution() {};
@@ -55,7 +55,7 @@ class IRTSolution {
 
   //private:
   bool m_Converged;
-  double m_Theta, m_SigmaTheta, m_Phi;
+  double m_Theta, m_SigmaTheta, m_Phi, m_Length;
 
   // Derivatives: XY-coordinates on the sensor, emission point, "refractive index" (?), 
   // charged particle track theta and phi; these ones can be evaluated internally;
