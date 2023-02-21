@@ -16,14 +16,14 @@ class IRT;
 
 class DigitizedHit: public TObject {
  public:
- DigitizedHit(): m_BackgroundCandidate(false), m_ExpectedTime(0.0), m_IRTs(0), 
+ DigitizedHit(): m_BackgroundCandidate(false), /*m_ExpectedTime(0.0),*/ m_Best(0), m_IRTs(0), 
     m_PhotonDetector(0), m_Copy(0), m_iX(0), m_iY(0) {};
   ~DigitizedHit() {
     m_Selected.clear();
 
-    for(auto tag: m_PDF)
-      tag.second.Reset();
-    m_PDF.clear();
+    //for(auto tag: m_PDF)
+    //tag.second.first.Reset();
+    //m_PDF.clear();
   };
 
   double GetAverageDetectionTime( void ) {
@@ -34,11 +34,17 @@ class DigitizedHit: public TObject {
     return ret;
   };
 
+  inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
+
   // FIXME: private;
   bool m_BackgroundCandidate;                                     //!
   std::set<std::pair<ChargedParticle*, double>> m_Selected;       //!
-  std::map<std::pair<CherenkovRadiator*, IRT*>, VectorPDF> m_PDF; //!
-  double m_ExpectedTime;                                          //!
+  //std::map<std::pair<CherenkovRadiator*, IRT*>, std::pair<VectorPDF, double>> m_PDF; //!
+  //std::map<std::pair<CherenkovRadiator*, IRT*>, std::pair<double, double>> m_PDF; //!
+  std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_Solutions; //!
+  //std::map<std::pair<CherenkovRadiator*, IRT*>, double> m_ExpectedTime; //!
+  //double m_ExpectedTime;                                          //!
+  IRTSolution *m_Best;                                            //!
 
   TVector3 m_DetectionPosition;                                   //!
   std::vector<TVector3> m_DirectionSeeds;                         //!

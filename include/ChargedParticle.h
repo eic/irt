@@ -69,6 +69,11 @@ class ChargedParticle: public TransientParticle {
   // Multi-particle case;
   void ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed = false);
 
+  void SetRecoPdgCode(int pdg) { m_RecoPdgCode = pdg; };
+  int GetRecoPdgCode( void )   { return m_RecoPdgCode; };
+
+  std::vector<DigitizedHit*> m_Hits; //!
+
  private:
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
@@ -77,6 +82,7 @@ class ChargedParticle: public TransientParticle {
   std::vector<std::pair<TRef, RadiatorHistory*> > m_RadiatorHistory;
 
   bool m_StopTracing; //!
+  int m_RecoPdgCode;  //!
 
   ClassDef(ChargedParticle, 1);
 };

@@ -12,7 +12,7 @@
 
 class RadiatorHistory: public TObject {
  public:
-  RadiatorHistory() {};
+ RadiatorHistory(): m_AverageTime(0.0) {};
   ~RadiatorHistory() {
     for(auto photon: m_Photons)
       delete photon;
@@ -65,12 +65,17 @@ class RadiatorHistory: public TObject {
     } //for iq
   };
 
+  // Average location, momentum and time of emission by this particle from this radiator
+  // as evaluated by "calibration" photons which did not make it into the "detected" sample;
+  TVector3 m_AverageVertex, m_AverageMomentum; //!
+  double m_AverageTime;                        //!
+
   // Charged particle trajectory and optical photons generated in this radiator;
  private:
   std::vector<OpticalPhoton*> m_Photons;
   std::vector<ChargedParticleStep*> m_Steps;
 
-  std::map<double, TVector3> m_StepBuffer; //!
+  std::map<double, TVector3> m_StepBuffer;     //!
 
   ClassDef(RadiatorHistory, 1);
 };

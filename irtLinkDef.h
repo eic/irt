@@ -53,5 +53,6 @@
 #pragma link C++ class std::vector<TRef>+;
 
 #pragma link C++ class DigitizedHit+;
+#pragma link C++ class ReconstructionFactory+;
 
 #endif

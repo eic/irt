@@ -14,21 +14,26 @@ class G4DataInterpolation;
 class CherenkovPhotonDetector: public G4Object {
  public:
  CherenkovPhotonDetector(G4VSolid *solid = 0, G4Material *material = 0):
-  G4Object(solid, material), m_QERangeMin(0.0), m_QERangeMax(0.0), m_QE(0), 
+  G4Object(solid, material), m_QERangeMin(0.0), m_QERangeMax(0.0), m_QE(0), m_ScaleFactor(1.0),
     m_GeometricEfficiency(0.0) {};
   ~CherenkovPhotonDetector() {};
 
-  void SetQE(double min, double max, const G4DataInterpolation *qe) { 
+  void SetQE(double min, double max, const G4DataInterpolation *qe, double scale = 1.0) { 
     m_QERangeMin = min; 
     m_QERangeMax = max; 
 
     m_QE = qe; 
+    m_ScaleFactor = scale;
   };
 
   inline bool CheckQERange(double e) const { return m_QE && e >= m_QERangeMin && e <= m_QERangeMax; };
   const G4DataInterpolation *GetQE( void ) const { return m_QE; };
+  double GetScaleFactor( void ) const { return m_ScaleFactor; };
   void SetGeometricEfficiency(double value) { m_GeometricEfficiency = value; };
   double GetGeometricEfficiency( void ) const { return m_GeometricEfficiency; };
+
+  void SetActiveAreaSize(double size) { m_ActiveAreaSize = size; };
+  double GetActiveAreaSize( void ) const { return m_ActiveAreaSize; };
 
   void AddItselfToOpticalBoundaries(IRT *irt, ParametricSurface *surface) /*const*/ {
     auto boundary = new OpticalBoundary(0, surface, true);
@@ -68,10 +73,18 @@ class CherenkovPhotonDetector: public G4Object {
   // against GEANT libraries; that's fine;
   double m_QERangeMin, m_QERangeMax;  //!
   const G4DataInterpolation *m_QE;    //!
+  // May want to renormalize the QE curve, for instance to peak at 100%, but keep the 
+  // QE(lambda) dependency; also helps to select undetected photons, which follow the 
+  // QE(lambda) curve (so are representative for e.g. <n> calculation), but do not pass 
+  // the overall (uniform) efficiency test, see CherenkovSteppingAction::UserSteppingAction();
+  double m_ScaleFactor;               //!
 
   double m_GeometricEfficiency;
 
-  ClassDef(CherenkovPhotonDetector, 4);
+  // In case a squared flat surface;
+  double m_ActiveAreaSize;
+
+  ClassDef(CherenkovPhotonDetector, 6);
 };
 
 #endif

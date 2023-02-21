@@ -61,6 +61,7 @@ set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
   ${PROJECT_SOURCE_DIR}/source/DigitizedHit.cc
+  ${PROJECT_SOURCE_DIR}/source/ReconstructionFactory.cc
   G__IRT.cxx
 )
 
@@ -68,7 +69,7 @@ set(IRT_ROOTMAP ${CMAKE_CURRENT_BINARY_DIR}/lib${IRT_LIB}_rdict.pcm ${CMAKE_CURR
 root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
 
 add_library(${IRT_LIB} SHARED ${IRT_SRC} )
-target_link_libraries(${IRT_LIB} ${ROOT_LIBRARIES} )
+target_link_libraries(${IRT_LIB} ${ROOT_LIBRARIES} EG )
 target_compile_options(${IRT_LIB} PRIVATE -Wall -Wno-misleading-indentation)
 target_include_directories(${IRT_LIB} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
