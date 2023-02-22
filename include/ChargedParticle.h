@@ -69,11 +69,18 @@ class ChargedParticle: public TransientParticle {
   // Multi-particle case;
   void ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed = false);
 
-  void SetRecoPdgCode(int pdg) { m_RecoPdgCode = pdg; };
-  int GetRecoPdgCode( void )   { return m_RecoPdgCode; };
+  void SetRecoPdgCode(int pdg)                    { m_RecoPdgCode = pdg; };
+  int GetRecoPdgCode( void )                const { return m_RecoPdgCode; };
+  unsigned GetRecoCherenkovHitCount( void ) const { return m_Hits.size(); };
+  DigitizedHit *GetRecoCherenkovHit(unsigned id) const { 
+    return (id < m_Hits.size() ? m_Hits[id] : 0); 
+  };
+  double GetRecoCherenkovPhotonTheta(unsigned id);
+  double GetRecoCherenkovPhotonPhi(unsigned id);
+  double GetRecoCherenkovAverageTheta( void );
 
-  std::vector<DigitizedHit*> m_Hits; //!
-
+  void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
+  
  private:
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
@@ -81,8 +88,10 @@ class ChargedParticle: public TransientParticle {
   // Group steps by radiator of course; in the easiest case an entry and exit points;
   std::vector<std::pair<TRef, RadiatorHistory*> > m_RadiatorHistory;
 
-  bool m_StopTracing; //!
-  int m_RecoPdgCode;  //!
+  bool m_StopTracing;                //!
+
+  int m_RecoPdgCode;                 //!
+  std::vector<DigitizedHit*> m_Hits; //!
 
   ClassDef(ChargedParticle, 1);
 };

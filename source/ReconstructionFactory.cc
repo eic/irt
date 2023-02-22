@@ -257,215 +257,213 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
-  for(unsigned ic=0; ic<cdim; ic++) {
-    if (itr && ic != icbest) continue;
+    for(unsigned ic=0; ic<cdim; ic++) {
+      if (itr && ic != icbest) continue;
 
-    // A running variable, to simplify hypothesis calculation;
-    unsigned id = ic;
-    
-    // Clear hit attachment table;
-    for(auto &hit: m_Hits) {
-      hit.m_BackgroundCandidate = false;
-      hit.m_Selected.clear();
-    } //for hit      
-    
-    for(auto mcparticle: m_Event->ChargedParticles()) {
-      unsigned hypo = id%hdim;
-      auto hyparticle = m_Hypotheses[hypo];
+      // A running variable, to simplify hypothesis calculation;
+      unsigned id = ic;
       
-      // Calculate average momenta value in the radiators;
-      std::map<CherenkovRadiator*, double> momenta;
-      for(auto rhistory: mcparticle->GetRadiatorHistory()) {
-	auto radiator = mcparticle->GetRadiator(rhistory);
-	
-	momenta[radiator] = 
-	  mcparticle->GetHistory(rhistory)->m_AverageMomentum.Mag();
-      } 
-      
-      // FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
-      // is problematic; do it better later;
-      mcparticle->ProcessHits(m_Hits, true);
-      
-      //
-      // By this moment every detected hit is evaluated with respect to this particle 
-      // trajectory as originated from every radiator via every possible optical path; 
-      //
-      
-      // Loop through all hits; 
+      // Clear hit attachment table;
       for(auto &hit: m_Hits) {
-	// Will never have means to know from which radiator 
-	// a given photon originated, and via which optical path it arrived to the sensor;
-	// just choose "the best" [radiator,irt] combination, which this particular 
-	// particle PID hypothesis can find; the criterion is "closest in theta and closest 
-	// in timing" as evaluated via a chi^2 estimate with ndf=2;
-	//IRTSolution *best = 0;
-	hit.m_Best = 0;
-	double thp0 = 0.0, /*tsigma = _SINGLE_PHOTON_TIMING_RESOLUTION_,*/ ccdfmax = 0.0;
-	double hsigma = m_Radiator->GetSmearing();
-	
-	for(auto &tag: hit.m_Solutions) {
-	  auto radiator = tag.first.first;
-	  auto &solution = tag.second;
-	  
-	  // FIXME: handle this correctly;
-	  if (radiator != m_Radiator) continue;
-	  
-	  double pp = momenta[radiator];
-	  
-	  for(unsigned ih=0; ih<hdim; ih++) {
-	    double m = m_Hypotheses[ih]->Mass();
-	    
-	    // FIXME: exception;
-	    double thp = acos(sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp));
-	    double thdiff = solution.GetTheta() - thp;
-	    double tmdiff = solution.m_Time - hit.GetAverageDetectionTime();
-	    
-	    unsigned ndf = 1;
-	    double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
-	    if (m_UseTimingInChiSquare && m_SinglePhotonTimingResolution) {
-	      ndf++;
-	      chi2 += pow(tmdiff, 2)/pow(m_SinglePhotonTimingResolution, 2);
-	    } //if
-	    double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
-	    
-	    if (ih == hypo) {
-	      if (!hit.m_Best || ccdf > ccdfmax) {
-		hit.m_Best = &solution;
-		// FIXME: do it better later;
-		thp0 = thp;
-		ccdfmax = ccdf;
-	      } //if
-	    } else {
-	      // The logic behind this is that all hits within +/-N*sigma window
-	      // with respect to at least one hypothesis in at least one radiator
-	      // for at least one optical path for every particle belong to the 
-	      // club "which needs to be explained" in terms of Poisson statistics;
-	      if (ccdf > m_SingleHitCCDFcut) hit.m_BackgroundCandidate = true;
-	    } //if
-	  } //for ih
-	} //for tag 
-
-	if (hit.m_Best) {
-	  unsigned ndf = 1;
-	  double thdiff = hit.m_Best->GetTheta() - thp0;
-	  double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
-	  double tmdiff = hit.m_Best->m_Time - hit.GetAverageDetectionTime();
-	  if (m_UseTimingInChiSquare && m_SinglePhotonTimingResolution) {
-	    ndf++;
-	    chi2 += pow(tmdiff, 2)/pow(m_SinglePhotonTimingResolution, 2);
-	  } //if
-	  double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
-	  
-	  // FIXME: should be radiator-specific;
-	  if (ccdf > m_SingleHitCCDFcut) {
-	    hit.m_Selected.insert(std::make_pair(mcparticle, chi2));
-	    
-	    // Sure of interest is only to see a distribution for the right hypothesis; 
-	    if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
-	      if (itr) m_hthph->Fill(1000*thdiff);
-	      if (itr) m_hdtph->Fill(1000*tmdiff);
-	      
-	      if (itr) m_hccdfph->Fill(ccdf);
-	    } //if
-	  } //if
-	} //if
-      } //for hits
-      
-      id /= m_Event->ChargedParticles().size();
-
-      // FIXME: memory leak; looks like nothing else needs to be cleaned up here?;
-      for(auto &hit: m_Hits) 
-	hit.m_Solutions.clear();
-    } //for mcparticle
-    
-      // Clean up background candidate list; obviously if at least one particle selected this 
-      // hit for a hypothesis considered in this iteration, the hit is useful;
-    for(auto &hit: m_Hits) 
-      if (hit.m_Selected.size())
 	hit.m_BackgroundCandidate = false;
-    
-    // Now either resolve ambiguous assignments, based on the hit-to-track chi^2 match for this 
-    // PID hypothesis, or eliminate these hits everywhere; FIXME: any better idea?;
-    {
-      //#ifdef _RESOLVE_HIT_OWNERSHIP_ 
-      for(auto &hit: m_Hits) 
-	if (hit.m_Selected.size() >= 1) {
-	  if (m_ResolveHitOwnership) {
-	    double chi2min = 0.0;
-	    // FIXME: perhaps order them at the creation time?;
-	    for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); it++)
-	      if (it == hit.m_Selected.begin() || it->second < chi2min)
-		chi2min = it->second;
-	    for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); )
-	      if (it->second != chi2min)
-		it = hit.m_Selected.erase(it);
-	      else
-		it++;
-	  }
-	  else
-	    hit.m_Selected.clear();
-	} //for .. if
-
-      //#else
-      //for(auto &hit: hits) 
-      //	if (hit.m_Selected.size() != 1)
-      //  hit.m_Selected.clear();
-      //#endif
-    }
-    
-    // And eventually calculate the overall event chi^2;
-    {
-      unsigned nbg = 0;
-      for(auto &hit: m_Hits) 
-	if (hit.m_BackgroundCandidate) nbg++;
+	hit.m_Selected.clear();
+      } //for hit      
       
-      unsigned ndfev = 0, idx = 0;
-      double chi2ev = 0;
       for(auto mcparticle: m_Event->ChargedParticles()) {
-	unsigned npe = 0;
-	double chi2tr = 0.0;
+	unsigned hypo = id%hdim;
+	auto hyparticle = m_Hypotheses[hypo];
 	
+	// Calculate average momenta value in the radiators;
+	std::map<CherenkovRadiator*, double> momenta;
+	for(auto rhistory: mcparticle->GetRadiatorHistory()) {
+	  auto radiator = mcparticle->GetRadiator(rhistory);
+	  
+	  momenta[radiator] = mcparticle->GetHistory(rhistory)->m_AverageMomentum.Mag();
+	} //for rhistory
+	
+	// FIXME: memory leak; looks like nothing else needs to be cleaned up here?;
 	for(auto &hit: m_Hits) 
-	  for(auto selected: hit.m_Selected)
-	    if (selected.first == mcparticle) {
-	      npe++;
-	      double chi2ph = selected.second;
-	      chi2tr += chi2ph;
+	  hit.m_Solutions[mcparticle].m_All.clear();
+	
+	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
+	// is problematic; do it better later;
+	mcparticle->ProcessHits(m_Hits, true);
+	
+	//
+	// By this moment every detected hit is evaluated with respect to this particle 
+	// trajectory as originated from every radiator via every possible optical path; 
+	//
+	
+	// Loop through all hits; 
+	for(auto &hit: m_Hits) {
+	  // Will never have means to know from which radiator a given photon originated, and 
+	  // via which optical path it arrived to the sensor; just choose "the best" [radiator,irt] 
+	  // combination, which this particular particle PID hypothesis can find; the criterion 
+	  // is "closest in theta and closest in timing" as evaluated via a chi^2 estimate with ndf=2, 
+	  // or just "closest in theta" in case of ndf=1;
+	  hit.m_Solutions[mcparticle].m_Best = 0;
+	  double thp0 = 0.0, ccdfmax = 0.0, hsigma = m_Radiator->GetSmearing();
+	  
+	  for(auto &tag: hit.m_Solutions[mcparticle].m_All) {
+	    auto radiator = tag.first.first;
+	    auto &solution = tag.second;
+	    
+	    // FIXME: handle this correctly;
+	    if (radiator != m_Radiator) continue;
+	    
+	    double pp = momenta[radiator];
+	    
+	    for(unsigned ih=0; ih<hdim; ih++) {
+	      double m = m_Hypotheses[ih]->Mass();
 	      
-	      if (itr) mcparticle->m_Hits.push_back(&hit);
-
-	      // FIXME: there is only one entry selected here?;
-	      break;
-	    } //for..if
+	      // FIXME: exception;
+	      double thp = acos(sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp));
+	      double thdiff = solution.GetTheta() - thp;
+	      double tmdiff = solution.m_Time - hit.GetAverageDetectionTime();
+	      
+	      unsigned ndf = 1;
+	      double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
+	      if (m_UseTimingInChiSquare && m_SinglePhotonTimingResolution) {
+		ndf++;
+		chi2 += pow(tmdiff, 2)/pow(m_SinglePhotonTimingResolution, 2);
+	      } //if
+	      double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
+	      
+	      if (ih == hypo) {
+		if (!hit.m_Solutions[mcparticle].m_Best || ccdf > ccdfmax) {
+		  hit.m_Solutions[mcparticle].m_Best = &solution;
+		  // FIXME: do it better later;
+		  thp0 = thp;
+		  ccdfmax = ccdf;
+		} //if
+	      } else {
+		// The logic behind this is that all hits within +/-N*sigma window
+		// with respect to at least one hypothesis in at least one radiator
+		// for at least one optical path for every particle belong to the 
+		// club "which needs to be explained" in terms of Poisson statistics;
+		if (ccdf > m_SingleHitCCDFcut) hit.m_BackgroundCandidate = true;
+	      } //if
+	    } //for ih
+	  } //for tag 
+	  
+	  {
+	    auto *best = hit.m_Solutions[mcparticle].m_Best;
+	    
+	    if (best) {
+	      unsigned ndf = 1;
+	      double thdiff = best->GetTheta() - thp0;
+	      double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
+	      double tmdiff = best->m_Time - hit.GetAverageDetectionTime();
+	      if (m_UseTimingInChiSquare && m_SinglePhotonTimingResolution) {
+		ndf++;
+		chi2 += pow(tmdiff, 2)/pow(m_SinglePhotonTimingResolution, 2);
+	      } //if
+	      double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
+	      
+	      // FIXME: should be radiator-specific;
+	      if (ccdf > m_SingleHitCCDFcut) {
+		hit.m_Selected.insert(std::make_pair(mcparticle, chi2));
+		
+		// Sure of interest is only to see a distribution for the right hypothesis; 
+		if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
+		  if (itr) m_hthph->Fill(1000*thdiff);
+		  if (itr) m_hdtph->Fill(1000*tmdiff);
+		  
+		  if (itr) m_hccdfph->Fill(ccdf);
+		} //if
+	      } //if
+	    } //if
+	  }
+	} //for hits
 	
-	unsigned ndftr = m_UseTimingInChiSquare && m_SinglePhotonTimingResolution ? 2*npe : 1*npe;
-#ifdef _EXPECTED_TRUE_PHOTON_COUNT_
-	double texp = _EXPECTED_TRUE_PHOTON_COUNT_;
-	chi2tr += npe ? 2*(texp - npe + npe*log(npe/texp)) : 0.0;
-	ndftr++;
-#endif
-	ccdftrsave[ic][idx] = ROOT::Math::chisquared_cdf_c(chi2tr, ndftr);
-	npetrsave [ic][idx] = npe;
-	
-	ndfev  += ndftr;
-	chi2ev += chi2tr;
-	// This is dumb of course, but do not want to change std::set to std::vector;
-	idx++;
+	id /= m_Event->ChargedParticles().size();
       } //for mcparticle
       
-#ifdef _EXPECTED_BG_PHOTON_COUNT_
-      if (hdim >= 2) {
-	ndfev++;
-	double bexp = _EXPECTED_BG_PHOTON_COUNT_;
-	chi2ev += nbg ? 2*(bexp - nbg + nbg*log(nbg/bexp)) : 0.0;
-      } //if
-#endif
-      double ccdfev = ROOT::Math::chisquared_cdf_c(chi2ev, ndfev);
-      ccdfevsave[ic] = ccdfev;
+      // Clean up background candidate list; obviously if at least one particle selected this 
+      // hit for a hypothesis considered in this iteration, the hit is useful;
+      for(auto &hit: m_Hits) 
+	if (hit.m_Selected.size())
+	  hit.m_BackgroundCandidate = false;
       
-      if (!ic || ccdfev > ccdfevsave[icbest]) icbest = ic;
-    }
-  } //for ic
+      // Now either resolve ambiguous assignments, based on the hit-to-track chi^2 match for this 
+      // PID hypothesis, or eliminate these hits everywhere; FIXME: any better idea?;
+      {
+	for(auto &hit: m_Hits) 
+	  if (hit.m_Selected.size() >= 1) {
+	    if (m_ResolveHitOwnership) {
+	      double chi2min = 0.0;
+	      // FIXME: perhaps order them at the creation time?;
+	      for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); it++)
+		if (it == hit.m_Selected.begin() || it->second < chi2min)
+		  chi2min = it->second;
+	      for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); )
+		if (it->second != chi2min)
+		  it = hit.m_Selected.erase(it);
+		else
+		  it++;
+	    }
+	    else
+	      hit.m_Selected.clear();
+	  } //for .. if
+	//#else
+	//for(auto &hit: hits) 
+	//	if (hit.m_Selected.size() != 1)
+	//  hit.m_Selected.clear();
+      }
+      
+      // And eventually calculate the overall event chi^2;
+      {
+	unsigned nbg = 0;
+	for(auto &hit: m_Hits) 
+	  if (hit.m_BackgroundCandidate) nbg++;
+	
+	unsigned ndfev = 0, idx = 0;
+	double chi2ev = 0;
+	for(auto mcparticle: m_Event->ChargedParticles()) {
+	  unsigned npe = 0;
+	  double chi2tr = 0.0;
+	  
+	  for(auto &hit: m_Hits) 
+	    for(auto selected: hit.m_Selected)
+	      if (selected.first == mcparticle) {
+		npe++;
+		double chi2ph = selected.second;
+		chi2tr += chi2ph;
+		
+		if (itr) mcparticle->AddHit(&hit);//m_Hits.push_back(&hit);
+		
+		// FIXME: there is only one entry selected here?;
+		break;
+	      } //for..if
+	  
+	  unsigned ndftr = m_UseTimingInChiSquare && m_SinglePhotonTimingResolution ? 2*npe : 1*npe;
+#ifdef _EXPECTED_TRUE_PHOTON_COUNT_
+	  double texp = _EXPECTED_TRUE_PHOTON_COUNT_;
+	  chi2tr += npe ? 2*(texp - npe + npe*log(npe/texp)) : 0.0;
+	  ndftr++;
+#endif
+	  ccdftrsave[ic][idx] = ROOT::Math::chisquared_cdf_c(chi2tr, ndftr);
+	  npetrsave [ic][idx] = npe;
+	  
+	  ndfev  += ndftr;
+	  chi2ev += chi2tr;
+	  // This is dumb of course, but do not want to change std::set to std::vector;
+	  idx++;
+	} //for mcparticle
+	
+#ifdef _EXPECTED_BG_PHOTON_COUNT_
+	if (hdim >= 2) {
+	  ndfev++;
+	  double bexp = _EXPECTED_BG_PHOTON_COUNT_;
+	  chi2ev += nbg ? 2*(bexp - nbg + nbg*log(nbg/bexp)) : 0.0;
+	} //if
+#endif
+	double ccdfev = ROOT::Math::chisquared_cdf_c(chi2ev, ndfev);
+	ccdfevsave[ic] = ccdfev;
+	
+	if (!ic || ccdfev > ccdfevsave[icbest]) icbest = ic;
+      }
+    } //for ic
   } //for itr
   
     // Now check how the PID procedure performed;
@@ -494,7 +492,10 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
 	  if (m_VerboseMode) printf("Failure!\n");
 	} //if	  
 
-	mcparticle->SetRecoPdgCode(abs(rcparticle->PdgCode()));
+	// Make it the same sign as for the MC particle (assume tracker can 
+	// determine the charge sign);
+	int sign = mcparticle->GetPDG() < 0 ? -1 : 1;
+	mcparticle->SetRecoPdgCode(sign*abs(rcparticle->PdgCode()));
 	
 	id /= m_Event->ChargedParticles().size();
       } //for ip

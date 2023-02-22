@@ -14,9 +14,18 @@
 class ChargedParticle;
 class IRT;
 
+class DigitizedHitSolution {
+ public:
+ DigitizedHitSolution(): m_Best(0) {};
+  ~DigitizedHitSolution() {};
+
+  std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_All;
+  IRTSolution* m_Best;          
+};
+
 class DigitizedHit: public TObject {
  public:
- DigitizedHit(): m_BackgroundCandidate(false), /*m_ExpectedTime(0.0),*/ m_Best(0), m_IRTs(0), 
+ DigitizedHit(): m_BackgroundCandidate(false) /*m_ExpectedTime(0.0),*/ /*m_Best(0)*/, m_IRTs(0), 
     m_PhotonDetector(0), m_Copy(0), m_iX(0), m_iY(0) {};
   ~DigitizedHit() {
     m_Selected.clear();
@@ -36,15 +45,14 @@ class DigitizedHit: public TObject {
 
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
 
+  //double GetTheta(ChargedParticle *mcparticle) {
+  //return 
+  //};
+
   // FIXME: private;
   bool m_BackgroundCandidate;                                     //!
   std::set<std::pair<ChargedParticle*, double>> m_Selected;       //!
-  //std::map<std::pair<CherenkovRadiator*, IRT*>, std::pair<VectorPDF, double>> m_PDF; //!
-  //std::map<std::pair<CherenkovRadiator*, IRT*>, std::pair<double, double>> m_PDF; //!
-  std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_Solutions; //!
-  //std::map<std::pair<CherenkovRadiator*, IRT*>, double> m_ExpectedTime; //!
-  //double m_ExpectedTime;                                          //!
-  IRTSolution *m_Best;                                            //!
+  std::map<ChargedParticle*, DigitizedHitSolution> m_Solutions;   //!
 
   TVector3 m_DetectionPosition;                                   //!
   std::vector<TVector3> m_DirectionSeeds;                         //!

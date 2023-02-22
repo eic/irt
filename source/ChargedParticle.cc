@@ -202,7 +202,8 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
 	  // FIXME: loop through all of them until IRT converges (yes, assume 
 	  // the solution is unique);
 	  if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[0]);
-	  auto &solution = hit.m_Solutions[tag] = 
+
+	  auto &solution = hit.m_Solutions[this].m_All[tag] = 
 	    irt->Solve(history->m_AverageVertex,
 		       // FIXME: give beam line as a parameter;
 		       history->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
@@ -214,5 +215,42 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
     } //for irt
   } //for hit
 } // ChargedParticle::ProcessHits()
+
+// -------------------------------------------------------------------------------------
+
+double ChargedParticle::GetRecoCherenkovPhotonTheta(unsigned id)
+{
+  if (id >= m_Hits.size()) 
+    return -1.0;
+  else
+    return m_Hits[id]->m_Solutions[this].m_Best->GetTheta();
+} // ChargedParticle::GetRecoCherenkovPhotonTheta()
+
+// -------------------------------------------------------------------------------------
+
+double ChargedParticle::GetRecoCherenkovPhotonPhi(unsigned id)
+{
+  if (id >= m_Hits.size()) 
+    return -1.0;
+  else
+    return m_Hits[id]->m_Solutions[this].m_Best->GetPhi();
+} // ChargedParticle::GetRecoCherenkovPhotonPhi()
+
+// -------------------------------------------------------------------------------------
+
+double ChargedParticle::GetRecoCherenkovAverageTheta( void )
+{
+  double sum = 0.0;
+
+  for(auto hit: m_Hits) {
+    auto solution = hit->m_Solutions[this].m_Best;
+    
+    sum += solution->GetTheta();
+  } //for hit
+  
+  if (m_Hits.size()) sum /= m_Hits.size();
+
+  return sum;
+} // ChargedParticle::GetRecoCherenkovAverageTheta()
 
 // -------------------------------------------------------------------------------------
