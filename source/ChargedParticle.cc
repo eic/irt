@@ -238,17 +238,21 @@ double ChargedParticle::GetRecoCherenkovPhotonPhi(unsigned id)
 
 // -------------------------------------------------------------------------------------
 
-double ChargedParticle::GetRecoCherenkovAverageTheta( void )
+double ChargedParticle::GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator)
 {
+  unsigned stat;
   double sum = 0.0;
 
   for(auto hit: m_Hits) {
     auto solution = hit->m_Solutions[this].m_Best;
+    if (radiator && hit->m_Solutions[this].GetRadiator() != radiator) continue;
     
+    stat++;
     sum += solution->GetTheta();
   } //for hit
   
-  if (m_Hits.size()) sum /= m_Hits.size();
+    //if (m_Hits.size()) sum /= m_Hits.size();
+  if (stat) sum /= stat;//m_Hits.size();
 
   return sum;
 } // ChargedParticle::GetRecoCherenkovAverageTheta()

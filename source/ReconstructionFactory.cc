@@ -9,9 +9,9 @@
 // be accepted as "good" ones if the respective CCDF is more than this number;
 #define _SINGLE_HIT_CCDF_CUT_DEFAULT_              (0.001)
 
-// [rad] & [mm]; smearing portion, excluding emission point uncertainty 
+// [rad]; smearing portion, excluding emission point uncertainty 
 // (so to first order only dn/dl and sensor plane resolution);
-#define _THETA_GAUSSIAN_SMEARING_DEFAULT_         (0.0040)
+//#define _THETA_GAUSSIAN_SMEARING_DEFAULT_         (0.0040)
 
 // [mm]; FIXME: should use fixed.h value;
 //#define _VESSEL_FRONT_SIDE_OFFSET_       (1185.5)
@@ -36,9 +36,9 @@
 // -------------------------------------------------------------------------------------
 
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
-					     const char *dname, const char *rname):
+					     const char *dname)://, const char *rname):
   m_Tree(0),
-  m_Radiator(0),
+//m_Radiator(0),
   m_Event(0),
   m_RICH(0),
   m_CurrentEvent(0), 
@@ -69,11 +69,11 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_hmatch  = new TH1D("match",  "PID evaluation correctness",       2,    0,      2);
 
   m_RICH = geometry->GetDetector(dname);
-  m_Radiator = m_RICH->GetRadiator(rname);
+  //m_Radiator = m_RICH->GetRadiator(rname);
 
   m_DatabasePDG = new TDatabasePDG();
 
-  m_Radiator->SetGaussianSmearing(_THETA_GAUSSIAN_SMEARING_DEFAULT_);
+  //m_Radiator->SetGaussianSmearing(_THETA_GAUSSIAN_SMEARING_DEFAULT_);
 } // ReconstructionFactory::ReconstructionFactory() 
 
 // -------------------------------------------------------------------------------------
@@ -177,9 +177,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
       } //if
     } //for radiator
   } //for particle
-  
-  //std::vector<DigitizedHit> hits;
-  
+    
   // First mix all photons from all particles and "digitize" them; FIXME: add stray background;
   for(auto particle: m_Event->ChargedParticles())
     for(auto rhistory: particle->GetRadiatorHistory()) 
@@ -302,14 +300,17 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
 	  // is "closest in theta and closest in timing" as evaluated via a chi^2 estimate with ndf=2, 
 	  // or just "closest in theta" in case of ndf=1;
 	  hit.m_Solutions[mcparticle].m_Best = 0;
-	  double thp0 = 0.0, ccdfmax = 0.0, hsigma = m_Radiator->GetSmearing();
+	  double thp0 = 0.0, hsigma0 = 0.0, ccdfmax = 0.0;//, hsigma = m_Radiator->GetSmearing();
 	  
 	  for(auto &tag: hit.m_Solutions[mcparticle].m_All) {
 	    auto radiator = tag.first.first;
 	    auto &solution = tag.second;
 	    
 	    // FIXME: handle this correctly;
-	    if (radiator != m_Radiator) continue;
+	    //if (radiator != m_Radiator) continue;
+	    if (m_Radiators.find(radiator) == m_Radiators.end()) continue;
+	    
+	    double hsigma = radiator->GetSmearing();
 	    
 	    double pp = momenta[radiator];
 	    
@@ -334,6 +335,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
 		  hit.m_Solutions[mcparticle].m_Best = &solution;
 		  // FIXME: do it better later;
 		  thp0 = thp;
+		  hsigma0 = hsigma;
 		  ccdfmax = ccdf;
 		} //if
 	      } else {
@@ -352,7 +354,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev)
 	    if (best) {
 	      unsigned ndf = 1;
 	      double thdiff = best->GetTheta() - thp0;
-	      double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
+	      double chi2 = pow(thdiff, 2)/pow(hsigma0, 2);
 	      double tmdiff = best->m_Time - hit.GetAverageDetectionTime();
 	      if (m_UseTimingInChiSquare && m_SinglePhotonTimingResolution) {
 		ndf++;

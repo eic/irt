@@ -1,4 +1,5 @@
 
+#include <set>
 #include <vector>
 
 #include <TObject.h>
@@ -19,7 +20,7 @@ class CherenkovDetector;
 class ReconstructionFactory : public TObject {
  public:
   ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, 
-			const char *dname = 0, const char *rname = 0);
+			const char *dname = 0);//, const char *rname = 0);
   ~ReconstructionFactory() {};
 
   void PerformCalibration( void );
@@ -29,9 +30,20 @@ class ReconstructionFactory : public TObject {
   void RemoveAmbiguousHits( void )                   { m_ResolveHitOwnership = false; };
   void SetSinglePhotonTimingResolution(double value) { m_SinglePhotonTimingResolution = value; };
   void SetSensorActiveAreaPixellation(unsigned div)  { m_SensorActiveAreaPixellation = div; };
-  void SetThetaGaussianSmearing(double value)        { 
-    m_Radiator->SetGaussianSmearing(value);
+  CherenkovRadiator *UseRadiator(const char *rname, double smearing) {
+    auto radiator = m_RICH->GetRadiator(rname);
+    if (radiator) {
+      m_Radiators.insert(radiator);
+      radiator->SetGaussianSmearing(smearing);
+
+      return radiator;
+    } //if
+
+    return 0;
   };
+  //void SetThetaGaussianSmearing(double value)        { 
+  //m_Radiator->SetGaussianSmearing(value);
+  //};
   void SetQuietMode( void )                          { m_VerboseMode = false; };
   int AddHypothesis(int pdg);
   int AddHypothesis(const char *pdg);
@@ -56,7 +68,8 @@ class ReconstructionFactory : public TObject {
 
   TTree *m_Tree;
 
-  CherenkovRadiator *m_Radiator;
+  //CherenkovRadiator *m_Radiator;
+  std::set<CherenkovRadiator*> m_Radiators;
   CherenkovEvent *m_Event;
   CherenkovDetector *m_RICH;
 
@@ -82,7 +95,7 @@ class ReconstructionFactory : public TObject {
 
   std::vector<DigitizedHit> m_Hits;
 
-  ClassDef(ReconstructionFactory, 1)
+  ClassDef(ReconstructionFactory, 2)
 };
 
 #endif

@@ -77,7 +77,7 @@ class ChargedParticle: public TransientParticle {
   };
   double GetRecoCherenkovPhotonTheta(unsigned id);
   double GetRecoCherenkovPhotonPhi(unsigned id);
-  double GetRecoCherenkovAverageTheta( void );
+  double GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator = 0);
 
   void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
   

@@ -19,6 +19,15 @@ class DigitizedHitSolution {
  DigitizedHitSolution(): m_Best(0) {};
   ~DigitizedHitSolution() {};
 
+  // FIXME: very inefficient;
+  CherenkovRadiator *GetRadiator( void ) {
+    for(auto &ptr: m_All)
+      if (&ptr.second == m_Best)
+	return ptr.first.first;
+
+    return 0;
+  };
+
   std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_All;
   IRTSolution* m_Best;          
 };
