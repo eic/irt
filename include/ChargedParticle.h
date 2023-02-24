@@ -82,6 +82,8 @@ class ChargedParticle: public TransientParticle {
   void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
   
  private:
+  TVector3 m_VertexPosition, m_VertexMomentum;
+
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
@@ -93,7 +95,7 @@ class ChargedParticle: public TransientParticle {
   int m_RecoPdgCode;                 //!
   std::vector<DigitizedHit*> m_Hits; //!
 
-  ClassDef(ChargedParticle, 1);
+  ClassDef(ChargedParticle, 3);
 };
 
 #endif

@@ -17,7 +17,7 @@ class ChargedParticle;
 
 class OpticalPhoton: public TransientParticle {
  public:
- OpticalPhoton(): TransientParticle(0), m_VertexAttenuationLength(0.0), m_VertexTime(0.0), 
+ OpticalPhoton(): TransientParticle(0), m_VertexAttenuationLength(0.0), 
     m_VertexRefractiveIndex(0.0), m_PhotonDetector(0), m_VolumeCopy(0), m_DetectionTime(0.0), 
     m_Detected(false), m_CalibrationFlag(false) /*, m_Phi(0.0)*/ {};//, m_Selected(false) {};
   ~OpticalPhoton() {};
@@ -29,9 +29,6 @@ class OpticalPhoton: public TransientParticle {
   inline void SetDetectionTime(double value)                   { m_DetectionTime = value; };
   inline void SetVertexAttenuationLength(double value)         { m_VertexAttenuationLength = value; };
   inline void SetVertexRefractiveIndex(double value)           { m_VertexRefractiveIndex = value; };
-  inline void SetVertexTime(double value)                      { m_VertexTime = value; };
-  inline void SetVertexPosition(const TVector3 &position)      { m_VertexPosition = position; };
-  inline void SetVertexMomentum(const TVector3 &momentum)      { m_VertexMomentum = momentum; };
   inline void SetVertexParentMomentum(const TVector3 &momentum){ m_VertexParentMomentum = momentum; };
   inline void SetVolumeCopy(uint64_t copy)                     { m_VolumeCopy = copy; };
   inline void SetDetectionPosition(const TVector3 &position)   { m_DetectionPosition = position; };
@@ -54,10 +51,7 @@ class OpticalPhoton: public TransientParticle {
 
   inline double GetVertexAttenuationLength( void )       const { return m_VertexAttenuationLength; };
   inline double GetVertexRefractiveIndex( void )         const { return m_VertexRefractiveIndex; };
-  inline double GetVertexTime( void )                    const { return m_VertexTime; };
   inline double GetDetectionTime( void )                 const { return m_DetectionTime; };
-  inline const TVector3 &GetVertexPosition( void )       const { return m_VertexPosition; };
-  inline const TVector3 &GetVertexMomentum( void )       const { return m_VertexMomentum; };
   inline const TVector3 &GetVertexParentMomentum( void ) const { return m_VertexParentMomentum; };
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
 
@@ -71,10 +65,10 @@ class OpticalPhoton: public TransientParticle {
 
  private:
   // Vertex and 3D at birth as given by GEANT; 
-  TVector3 m_VertexPosition, m_VertexMomentum, m_VertexParentMomentum;
+  TVector3 /*m_VertexPosition, m_VertexMomentum,*/ m_VertexParentMomentum;
 
-  // Attenuation length for this wave length (if radiator was known); global time at birth;
-  double m_VertexAttenuationLength, m_VertexTime;
+  // Attenuation length for this wave length (if radiator was known); 
+  double m_VertexAttenuationLength;//, m_VertexTime;
 
   // Refractive index for this wave length (if radiator was known);
   double m_VertexRefractiveIndex;
@@ -95,14 +89,14 @@ class OpticalPhoton: public TransientParticle {
 
   // Transient variables for some convenience in an analysis script;
  public:
-  //inline bool WasSelected( void )                        const { return m_Selected; };
   std::set<std::pair<unsigned, CherenkovRadiator*>> _m_Selected;  //!
+  // FIXME: this one is obsolete;
   std::map<CherenkovRadiator*, VectorPDF> _m_PDF;                 //!
 
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                     //!
 
-  ClassDef(OpticalPhoton, 9);
+  ClassDef(OpticalPhoton, 10);
 };
 
 #endif
