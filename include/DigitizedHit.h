@@ -38,10 +38,6 @@ class DigitizedHit: public TObject {
     m_PhotonDetector(0), m_Copy(0), m_iX(0), m_iY(0) {};
   ~DigitizedHit() {
     m_Selected.clear();
-
-    //for(auto tag: m_PDF)
-    //tag.second.first.Reset();
-    //m_PDF.clear();
   };
 
   double GetAverageDetectionTime( void ) {
@@ -53,10 +49,6 @@ class DigitizedHit: public TObject {
   };
 
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
-
-  //double GetTheta(ChargedParticle *mcparticle) {
-  //return 
-  //};
 
   // FIXME: private;
   bool m_BackgroundCandidate;                                     //!

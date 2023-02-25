@@ -22,7 +22,7 @@ class CherenkovRadiator: public TObject {
   /*m_LogicalVolume(volume),*/ m_Material(material), m_OpticalPhotonGenerationEnabled(true),
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
     m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
-    m_GaussianSmearing(false) {
+    m_GaussianSmearing(false) {//, m_AverageTime(0.0) {
     m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
@@ -106,6 +106,9 @@ class CherenkovRadiator: public TObject {
   std::vector<double> m_Times;                     //!
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
+
+  //TVector3 m_AverageVertex, m_AverageMomentum; //!
+  //double m_AverageTime;                        //!
 
   ClassDef(CherenkovRadiator, 7);
 };

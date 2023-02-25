@@ -195,7 +195,8 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
     for(auto irt: *hit.m_IRTs) {
       for(auto rhistory: GetRadiatorHistory()) {
 	auto history  = GetHistory (rhistory);
-	auto tag = std::make_pair(GetRadiator(rhistory), irt);
+	auto radiator = GetRadiator(rhistory);
+	auto tag = std::make_pair(radiator, irt);
 	
 	{
 	  IRTSolution seed;
@@ -205,11 +206,13 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
 
 	  auto &solution = hit.m_Solutions[this].m_All[tag] = 
 	    irt->Solve(history->m_AverageVertex,
+		       //irt->Solve(radiator->m_AverageVertex,
 		       // FIXME: give beam line as a parameter;
 		       history->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
+		       //radiator->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
 		       TVector3(0,0,1), false, use_seed ? &seed : 0);
 	  solution.m_Time = history->m_AverageTime + solution.m_Length/300;
-	  //+photon->m_Phi[radiator] += solution.GetPhi();
+	  //solution.m_Time = radiator->m_AverageTime + solution.m_Length/300;
 	}
       } //for rhistory
     } //for irt

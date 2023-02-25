@@ -19,13 +19,14 @@ class OpticalPhoton: public TransientParticle {
  public:
  OpticalPhoton(): TransientParticle(0), m_VertexAttenuationLength(0.0), 
     m_VertexRefractiveIndex(0.0), m_PhotonDetector(0), m_VolumeCopy(0), m_DetectionTime(0.0), 
-    m_Detected(false), m_CalibrationFlag(false) /*, m_Phi(0.0)*/ {};//, m_Selected(false) {};
+    m_Detected(false), m_CalibrationFlag(false), m_BlackoutFlag(false) {};
   ~OpticalPhoton() {};
   
   inline bool IsCharged( void )                          const { return false; };
 
   inline void SetDetected(bool what = true)                    { m_Detected = what; };
   inline void SetCalibrationFlag( void )                       { m_CalibrationFlag = true; };
+  inline void SetBlackoutFlag( void )                          { m_BlackoutFlag = true; };
   inline void SetDetectionTime(double value)                   { m_DetectionTime = value; };
   inline void SetVertexAttenuationLength(double value)         { m_VertexAttenuationLength = value; };
   inline void SetVertexRefractiveIndex(double value)           { m_VertexRefractiveIndex = value; };
@@ -57,6 +58,7 @@ class OpticalPhoton: public TransientParticle {
 
   inline bool WasDetected( void )                        const { return m_Detected; };
   inline bool IsUsefulForCalibration( void )             const { return m_CalibrationFlag; };
+  inline bool IsMarkedAsBlackout( void )                 const { return m_BlackoutFlag; };
   inline uint64_t GetVolumeCopy( void )                  const { return m_VolumeCopy; };
 
   inline CherenkovPhotonDetector *GetPhotonDetector( void ) const {
@@ -85,7 +87,7 @@ class OpticalPhoton: public TransientParticle {
   double m_DetectionTime;
 
   // 'true' if the photon was actually detected; QE-based and geometric efficiency accounted; 
-  bool m_Detected, m_CalibrationFlag;
+  bool m_Detected, m_CalibrationFlag, m_BlackoutFlag;
 
   // Transient variables for some convenience in an analysis script;
  public:
@@ -96,7 +98,7 @@ class OpticalPhoton: public TransientParticle {
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                     //!
 
-  ClassDef(OpticalPhoton, 10);
+  ClassDef(OpticalPhoton, 11);
 };
 
 #endif
