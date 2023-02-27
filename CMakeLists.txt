@@ -60,8 +60,14 @@ set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
+
   ${PROJECT_SOURCE_DIR}/source/DigitizedHit.cc
+  ${PROJECT_SOURCE_DIR}/source/GeantImport.cc
+  ${PROJECT_SOURCE_DIR}/source/Configuration.cc
+  ${PROJECT_SOURCE_DIR}/source/Calibration.cc
+  ${PROJECT_SOURCE_DIR}/source/Digitization.cc
   ${PROJECT_SOURCE_DIR}/source/ReconstructionFactory.cc
+
   G__IRT.cxx
 )
 

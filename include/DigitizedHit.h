@@ -16,7 +16,7 @@ class IRT;
 
 class DigitizedHitSolution {
  public:
- DigitizedHitSolution(): m_Best(0) {};
+ DigitizedHitSolution(): m_Best(0), m_thp(0.0), m_tt(0.0), m_ccdf(0.0), m_rbest(0) {};
   ~DigitizedHitSolution() {};
 
   // FIXME: very inefficient;
@@ -28,14 +28,25 @@ class DigitizedHitSolution {
     return 0;
   };
 
+  void AssignVariables(IRTSolution *best, double thp, double tt, CherenkovRadiator *rptr, double ccdf) {
+    m_Best  = best;
+    m_thp   = thp;
+    m_tt    = tt;
+    m_rbest = rptr;
+    m_ccdf  = ccdf;
+  };
+
   std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_All;
-  IRTSolution* m_Best;          
+  IRTSolution* m_Best;      
+
+  double m_thp, m_tt, m_ccdf;
+  CherenkovRadiator *m_rbest;
 };
 
-class DigitizedHit: public TObject {
+class DigitizedHit {
  public:
- DigitizedHit(): m_BackgroundCandidate(false) /*m_ExpectedTime(0.0),*/ /*m_Best(0)*/, m_IRTs(0), 
-    m_PhotonDetector(0), m_Copy(0), m_iX(0), m_iY(0) {};
+ DigitizedHit(): m_BackgroundCandidate(false), m_IRTs(0), m_PhotonDetector(0), 
+    m_Copy(0), m_iX(0), m_iY(0) {};
   ~DigitizedHit() {
     m_Selected.clear();
   };
@@ -66,7 +77,5 @@ class DigitizedHit: public TObject {
   int m_iX, m_iY;                                                 //!
 
   std::vector<double> m_DetectionTimes;                           //!
-
-  ClassDef(DigitizedHit, 1);
 };
 #endif

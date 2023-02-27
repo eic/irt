@@ -15,6 +15,7 @@
 
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid, bool use_seed)
 {
+#if _BACK_
   std::vector<OpticalPhoton*> photons;
 
   // Mix all photons together;
@@ -179,6 +180,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, bool use_seed)
       }
     } //for rhistory
   } //for ih
+#endif
 } // ChargedParticle::PIDReconstruction()
 
 // -------------------------------------------------------------------------------------
@@ -200,18 +202,25 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
 	
 	{
 	  IRTSolution seed;
-	  // FIXME: loop through all of them until IRT converges (yes, assume 
-	  // the solution is unique);
-	  if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[0]);
 
-	  auto &solution = hit.m_Solutions[this].m_All[tag] = 
-	    irt->Solve(history->m_AverageVertex,
-		       //irt->Solve(radiator->m_AverageVertex,
-		       // FIXME: give beam line as a parameter;
-		       history->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
-		       //radiator->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
-		       TVector3(0,0,1), false, use_seed ? &seed : 0);
-	  solution.m_Time = history->m_AverageTime + solution.m_Length/300;
+	  // Loop through all of the provided seeds until IRT converges (yes, assume 
+	  // the solution is unique);
+	  unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
+	  for(unsigned iq=0; iq<smax; iq++) {
+	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
+
+	    auto &solution = hit.m_Solutions[this].m_All[tag] = 
+	      irt->Solve(history->m_EstimatedVertex,
+			 //irt->Solve(radiator->m_AverageVertex,
+			 // FIXME: give beam line as a parameter;
+			 history->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
+			 //radiator->m_AverageMomentum.Unit(), hit.GetDetectionPosition(), 
+			 TVector3(0,0,1), false, use_seed ? &seed : 0);
+	    //solution.m_Time = history->m_AverageTime + solution.m_Length/300;
+	    solution.m_Time = solution.m_Length/300;
+
+	    if (solution.m_Converged) break;
+	  } //for iq
 	  //solution.m_Time = radiator->m_AverageTime + solution.m_Length/300;
 	}
       } //for rhistory
@@ -243,7 +252,7 @@ double ChargedParticle::GetRecoCherenkovPhotonPhi(unsigned id)
 
 double ChargedParticle::GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator)
 {
-  unsigned stat;
+  unsigned stat = 0;
   double sum = 0.0;
 
   for(auto hit: m_Hits) {
@@ -254,10 +263,51 @@ double ChargedParticle::GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator
     sum += solution->GetTheta();
   } //for hit
   
-    //if (m_Hits.size()) sum /= m_Hits.size();
-  if (stat) sum /= stat;//m_Hits.size();
+  if (stat) sum /= stat;
 
   return sum;
 } // ChargedParticle::GetRecoCherenkovAverageTheta()
+
+// -------------------------------------------------------------------------------------
+
+double ChargedParticle::GetMocaCherenkovAverageTheta(CherenkovRadiator *radiator)
+{
+  unsigned stat = 0;
+  double sum = 0.0;
+
+  for(auto rhptr: GetRadiatorHistory()) {
+    auto rptr = GetRadiator(rhptr);
+
+    if (rptr != radiator) continue; 
+
+    for(auto photon: GetHistory(rhptr)->Photons()) {    
+      auto n1 = photon->GetVertexParentMomentum().Unit(), n2 = photon->GetVertexMomentum().Unit();
+
+      stat++;
+      sum += acos(n1.Dot(n2));
+    } //for photon
+  } //for rhptr
+  
+  if (stat) sum /= stat;
+
+  return sum;
+} // ChargedParticle::GetMocaCherenkovAverageTheta()
+
+// -------------------------------------------------------------------------------------
+
+unsigned ChargedParticle::GetRecoCherenkovPhotonCount(CherenkovRadiator *radiator)
+{
+  unsigned stat = 0;
+
+  //printf("... %5d\n", m_Hits.size());
+  for(auto hit: m_Hits) {
+    if (radiator && hit->m_Solutions[this].GetRadiator() != radiator) continue;
+    
+    stat++;
+  } //for hit
+
+  //printf("... %5d\n", stat);
+  return stat;
+} // ChargedParticle::GetRecoCherenkovPhotonCount()
 
 // -------------------------------------------------------------------------------------

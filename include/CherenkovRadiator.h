@@ -6,6 +6,7 @@
 #include <TObject.h>
 #include <TVector3.h>
 #include <TString.h>
+class TH1D;
 
 #ifndef _CHERENKOV_RADIATOR_
 #define _CHERENKOV_RADIATOR_
@@ -14,6 +15,19 @@
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
+struct CherenkovRadiatorCalibration {
+  //public:
+CherenkovRadiatorCalibration(): m_Stat(0), m_AverageRefractiveIndex(0.0), 
+    m_AverageZvtx(0.0), m_hcalib(0), m_Coffset(0.0), m_Csigma(0.0) {};
+  ~CherenkovRadiatorCalibration() {};
+
+  unsigned m_Stat;
+  double m_AverageRefractiveIndex, m_AverageZvtx;
+
+  TH1D *m_hcalib;
+  double m_Coffset, m_Csigma;
+};
+
 class CherenkovRadiator: public TObject {
  public:
   // NB: do not want to use physical volume here because a particle can cross more than one of them
@@ -21,8 +35,9 @@ class CherenkovRadiator: public TObject {
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
   /*m_LogicalVolume(volume),*/ m_Material(material), m_OpticalPhotonGenerationEnabled(true),
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
-    m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
-    m_GaussianSmearing(false) {//, m_AverageTime(0.0) {
+    m_TrajectoryBinCount(1), m_Smearing(0.0), 
+    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
+    m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0) {
     m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
@@ -91,26 +106,30 @@ class CherenkovRadiator: public TObject {
   };
   void AddTime(double value) { m_Times.push_back(value); };
 
-  // Transient variables for the analysis script convenience;
-  unsigned m_Stat;                                 //!
-  double m_AverageTheta;                           //!
-  TVector3 m_AverageVertexPosition;                //!
-  double m_AverageRefractiveIndex;                 //!
-
-  unsigned m_TrajectoryBinCount;                   //!
+  // Transient variables for the ReconstructionFactory convenience;
+  unsigned m_TrajectoryBinCount;                            //!
   // This is a hack for now;
-  double m_Smearing;                               //!
-  bool m_GaussianSmearing;                         //!
+  double m_Smearing;                                        //!
+  bool m_GaussianSmearing;                                  //!
   //std::map<unsigned, std::vector<std::pair<TVector3, TVector3>>> _m_Locations; //!
-  std::vector<std::pair<TVector3, TVector3>> m_Locations; //!
-  std::vector<double> m_Times;                     //!
+  std::vector<std::pair<TVector3, TVector3>> m_Locations;   //!
+  std::vector<double> m_Times;                              //!
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
-  //TVector3 m_AverageVertex, m_AverageMomentum; //!
-  //double m_AverageTime;                        //!
+  // Overall counts of "calibration" (did not pass QE check) and "real" (passed)
+  // photons; since they originate from the same parent distribution, one can choose 
+  // basically any way to calculate their effective ratio for Poisson statistics purposes;
+  unsigned m_CalibrationPhotonCount;                        //!
+  unsigned m_DetectedPhotonCount;                           //!
+  double m_DetectedToCalibrationPhotonRatio;                //!
 
-  ClassDef(CherenkovRadiator, 7);
+  unsigned m_YieldStat;                                     //!
+  double m_YieldCff;                                        //!
+  
+  std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
+
+  ClassDef(CherenkovRadiator, 8);
 };
 
 #endif

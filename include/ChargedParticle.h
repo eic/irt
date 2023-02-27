@@ -14,7 +14,8 @@
 
 class ChargedParticle: public TransientParticle {
  public:
- ChargedParticle(int pdg = 0): TransientParticle(pdg), m_StopTracing(false) {};
+ ChargedParticle(int pdg = 0): TransientParticle(pdg), m_StopTracing(false), 
+    m_HadronicInteractionOccured(false) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
       delete radiator.second;
@@ -78,7 +79,9 @@ class ChargedParticle: public TransientParticle {
   double GetRecoCherenkovPhotonTheta(unsigned id);
   double GetRecoCherenkovPhotonPhi(unsigned id);
   double GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator = 0);
-
+  double GetMocaCherenkovAverageTheta(CherenkovRadiator *radiator = 0);
+  unsigned GetRecoCherenkovPhotonCount(CherenkovRadiator *radiator = 0);
+  
   void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
   
  private:
@@ -95,7 +98,10 @@ class ChargedParticle: public TransientParticle {
   int m_RecoPdgCode;                 //!
   std::vector<DigitizedHit*> m_Hits; //!
 
-  ClassDef(ChargedParticle, 3);
+ public:
+  bool m_HadronicInteractionOccured;
+
+  ClassDef(ChargedParticle, 5);
 };
 
 #endif
