@@ -92,8 +92,10 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	      //printf("%f %f\n", sensor->GetCenter().X(), sensor->GetCenter().Y());
 	      double lx = sensor->GetLocalX(phx)/* + half*/, ly = sensor->GetLocalY(phx)/* + half*/;
 	      //printf("%f %f\n", lx, ly);
-	      if (fabs(lx) > half || fabs(ly) > half) {
-		printf("ERROR: hit outside of the sensor active area!\n");
+	      // Assume 1um out is not an issue;
+	      if (fabs(lx) > half + 1E-3 || fabs(ly) > half + 1E-3) {
+		//printf("%15.10f %15.10f\n", 
+		printf("ERROR: hit outside of the sensor active area: %15.10f %15.10f!\n", lx, ly);
 		continue;//goto _next_hit;
 	      } //if 
 	      lx += half; ly += half;//sensor->GetLocalY(phx) + half;
@@ -102,6 +104,13 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	      double pitch = size / m_SensorActiveAreaPixellation, x0 = -half, y0 = -half;
 	      hit.m_iX = (int)floor(lx/pitch);
 	      hit.m_iY = (int)floor(ly/pitch);
+	      // Correct for a possible out of range problem (see above);
+	      if (hit.m_iX < 0) hit.m_iX = 0; 
+	      if (hit.m_iX >= (int)m_SensorActiveAreaPixellation) hit.m_iX = m_SensorActiveAreaPixellation - 1;
+	      if (hit.m_iY < 0) hit.m_iY = 0; 
+	      if (hit.m_iY >= (int)m_SensorActiveAreaPixellation) hit.m_iY = m_SensorActiveAreaPixellation - 1;
+	      //if (hit.m_iX < 0 || hit.m_iX >= (int)m_SensorActiveAreaPixellation || 
+	      //  hit.m_iY < 0 || hit.m_iY >= (int)m_SensorActiveAreaPixellation)
 	      //printf("%2d %2d\n", hit.m_iX, hit.m_iY);
 	      double dx = pitch*(hit.m_iX + 0.5), dy = pitch*(hit.m_iY + 0.5);
 	      phx = sensor->GetSpacePoint(x0 + dx, y0 + dy);
