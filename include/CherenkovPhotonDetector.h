@@ -15,7 +15,7 @@ class CherenkovPhotonDetector: public G4Object {
  public:
  CherenkovPhotonDetector(G4VSolid *solid = 0, G4Material *material = 0):
   G4Object(solid, material), m_QERangeMin(0.0), m_QERangeMax(0.0), m_QE(0), m_ScaleFactor(1.0),
-    m_GeometricEfficiency(0.0) {};
+    m_GeometricEfficiency(0.0), m_CopyIdentifierLevel(0) {};
   ~CherenkovPhotonDetector() {};
 
   void SetQE(double min, double max, const G4DataInterpolation *qe, double scale = 1.0) { 
@@ -34,6 +34,9 @@ class CherenkovPhotonDetector: public G4Object {
 
   void SetActiveAreaSize(double size) { m_ActiveAreaSize = size; };
   double GetActiveAreaSize( void ) const { return m_ActiveAreaSize; };
+
+  void SetCopyIdentifierLevel(unsigned lv) { m_CopyIdentifierLevel = lv; };
+  unsigned GetCopyIdentifierLevel( void ) const { return m_CopyIdentifierLevel; };
 
   void AddItselfToOpticalBoundaries(IRT *irt, ParametricSurface *surface) /*const*/ {
     auto boundary = new OpticalBoundary(0, surface, true);
@@ -83,6 +86,8 @@ class CherenkovPhotonDetector: public G4Object {
 
   // In case a squared flat surface;
   double m_ActiveAreaSize;
+
+  unsigned m_CopyIdentifierLevel;     //!
 
   ClassDef(CherenkovPhotonDetector, 6);
 };

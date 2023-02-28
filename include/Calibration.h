@@ -35,7 +35,8 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
 
   unsigned m_CurrentEvent;
 
-  bool m_CalibrationBinStat[_THETA_BIN_COUNT_]; 
+  // FIXME: remove;
+  unsigned m_CalibrationBinStat[_THETA_BIN_COUNT_]; 
 
   //TH1D *m_hcalib;
 };

@@ -75,6 +75,7 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	    
 	    hit.m_PhotonDetector = pd;
 	    hit.m_Copy = photon->GetVolumeCopy();
+	    //printf("%d\n", hit.m_Copy);
 	    
 	    hit.m_IRTs = pd->GetIRTs(photon->GetVolumeCopy());
 	    if (!hit.m_IRTs) {
@@ -88,12 +89,20 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	      // All IRTs are terminated at the photosensor; use the first one; extract 3D 
 	      // parameterization of this particular photosensor;
 	      auto sensor = dynamic_cast<const FlatSurface*>((*hit.m_IRTs)[0]->tail()->GetSurface());
-	      double lx = sensor->GetLocalX(phx) + half, ly = sensor->GetLocalY(phx) + half;
+	      //printf("%f %f\n", sensor->GetCenter().X(), sensor->GetCenter().Y());
+	      double lx = sensor->GetLocalX(phx)/* + half*/, ly = sensor->GetLocalY(phx)/* + half*/;
+	      //printf("%f %f\n", lx, ly);
+	      if (fabs(lx) > half || fabs(ly) > half) {
+		printf("ERROR: hit outside of the sensor active area!\n");
+		continue;//goto _next_hit;
+	      } //if 
+	      lx += half; ly += half;//sensor->GetLocalY(phx) + half;
 	      
 	      // Smear the coordinate measurement (call it digitization :-); 
 	      double pitch = size / m_SensorActiveAreaPixellation, x0 = -half, y0 = -half;
 	      hit.m_iX = (int)floor(lx/pitch);
 	      hit.m_iY = (int)floor(ly/pitch);
+	      //printf("%2d %2d\n", hit.m_iX, hit.m_iY);
 	      double dx = pitch*(hit.m_iX + 0.5), dy = pitch*(hit.m_iY + 0.5);
 	      phx = sensor->GetSpacePoint(x0 + dx, y0 + dy);
 	      
