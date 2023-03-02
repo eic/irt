@@ -158,7 +158,8 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	  nn.Rotate(slope, axis); 
 
 	  solution.m_Theta = nn.Theta();
-	  solution.m_Phi   = nn.Phi();
+	  // Yes, as of 2023/03/02 subtract the changed particle phi angle;
+	  solution.m_Phi   = nn.Phi() - nfrom.Phi();
 	  //printf(" -> %7.2f [mrad], %7.2f [degree]\n", 1000*solution.m_Theta, (180/M_PI)*solution.m_Phi);
 	}
 
