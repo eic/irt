@@ -1,5 +1,6 @@
 
 class TDatabasePDG;
+#include <TRandom.h>
 
 #ifndef _CALIBRATION_
 #define _CALIBRATION_
@@ -38,6 +39,7 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
   // FIXME: remove;
   unsigned m_CalibrationBinStat[_THETA_BIN_COUNT_]; 
 
+  TRandom m_rndm; 
   //TH1D *m_hcalib;
 };
 

@@ -215,6 +215,24 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	} //for photon
 	
 	if (stat) history->m_AverageParentMomentum *= 1./stat;
+#if 0
+	{
+	  auto &p = history->m_AverageParentMomentum, q = history->m_AverageParentMomentum.Unit();
+	  double pp = p.Mag(), theta = p.Theta(), phi = p.Phi();
+	  double at = 1.32949, bt = 0.08976, st = 0.001*sqrt((at*at)/(pp*pp) + bt*bt);
+	  double ap = 16.2526, bp = 0.31083, sp = 0.001*sqrt((ap*ap)/(pp*pp) + bp*bp);
+	  
+	  if (st) theta += m_rndm.Gaus(0.0, st);
+	  if (sp) phi   += m_rndm.Gaus(0.0, sp);
+	  
+	  auto nn = TVector3(sin(theta)*cos(phi), 
+			     sin(theta)*sin(phi), 
+			     cos(theta));
+	  p = p.Mag()*nn;
+
+	  printf("%8.4f\n", acos(nn.Dot(q)));
+	}
+#endif
       } 	
 
       if (dpoints.size() >= 2) {
