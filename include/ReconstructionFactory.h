@@ -21,6 +21,9 @@ class ReconstructionFactory : /*public virtual GeantImport,*/ public Digitizatio
   int AddHypothesis(int pdg);
   int AddHypothesis(const char *pdg);
 
+  void SetExperimentalMode( void )                   { m_ExperimentalMode = true; };
+  void IgnoreMcTruthPhotonDirectionSeed( void )      { m_UseMcTruthPhotonDirectionSeed = false; };
+
   CherenkovEvent *GetEvent(unsigned ev, bool calibration = false);
 
  private:
@@ -37,6 +40,8 @@ class ReconstructionFactory : /*public virtual GeantImport,*/ public Digitizatio
 
   // Whether use Poisson in the chi^2 logic or not;
   bool m_UsePoissonTermInChiSquare;
+
+  bool m_ExperimentalMode, m_UseMcTruthPhotonDirectionSeed;
 
   std::vector<TParticlePDG*> m_Hypotheses;
 

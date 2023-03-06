@@ -25,7 +25,10 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
   m_ResolveHitOwnership(true),
-  m_UsePoissonTermInChiSquare(true)
+  m_UsePoissonTermInChiSquare(true),
+  m_ExperimentalMode(false), 
+  // Help conical mirrors a bit;
+  m_UseMcTruthPhotonDirectionSeed(true)
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 
@@ -134,7 +137,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	
 	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
 	// is problematic; do it better later;
-	mcparticle->ProcessHits(Hits(), true);
+	mcparticle->ProcessHits(Hits(), m_UseMcTruthPhotonDirectionSeed);//true);
 	
 	//
 	// By this moment every detected hit is evaluated with respect to this particle 
@@ -385,7 +388,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
 
   // Use undetected photons (HERE DO THIS ON TRACK PER TRACK BASIS) to extract the 
   // expected average emission point 3D location, time and parent particle 3D momentum;  
-  CalibratePhotonEmissionPoints();
+  if (!m_ExperimentalMode) CalibratePhotonEmissionPoints();
 
   // Loop through all photons (both calibration and detected ones) of all tracks and 
   // produce event-level hit array; "calibration" (undetected) photons will be passed through 
@@ -405,7 +408,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
   // a current combination of the particle hypothesis best, and choose the best one; performance is
   // a non-issue here at the moment, let AI/ML do the job better later; at present complexity seems
   // to scale with H*M^{N}, where H is the number of digitized hits;
-  LaunchRingFinder(calibration);
+  if (!m_ExperimentalMode) LaunchRingFinder(calibration);
   
   if (BeVerbose() && !(ev%100)) printf("Event %5d ...\n", ev);
 

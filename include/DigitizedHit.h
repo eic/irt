@@ -51,13 +51,18 @@ class DigitizedHit {
     m_Selected.clear();
   };
 
-  double GetAverageDetectionTime( void ) {
+  double GetAverageDetectionTime( void ) const {
     double ret = 0.0;
+
     for(auto t: m_DetectionTimes)
       ret += t;
 
-    return ret;
+    return (m_DetectionTimes.size() ? ret / m_DetectionTimes.size() : 0.0);
   };
+  double GetDetectionTime(unsigned ih) const { 
+    return (ih < m_DetectionTimes.size() ? m_DetectionTimes[ih] : 0.0);
+  };
+  unsigned GetPhotonCount( void ) const { return m_DetectionTimes.size(); };
 
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
 

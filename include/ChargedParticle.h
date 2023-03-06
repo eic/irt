@@ -14,7 +14,8 @@
 
 class ChargedParticle: public TransientParticle {
  public:
- ChargedParticle(int pdg = 0): TransientParticle(pdg), m_StopTracing(false), 
+ ChargedParticle(int pdg = 0, bool primary = true): 
+  TransientParticle(pdg, primary), m_StopTracing(false), 
     m_HadronicInteractionOccured(false) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
@@ -101,7 +102,7 @@ class ChargedParticle: public TransientParticle {
  public:
   bool m_HadronicInteractionOccured;
 
-  ClassDef(ChargedParticle, 5);
+  ClassDef(ChargedParticle, 6);
 };
 
 #endif

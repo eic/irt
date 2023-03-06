@@ -14,9 +14,12 @@ class GeantImport {
 
   CherenkovDetector *GetMyRICH( void )    const { return m_RICH; }
   CherenkovEvent *Event( void )           const { return m_Event; };
-  void GetInputTreeEntry(unsigned ev)     const { if (m_Tree) m_Tree->GetEntry(ev); };
+  void GetInputTreeEntry(unsigned ev)     const;// { if (m_Tree) m_Tree->GetEntry(ev); };
   unsigned GetInputTreeEntryCount( void ) const { return m_Tree ? m_Tree->GetEntries() : 0; };
-  
+ 
+  void AccountSecondaries( void )               { m_PurgeSecondaries = false; };
+  void SetMomentumCutoff(double value)          { m_MomentumCutoff = value; };
+
  private:
   // "pfRICH" or "dRICH" structure pointer;
   CherenkovDetector *m_RICH;
@@ -26,6 +29,9 @@ class GeantImport {
 
   // Input (GEANT) / output(Reco) event structure;
   CherenkovEvent *m_Event;
+
+  bool m_PurgeSecondaries; 
+  double m_MomentumCutoff;
 };
 
 #endif

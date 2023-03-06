@@ -185,6 +185,7 @@ void Calibration::CalibratePhotonEmissionPoints( void )
     double theta = mcparticle->GetVertexMomentum().Theta();
     unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
     double p = mcparticle->GetVertexMomentum().Mag();
+    //printf("%d\n", mcparticle->GetPDG());
     double m = m_DatabasePDG->GetParticle(mcparticle->GetPDG())->Mass();
     double beta = 1./sqrt(1. + pow(m/p, 2));
 

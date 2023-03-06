@@ -8,7 +8,8 @@
 // Need a separate class because do not want to deal with G4VUserTrackInformation serialization;
 class TransientParticle: public TObject {
  public:
- TransientParticle(int pdg): m_PDG(pdg), m_VertexTime(0.0) {};
+ TransientParticle(int pdg, bool primary = true): m_PDG(pdg), m_VertexTime(0.0), 
+    m_PrimaryParticle(primary) {};
   ~TransientParticle() {};
 
   virtual bool IsCharged( void ) const = 0;
@@ -20,6 +21,7 @@ class TransientParticle: public TObject {
   inline const TVector3 &GetVertexPosition( void )       const { return m_VertexPosition; };
   inline const TVector3 &GetVertexMomentum( void )       const { return m_VertexMomentum; };
   inline double GetVertexTime( void )                    const { return m_VertexTime; };
+  inline bool IsPrimary( void )                          const { return m_PrimaryParticle; };
 
  private:
   int m_PDG;
@@ -29,7 +31,9 @@ class TransientParticle: public TObject {
   // Global time at birth;
   double m_VertexTime;
 
-  ClassDef(TransientParticle, 2);
+  bool m_PrimaryParticle;
+
+  ClassDef(TransientParticle, 4);
 };
 
 #endif

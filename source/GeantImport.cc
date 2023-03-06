@@ -10,7 +10,9 @@
 GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dname):
   m_RICH(0),
   m_Tree(0),
-  m_Event(0)
+  m_Event(0),
+  m_PurgeSecondaries(true),
+  m_MomentumCutoff(0.010)
 {
   // FIXME: exception handling;
   if (!dfname || !dname) return;
@@ -28,3 +30,24 @@ GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dna
 } // GeantImport::GeantImport()
 
 // -------------------------------------------------------------------------------------
+
+void GeantImport::GetInputTreeEntry(unsigned ev) const 
+{ 
+  if (!m_Tree) return;
+
+  m_Tree->GetEntry(ev); 
+
+  if (m_PurgeSecondaries) {
+    auto &particles = m_Event->ChargedParticles();
+
+    for(auto it = particles.begin(); it != particles.end(); )
+      //if (!(*it)->IsPrimary())// || (*it)->GetVertexMomentum().Mag() < .2)
+      if (!(*it)->IsPrimary() || (*it)->GetVertexMomentum().Mag() < m_MomentumCutoff)
+	it = particles.erase(it);
+      else
+	it++;
+  } //if
+} // GeantImport::GetInputTreeEntry()
+
+// -------------------------------------------------------------------------------------
+
