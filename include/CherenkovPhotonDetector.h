@@ -5,11 +5,11 @@
 #define _CHERENKOV_PHOTON_DETECTOR_
 
 #include <G4Object.h>
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 class G4DataInterpolation;
 
-#include <IRT.h>
+#include "IRT.h"
 
 class CherenkovPhotonDetector: public G4Object {
  public:

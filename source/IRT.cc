@@ -1,5 +1,5 @@
 
-#include <IRT.h>
+#include "IRT.h"
 
 thread_local TVector3 OpticalBoundary::m_ImpactPoint, OpticalBoundary::m_IncomingDirection;
 thread_local TVector3 OpticalBoundary::m_OutgoingDirection;

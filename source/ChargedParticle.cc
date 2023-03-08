@@ -7,7 +7,7 @@
 // information about which photn was produced in which radiator;
 //
 
-#include <ChargedParticle.h>
+#include "ChargedParticle.h"
 
 // -------------------------------------------------------------------------------------
 

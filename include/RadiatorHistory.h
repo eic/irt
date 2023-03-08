@@ -7,8 +7,8 @@
 #ifndef _RADIATOR_HISTORY_
 #define _RADIATOR_HISTORY_
 
-#include <OpticalPhoton.h>
-#include <ChargedParticleStep.h>
+#include "OpticalPhoton.h"
+#include "ChargedParticleStep.h"
 
 class RadiatorHistory: public TObject {
  public:

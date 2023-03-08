@@ -3,7 +3,7 @@
 #define _CHERENKOV_MIRROR_
 
 #include <G4Object.h>
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 class SurfaceCopy: public G4ObjectCopy {
  public:

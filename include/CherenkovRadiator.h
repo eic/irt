@@ -10,7 +10,7 @@
 #ifndef _CHERENKOV_RADIATOR_
 #define _CHERENKOV_RADIATOR_
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
