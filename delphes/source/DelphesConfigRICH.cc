@@ -98,3 +98,57 @@ int DelphesConfigRICH::Calculate( void )
 } // DelphesConfigRICH::Calculate()
 
 // -------------------------------------------------------------------------------------
+
+double DelphesConfigRICH::GenerateMeasurement(int pdg, const TVector3 &momentum)
+{
+  auto hypo = GetMassHypothesis(pdg);
+  if (!hypo) return 0.0;
+  unsigned ih = GetHypoIndex(hypo);
+
+  double m = hypo->Mass(), pp = momentum.Mag(), eta = momentum.Eta();
+
+  auto mrange = GetEtaMomentumRange(eta, pp);
+  if (!mrange) return 0;
+
+  double argument = sqrt(pp*pp + m*m)/(m_Rindex*pp);
+  // Convert to [mrad];
+  double thnom = 1000*(fabs(argument) <= 1.0 ? acos(argument) : 0.0);
+  double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+  
+  return m_rndm.Gaus(thnom, sigma);
+} // DelphesConfigRICH::GenerateMeasurement()
+
+// -------------------------------------------------------------------------------------
+
+//
+// FIXME: duplicate code;
+//
+
+MassHypothesis *DelphesConfigRICH::FindBestHypothesis(const TVector3 &momentum, double theta)
+{
+  MassHypothesis *ret = 0;
+
+  for(unsigned ih=0; ih<m_MassHypotheses.size(); ih++) {
+    auto hypo = m_MassHypotheses[ih];
+
+    double m = hypo->Mass(), pp = momentum.Mag(), eta = momentum.Eta();
+
+    auto mrange = GetEtaMomentumRange(eta, pp);
+    if (!mrange) continue;
+
+    double argument = sqrt(pp*pp + m*m)/(m_Rindex*pp);
+    // Convert to [mrad];
+    double thnom = 1000*(fabs(argument) <= 1.0 ? acos(argument) : 0.0);
+    if (!thnom) continue;
+    double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+
+    hypo->m_Diff      = (theta - thnom)/sigma;
+    hypo->m_ChiSquare = pow(hypo->m_Diff, 2);
+
+    if (!ret || hypo->m_ChiSquare < ret->m_ChiSquare) ret = hypo;
+  } //for ih
+
+  return ret;
+} // DelphesConfigRICH::FindBestHypothesis()
+
+// -------------------------------------------------------------------------------------

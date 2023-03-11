@@ -6,6 +6,7 @@
 
 class TDatabasePDG;
 #include <TParticlePDG.h>
+#include <TRandom.h>
 
 #ifndef _DELPHES_CONFIG_
 #define _DELPHES_CONFIG_
@@ -13,7 +14,7 @@ class TDatabasePDG;
 class MassHypothesis: public TObject {
  public:
   MassHypothesis(TParticlePDG *pdg = 0, double max_contamination_left = 0.0, 
-		 double max_contamination_right = 0.0): m_PDG(pdg),
+		 double max_contamination_right = 0.0): m_Diff(0.0), m_ChiSquare(0.0), m_PDG(pdg),
     m_MaxContaminationLeft(max_contamination_left), 
     m_MaxContaminationRight(max_contamination_right), m_Threshold(0.0) {};
   ~ MassHypothesis() {};
@@ -23,6 +24,11 @@ class MassHypothesis: public TObject {
 
   void SetThreshold(double value) { m_Threshold = value; };
   double GetThreshold( void ) const { return m_Threshold; };
+
+  double GetMeasurementOffset( void ) const { return m_Diff; };
+
+  double m_Diff;       //!
+  double m_ChiSquare;  //!
 
  private:
   TParticlePDG *m_PDG;
@@ -208,6 +214,12 @@ class DelphesConfig: public TObject {
     
     return 0;
   };
+  MomentumRange *GetEtaMomentumRange(double eta, double p) const {
+    auto erange = GetEtaRange(eta);
+    if (!erange) return 0;
+
+    return erange->GetMomentumRange(p);
+  };
 
   int GetSmearingMatrix(const TVector3 p, double hmtx[]) const {
     return GetSmearingMatrix(p.Eta(), p.Mag(), hmtx);
@@ -223,6 +235,15 @@ class DelphesConfig: public TObject {
 
   // Assume all masses are different and provided in ascending order;
   std::vector<MassHypothesis*> m_MassHypotheses;
+
+  // FIXME: need a std::set, eventually?;
+  unsigned GetHypoIndex(MassHypothesis *hypo) {
+    for(unsigned ih=0; ih<m_MassHypotheses.size(); ih++)
+      if (m_MassHypotheses[ih] == hypo)
+	return ih;
+
+    return 0;
+  };
 
  private:
   MassHypothesis *AddMassHypothesisCore(TParticlePDG *pdg, double max_contamination_left, 
@@ -242,6 +263,9 @@ class DelphesConfig: public TObject {
   bool m_EfficiencyContaminationMode;
 
   bool m_PtMode;
+
+  // FIXME: need seed setting method;
+  TRandom m_rndm; //!
 
   ClassDef(DelphesConfig, 1)
 };

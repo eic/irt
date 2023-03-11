@@ -17,6 +17,9 @@ class DelphesConfigRICH: public DelphesConfig {
   //bool ApplyThresholdModeLogic() { return true; };
   int  Calculate();
 
+  double GenerateMeasurement(int pdg, const TVector3 &momentum);
+  MassHypothesis *FindBestHypothesis(const TVector3 &momentum, double theta);
+
  private:
   double m_Rindex, m_AdditionalSmearing;
 
