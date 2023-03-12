@@ -4,6 +4,66 @@
 
 // -------------------------------------------------------------------------------------
 
+void DelphesConfigRICH::ImportTrackingSmearing(const char *ftheta, const char *fphi)
+{
+  std::map<std::pair<double, double>, std::pair<double, double>> *sarr[2] = 
+    {&m_ThetaSmearing, &m_PhiSmearing};
+  const char *farr[2] = {ftheta, fphi};
+  //std::map<std::pair<double, double>, std::pair<double, double>> m_ThetaSmearing, m_PhiSmearing;
+
+  for(unsigned iq=0; iq<2; iq++) {
+    auto fin = fopen(farr[iq], "r");
+
+    float emin, emax, a, ea, b, eb;
+    unsigned lcounter = 0;
+    char buffer[1024];
+    while (fgets(buffer, 1024-1, fin)) {
+      if (lcounter++ <= 1) continue;
+      //printf("%s", buffer);
+
+      sscanf(buffer, "%f %f %f %f %f %f", &emin, &emax, &a, &ea, &b, &eb);
+      //printf("%f %f %f %f %f %f\n", emin, emax, a, ea, b, eb);
+
+      (*sarr[iq])[std::make_pair(emin, emax)] = std::make_pair(a, b);
+    } //while
+  } //fr iq
+
+  TVector3 p(0.0, 0.5, -5.0);
+  GetTrackingSmearing(p);
+} // DelphesConfigRICH::ImportTrackingSmearing()
+
+// -------------------------------------------------------------------------------------
+
+double DelphesConfigRICH::GetTrackingSmearing(double momentum, double eta)
+{
+  double dtheta = 0.0, dphi = 0.0, theta = 2*atan(exp(-eta));
+
+  // FIXME: very inefficient;
+  for(auto &entry: m_ThetaSmearing)
+    if (entry.first.first <= eta && eta <= entry.first.second) {
+      double A = entry.second.first, B = entry.second.second; 
+      dtheta = sqrt(pow(A/momentum, 2) + B*B);
+      //printf("%f\n", dtheta);
+
+      break;
+    } //for entry .. if
+  for(auto &entry: m_PhiSmearing)
+    if (entry.first.first <= eta && eta <= entry.first.second) {
+      double A = entry.second.first, B = entry.second.second; 
+      dphi = sqrt(pow(A/momentum, 2) + B*B) * fabs(tan(theta));//momentum.Theta()));
+      //printf("%f\n", fabs(dphi * tan(momentum.Theta())));
+
+      break; 
+    } //for entry .. if
+
+  printf("<p> = %8.3f [GeV/c], <eta> = %6.2f -> dtheta: %7.4f, dphi: %7.4f\n", 
+	 momentum, eta, dtheta, dphi);  
+  // Yes, make it simple for now;
+  return sqrt(dtheta*dtheta + dphi*dphi);
+} // DelphesConfigRICH::GetTrackingSmearing()
+
+// -------------------------------------------------------------------------------------
+
 static double below_kaon_threshold[3][3] = {
   {1.0, 0.0, 0.0},
   {0.0, 0.5, 0.5},
@@ -18,6 +78,8 @@ int DelphesConfigRICH::Calculate( void )
     mass[ih] = m_MassHypotheses[ih]->Mass();
 
   for(auto erange: m_EtaRanges) {
+    double eta = (erange->GetMin() + erange->GetMax())/2;
+
     for(auto mrange: erange->m_MomentumRanges) {
       mrange->m_MatrixDim = dim*dim;
       // Matrix will be band-diagonal of course;
@@ -39,7 +101,8 @@ int DelphesConfigRICH::Calculate( void )
 	// Assign sigma values;
 	for(unsigned ih=0; ih<dim; ih++) {
 	  double m = mass[ih];
-	  sigma[ih] = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+	  //sigma[ih] = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+	  sigma[ih] = sqrt(pow(mrange->GetSigma(ih), 2) + pow(GetTrackingSmearing(pp, eta), 2));
 	  
 	  double argument = sqrt(pp*pp + m*m)/(m_Rindex*pp);
 	  // Convert to [mrad];
@@ -113,7 +176,8 @@ double DelphesConfigRICH::GenerateMeasurement(int pdg, const TVector3 &momentum)
   double argument = sqrt(pp*pp + m*m)/(m_Rindex*pp);
   // Convert to [mrad];
   double thnom = 1000*(fabs(argument) <= 1.0 ? acos(argument) : 0.0);
-  double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+  //double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+  double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(GetTrackingSmearing(pp, eta), 2));
   
   return m_rndm.Gaus(thnom, sigma);
 } // DelphesConfigRICH::GenerateMeasurement()
@@ -140,7 +204,8 @@ MassHypothesis *DelphesConfigRICH::FindBestHypothesis(const TVector3 &momentum, 
     // Convert to [mrad];
     double thnom = 1000*(fabs(argument) <= 1.0 ? acos(argument) : 0.0);
     if (!thnom) continue;
-    double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+    //double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(m_AdditionalSmearing, 2));
+    double sigma = sqrt(pow(mrange->GetSigma(ih), 2) + pow(GetTrackingSmearing(pp, eta), 2));
 
     hypo->m_Diff      = (theta - thnom)/sigma;
     hypo->m_ChiSquare = pow(hypo->m_Diff, 2);
