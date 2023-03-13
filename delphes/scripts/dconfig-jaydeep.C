@@ -17,6 +17,8 @@ void dconfig_jaydeep( void )
   // Tracker angular resolution as provided by Matt; FIXME: momentum resolution ignored;
   //delphes->ImportTrackingSmearing("../database/dth_parameters_22.11.2.txt", 
   //				  "../database/dph_parameters_22.11.2.txt");
+  delphes->ImportTrackingSmearing("../database/par_th.modified.txt", 
+  				  "../database/par_ph.modified.txt");
 
   // Define eta ranges in ascending order;
   {
