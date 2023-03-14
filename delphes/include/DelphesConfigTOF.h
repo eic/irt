@@ -2,7 +2,7 @@
 #ifndef _DELPHES_CONFIG_TOF_
 #define _DELPHES_CONFIG_TOF_
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 class DelphesConfigTOF: public DelphesConfig {
  public:

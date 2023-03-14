@@ -6,10 +6,10 @@
 #ifndef _CHARGED_PARTICLE_
 #define _CHARGED_PARTICLE_
 
-#include <CherenkovRadiator.h>
-#include <RadiatorHistory.h>
-#include <TransientParticle.h>
-#include <CherenkovPID.h>
+#include "CherenkovRadiator.h"
+#include "RadiatorHistory.h"
+#include "TransientParticle.h"
+#include "CherenkovPID.h"
 
 class ChargedParticle: public TransientParticle {
  public:

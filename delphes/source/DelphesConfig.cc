@@ -1,7 +1,7 @@
 
 #include <TDatabasePDG.h>
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 #define _ERROR_(message) { printf("\n\n  %s\n", message); exit(1); }
 
