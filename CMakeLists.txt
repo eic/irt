@@ -64,7 +64,7 @@ set(IRT_ROOTMAP
 root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core)
+target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
