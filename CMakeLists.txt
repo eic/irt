@@ -54,22 +54,24 @@ set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
-  G__IRT.cxx
 )
 
 set(IRT_ROOTMAP
   ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
   ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
 )
-root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
-target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>
 )
+root_generate_dictionary(G__${CMAKE_PROJECT_NAME} ${HEADERS}
+  LINKDEF irtLinkDef.h
+  MODULE ${CMAKE_PROJECT_NAME}
+  )
+target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
 
 #----------------------------------------------------------------------------
 # optional targets
