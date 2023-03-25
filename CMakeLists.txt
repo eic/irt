@@ -48,6 +48,7 @@ include_directories(
   ${ROOT_INCLUDE_DIRS}
 )
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
+list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
@@ -67,7 +68,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 root_generate_dictionary(G__${CMAKE_PROJECT_NAME} ${HEADERS}
-  LINKDEF irtLinkDef.h
+  LINKDEF include/irtLinkDef.h
   MODULE ${CMAKE_PROJECT_NAME}
   )
 target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
