@@ -1,6 +1,6 @@
 //
 //
-// NOTE: using patched version
+// NOTE: using patched version 2
 //
 //
 #include <vector>
