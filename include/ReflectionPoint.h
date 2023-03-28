@@ -20,7 +20,9 @@ class ReflectionPoint: public TObject {
   //unsigned m_VolumeCopy; // FIXME: unused
   TVector3 m_Position, m_Momentum;
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(ReflectionPoint, 1);
+#endif
 };
 
 #endif

@@ -44,6 +44,10 @@ endif()
 #----------------------------------------------------------------------------
 # IRT library
 
+if(IRT_ROOT_IO)
+  add_compile_definitions(WITH_IRT_ROOT_IO)
+endif()
+
 include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}

@@ -75,7 +75,9 @@ class ChargedParticle: public TransientParticle {
 
   bool m_StopTracing; //!
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(ChargedParticle, 1);
+#endif
 };
 
 #endif

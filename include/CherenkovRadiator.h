@@ -96,7 +96,9 @@ class CherenkovRadiator: public TObject {
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(CherenkovRadiator, 5);
+#endif
 };
 
 #endif

@@ -21,7 +21,9 @@ class ChargedParticleStep: public TObject {
   TVector3 m_Position, m_Momentum;
   //double m_Length;
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(ChargedParticleStep, 1);
+#endif
 };
 
 #endif

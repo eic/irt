@@ -71,7 +71,9 @@ class IRT: public TObject {
   std::vector<TRef> _m_OpticalBoundaries;
   //std::vector<OpticalBoundary *> _m_OpticalBoundaries;
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(IRT, 3);
+#endif
 };
 
 #endif

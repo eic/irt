@@ -128,7 +128,9 @@ class CherenkovDetector: public TObject {
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   //+std::vector<CherenkovMirrorGroup*> m_MirrorGroups;
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(CherenkovDetector, 5);
+#endif
 };
 
 #endif

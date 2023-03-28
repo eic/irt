@@ -27,7 +27,9 @@ class G4ObjectCopy: public TObject {
 
   G4VPhysicalVolume *m_PhysicalVolume; //!
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(G4ObjectCopy, 1);
+#endif
 };
 
 class G4Object: public TObject {
@@ -69,7 +71,9 @@ public:
   // This call is deferred to the moment after all cuts on this solid are applied;
   void DefineLogicalVolume( void );
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(G4Object, 2)
+#endif
 };
 
 #endif

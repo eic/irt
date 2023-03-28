@@ -16,7 +16,9 @@ class TransientParticle: public TObject {
  private:
   int m_PDG;
 
+#ifdef WITH_IRT_ROOT_IO
   ClassDef(TransientParticle, 1);
+#endif
 };
 
 #endif
