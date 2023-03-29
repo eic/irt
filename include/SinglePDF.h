@@ -16,7 +16,7 @@ class SinglePDF: public TObject {
   virtual double GetAverage(void)                       const = 0;
   virtual bool   WithinRange(double x, double dx = 0.0) const = 0;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(SinglePDF, 1);
 #endif
 };
@@ -73,7 +73,7 @@ class UniformPDF: public SinglePDF {
  private:
   double m_X0, m_X1, m_Weight, m_Norm, m_Sigma;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(UniformPDF, 1);
 #endif
 };
@@ -131,7 +131,7 @@ class VectorPDF: public TObject {
  private:
   std::vector<UniformPDF*> m_Members;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(VectorPDF, 1);
 #endif
 };

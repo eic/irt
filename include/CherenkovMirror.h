@@ -12,7 +12,7 @@ class SurfaceCopy: public G4ObjectCopy {
 
   ParametricSurface *m_Surface;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(SurfaceCopy, 1);
 #endif
 };
@@ -41,7 +41,7 @@ class CherenkovMirror: public G4Object {
  private:
   G4OpticalSurface *m_MirrorSurface;   //!
   
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovMirror, 1);
 #endif
 };
@@ -54,7 +54,7 @@ class FlatMirror: public CherenkovMirror, public FlatSurface {
   CherenkovMirror(solid, material), FlatSurface(x0, nx, ny, sx, sy) {};
   ~FlatMirror() {};
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(FlatMirror, 2);
 #endif
 };
@@ -66,7 +66,7 @@ class SphericalMirror: public CherenkovMirror, public SphericalSurface {
  CherenkovMirror(solid, material), SphericalSurface(x0, r0) {};
   ~SphericalMirror() {};
   
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(SphericalMirror, 2);
 #endif
 };
@@ -81,7 +81,7 @@ class CherenkovMirrorGroup: public TObject {
  private:
   std::vector<CherenkovMirror*> m_Mirrors;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovMirrorGroup, 1);
 #endif
 };

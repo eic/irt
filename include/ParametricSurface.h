@@ -63,7 +63,7 @@ class ParametricSurface: public TObject {
  private:
   double m_Umin, m_Umax, m_Vmin, m_Vmax;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(ParametricSurface, 1);
 #endif
 };
@@ -103,7 +103,7 @@ class SphericalSurface: public ParametricSurface {
   bool m_Concave;
   double m_Radius;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurface, 2);
 #endif
 };
@@ -116,7 +116,7 @@ class LocalCoordinatesXY: public TObject {
   virtual double GetLocalX(const TVector3 &xx) const = 0;
   virtual double GetLocalY(const TVector3 &xx) const = 0;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(LocalCoordinatesXY, 1);
 #endif
 }; 
@@ -167,7 +167,7 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
  private:
   TVector3 m_Nx, m_Ny, m_Nz;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(FlatSurface, 1);
 #endif
 };

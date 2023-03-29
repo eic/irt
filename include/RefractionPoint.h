@@ -25,7 +25,7 @@ class RefractionPoint: public TObject {
   //unsigned m_VolumeCopy;
   TVector3 m_Position, m_Momenta[2];
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(RefractionPoint, 1);
 #endif
 };

@@ -72,7 +72,7 @@ class RadiatorHistory: public TObject {
 
   std::map<double, TVector3> m_StepBuffer; //!
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(RadiatorHistory, 1);
 #endif
 };

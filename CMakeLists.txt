@@ -44,9 +44,10 @@ endif()
 #----------------------------------------------------------------------------
 # IRT library
 
-# define preprocessor macro to control calling of `ClassDef` etc.
-if(IRT_ROOT_IO)
-  add_compile_definitions(WITH_IRT_ROOT_IO)
+# disable calling of `ClassDef` etc. if not generating ROOT dictionary
+if(NOT IRT_ROOT_IO)
+  message(STATUS "NOTE: disabling ROOT dictionary generation")
+  add_compile_definitions(DISABLE_ROOT_IO)
 endif()
 
 # headers

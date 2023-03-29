@@ -24,7 +24,7 @@ class CherenkovEvent: public TObject {
  private:
   std::set<ChargedParticle*> m_ChargedParticles;
 
-#ifdef WITH_IRT_ROOT_IO
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovEvent, 1);
 #endif
 };
