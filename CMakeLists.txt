@@ -44,10 +44,12 @@ endif()
 #----------------------------------------------------------------------------
 # IRT library
 
+# define preprocessor macro to control calling of `ClassDef` etc.
 if(IRT_ROOT_IO)
   add_compile_definitions(WITH_IRT_ROOT_IO)
 endif()
 
+# headers
 include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
@@ -55,32 +57,35 @@ include_directories(
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
 list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
+# sources
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
 )
+if(IRT_ROOT_IO)
+  set(IRT_DICT G__${CMAKE_PROJECT_NAME})
+  list(APPEND IRT_SRC ${IRT_DICT}.cxx)
+endif()
 
-add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
-
+# ROOT I/O dictionary generation
 if(IRT_ROOT_IO)
   set(IRT_ROOTMAP
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
   )
-  root_generate_dictionary(G__${CMAKE_PROJECT_NAME} ${HEADERS}
-    LINKDEF include/irtLinkDef.h
-    MODULE ${CMAKE_PROJECT_NAME}
-  )
+  root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h)
 endif()
 
+# library
+add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
 target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
 
 #----------------------------------------------------------------------------
 # optional targets
