@@ -44,12 +44,6 @@ endif()
 #----------------------------------------------------------------------------
 # IRT library
 
-# disable calling of `ClassDef` etc. if not generating ROOT dictionary
-if(NOT IRT_ROOT_IO)
-  message(STATUS "NOTE: disabling ROOT dictionary generation")
-  add_compile_definitions(DISABLE_ROOT_IO)
-endif()
-
 # headers
 include_directories(
   ${PROJECT_SOURCE_DIR}/include 
@@ -70,9 +64,14 @@ if(IRT_ROOT_IO)
   list(APPEND IRT_SRC ${IRT_DICT}.cxx)
 endif()
 
-# library
+# library target
 add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
+if(NOT IRT_ROOT_IO)
+  # disable calling of `ClassDef` etc. if not generating ROOT dictionary
+  message(STATUS "NOTE: disabling ROOT dictionary generation")
+  target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC DISABLE_ROOT_IO)
+endif()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>
