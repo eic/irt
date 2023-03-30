@@ -70,6 +70,14 @@ if(IRT_ROOT_IO)
   list(APPEND IRT_SRC ${IRT_DICT}.cxx)
 endif()
 
+# library
+add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
+
 # ROOT I/O dictionary generation
 if(IRT_ROOT_IO)
   set(IRT_ROOTMAP
@@ -79,14 +87,8 @@ if(IRT_ROOT_IO)
   root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h)
 endif()
 
-# library
-add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
+# linking
 target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
-target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
 
 #----------------------------------------------------------------------------
 # optional targets
