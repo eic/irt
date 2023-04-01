@@ -63,7 +63,9 @@ class ParametricSurface: public TObject {
  private:
   double m_Umin, m_Umax, m_Vmin, m_Vmax;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ParametricSurface, 1);
+#endif
 };
 
 class SphericalSurface: public ParametricSurface {
@@ -101,7 +103,9 @@ class SphericalSurface: public ParametricSurface {
   bool m_Concave;
   double m_Radius;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurface, 2);
+#endif
 };
 
 class LocalCoordinatesXY: public TObject {
@@ -112,7 +116,9 @@ class LocalCoordinatesXY: public TObject {
   virtual double GetLocalX(const TVector3 &xx) const = 0;
   virtual double GetLocalY(const TVector3 &xx) const = 0;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(LocalCoordinatesXY, 1);
+#endif
 }; 
 
 // In fact a rectangle in space;
@@ -161,7 +167,9 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
  private:
   TVector3 m_Nx, m_Ny, m_Nz;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(FlatSurface, 1);
+#endif
 };
 
 #endif

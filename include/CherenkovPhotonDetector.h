@@ -55,7 +55,9 @@ class CherenkovPhotonDetector: public G4Object {
 
   double m_GeometricEfficiency;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovPhotonDetector, 3);
+#endif
 };
 
 #endif

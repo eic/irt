@@ -140,7 +140,9 @@ class CherenkovDetectorCollection: public BitMask {
 
   std::map<TString, CherenkovDetector*> _m_Detectors;
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovDetectorCollection, 2);
+#endif
 };
 
 #endif
