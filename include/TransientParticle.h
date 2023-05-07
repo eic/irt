@@ -33,7 +33,9 @@ class TransientParticle: public TObject {
 
   bool m_PrimaryParticle;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(TransientParticle, 4);
+#endif
 };
 
 #endif

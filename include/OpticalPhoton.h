@@ -8,12 +8,12 @@
 #ifndef _OPTICAL_PHOTON_
 #define _OPTICAL_PHOTON_
 
-#include <TransientParticle.h>
-#include <CherenkovPhotonDetector.h>
+#include "TransientParticle.h"
+#include "CherenkovPhotonDetector.h"
 class ReflectionPoint;
 class ChargedParticle;
-#include <RefractionPoint.h>
-#include <SinglePDF.h>
+#include "RefractionPoint.h"
+#include "SinglePDF.h"
 
 class OpticalPhoton: public TransientParticle {
  public:
@@ -98,7 +98,9 @@ class OpticalPhoton: public TransientParticle {
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                     //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(OpticalPhoton, 11);
+#endif
 };
 
 #endif

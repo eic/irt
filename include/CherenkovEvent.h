@@ -4,7 +4,7 @@
 #ifndef _CHERENKOV_EVENT_
 #define _CHERENKOV_EVENT_
 
-#include <ChargedParticle.h>
+#include "ChargedParticle.h"
 
 class CherenkovEvent: public TObject {
  public:
@@ -24,7 +24,9 @@ class CherenkovEvent: public TObject {
  private:
   std::set<ChargedParticle*> m_ChargedParticles;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovEvent, 1);
+#endif
 };
 
 #endif

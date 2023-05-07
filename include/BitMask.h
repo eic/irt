@@ -19,7 +19,9 @@ class BitMask: public TObject {
  private:
   ULong64_t m_Mask;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(BitMask,1);
+#endif
 };
 
 #endif
