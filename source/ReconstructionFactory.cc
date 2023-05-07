@@ -13,9 +13,9 @@
 #include <TDatabasePDG.h>
 #include <Math/ProbFunc.h>
 
-#include <CherenkovDetectorCollection.h>
-#include <CherenkovEvent.h>
-#include <ReconstructionFactory.h>
+#include "CherenkovDetectorCollection.h"
+#include "CherenkovEvent.h"
+#include "ReconstructionFactory.h"
 
 // -------------------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 #ifndef _IRT_SPHERICAL_SURFACE_
 #define _IRT_SPHERICAL_SURFACE_
