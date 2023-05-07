@@ -37,7 +37,9 @@ class MassHypothesis: public TObject {
 
   double m_Threshold;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(MassHypothesis, 1)
+#endif
 };
 
 class MomentumRange: public TObject {
@@ -76,7 +78,9 @@ class MomentumRange: public TObject {
   std::vector<double> m_SigmaValues;
   MomentumRange::range m_Range;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(MomentumRange, 2)
+#endif
 };
 
 class EtaRange: public TObject {
@@ -143,7 +147,9 @@ class EtaRange: public TObject {
 
   double m_Min, m_Max;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(EtaRange, 1)
+#endif
 };
 
 class DelphesConfig: public TObject {
@@ -267,7 +273,9 @@ class DelphesConfig: public TObject {
   // FIXME: need seed setting method;
   TRandom m_rndm; //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfig, 1)
+#endif
 };
 
 #endif

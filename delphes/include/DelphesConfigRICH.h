@@ -33,7 +33,9 @@ class DelphesConfigRICH: public DelphesConfig {
     return GetTrackingSmearing(momentum.Mag(), momentum.Eta());
   };
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfigRICH, 3)
+#endif
 };
 
 #endif

@@ -53,7 +53,9 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
  private:
   TVector3 m_Nx, m_Ny, m_Nz;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(FlatSurface, 1);
+#endif
 };
 
 #endif

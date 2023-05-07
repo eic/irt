@@ -59,7 +59,9 @@ class DelphesConfigDIRC: public DelphesConfig {
 
   std::string m_ParameterizationMap;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfigDIRC, 1)
+#endif
 };
 
 #endif

@@ -84,7 +84,9 @@ class CylindricalMirror: public CherenkovMirror, public CylindricalSurface {
  CherenkovMirror(solid, material), CylindricalSurface(x0, nz, r0, dz) {};
   ~CylindricalMirror() {};
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(CylindricalMirror, 1);
+#endif
 };
 
 class ConicalMirror: public CherenkovMirror, public ConicalSurface {
@@ -94,7 +96,9 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
  CherenkovMirror(solid, material), ConicalSurface(x0, nz, r0, r1, dz) {};
   ~ConicalMirror() {};
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(ConicalMirror, 1);
+#endif
 };
 
 #if 0

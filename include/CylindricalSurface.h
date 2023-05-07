@@ -74,7 +74,9 @@ class CylindricalSurface: public ParametricSurface {
   TVector3 m_Nz, m_Nr;
   double m_Radius, m_Alfa;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CylindricalSurface, 1);
+#endif
 };
 
 #endif
