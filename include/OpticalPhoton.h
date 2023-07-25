@@ -32,7 +32,7 @@ class OpticalPhoton: public TransientParticle {
   inline void SetVolumeCopy(uint64_t copy)                     { m_VolumeCopy = copy; };
   inline void SetDetectionPosition(const TVector3 &position)   { m_DetectionPosition = position; };
   inline void SetPhotonDetector(CherenkovPhotonDetector *pd)   { m_PhotonDetector = pd; };
-
+  inline void SetNormalSurface(const TVector3 &nSurface) 	   {m_NormalSurface = nSurface;};////////////////////////////////
   inline void AddReflectionPoint(ReflectionPoint *reflection)  {
     m_ReflectionPoints.push_back(reflection);
   };
@@ -54,7 +54,8 @@ class OpticalPhoton: public TransientParticle {
   inline const TVector3 &GetVertexMomentum( void )       const { return m_VertexMomentum; };
   inline const TVector3 &GetVertexParentMomentum( void ) const { return m_VertexParentMomentum; };
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
-
+  inline const TVector3 &GetNormalSurface( void ) 		 const { return m_NormalSurface;};////////////////////////////////
+  
   inline bool WasDetected( void )                        const { return m_Detected; };
   inline uint64_t GetVolumeCopy( void )                  const { return m_VolumeCopy; };
 
@@ -78,6 +79,7 @@ class OpticalPhoton: public TransientParticle {
   TRef m_PhotonDetector;
   uint64_t m_VolumeCopy;
   TVector3 m_DetectionPosition;
+  TVector3 m_NormalSurface;
   double m_DetectionTime;
 
   // 'true' if the photon was actually detected; QE-based and geometric efficiency accounted; 
