@@ -49,11 +49,12 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  // ADding Stuff
 	  const auto norm = (photon->GetNormalSurface());
 	  const auto mom  = (1e9*photon->GetVertexMomentum());
-	  float angle = norm.Dot(mom);
-	  if((angle*(180/M_PI)) > 0)
-      printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 - (angle*(180/M_PI)));
-      if((angle*(180/M_PI)) < 0)
-      printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 + (angle*(180/M_PI)));
+	  photon->m_Angle[radiator]=norm.Dot(mom);
+	  //float  angle = photon->m_Angle[radiator];
+	  //if((angle*(180/M_PI)) > 0)
+      //printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 - (angle*(180/M_PI)));
+      //if((angle*(180/M_PI)) < 0)
+      //printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 + (angle*(180/M_PI)));
       // up to here
     	
       // Get effective attenuation length for this radiator, as well as the 

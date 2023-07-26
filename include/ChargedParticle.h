@@ -72,7 +72,6 @@ class ChargedParticle: public TransientParticle {
 
   // Group steps by radiator of course; in the easiest case an entry and exit points;
   std::vector<std::pair<TRef, RadiatorHistory*> > m_RadiatorHistory;
-
   bool m_StopTracing; //!
 
 #ifndef DISABLE_ROOT_IO

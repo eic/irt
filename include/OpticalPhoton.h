@@ -97,7 +97,10 @@ class OpticalPhoton: public TransientParticle {
 
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                  //!
-
+ 
+  //Incident angle
+  std::map<CherenkovRadiator*, float> m_Angle;                  //!
+  
 #ifndef DISABLE_ROOT_IO
   ClassDef(OpticalPhoton, 3);
 #endif
