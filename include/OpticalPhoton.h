@@ -31,6 +31,7 @@ class OpticalPhoton: public TransientParticle {
   inline void SetVertexParentMomentum(const TVector3 &momentum){ m_VertexParentMomentum = momentum; };
   inline void SetVolumeCopy(uint64_t copy)                     { m_VolumeCopy = copy; };
   inline void SetDetectionPosition(const TVector3 &position)   { m_DetectionPosition = position; };
+  //inline void SetDetectionMomentum(const TVector3 &momentum)   { m_DetectionMomentum = momentum;}  ///////////////////////////
   inline void SetPhotonDetector(CherenkovPhotonDetector *pd)   { m_PhotonDetector = pd; };
   inline void SetNormalSurface(const TVector3 &nSurface) 	   {m_NormalSurface = nSurface;};////////////////////////////////
   inline void AddReflectionPoint(ReflectionPoint *reflection)  {
@@ -54,6 +55,7 @@ class OpticalPhoton: public TransientParticle {
   inline const TVector3 &GetVertexMomentum( void )       const { return m_VertexMomentum; };
   inline const TVector3 &GetVertexParentMomentum( void ) const { return m_VertexParentMomentum; };
   inline const TVector3 &GetDetectionPosition( void )    const { return m_DetectionPosition; };
+  //inline const TVector3 &GetDetectionMomentum( void )    const { return m_DetectionMomentum; };///////////////////////////
   inline const TVector3 &GetNormalSurface( void ) 		 const { return m_NormalSurface;};////////////////////////////////
   
   inline bool WasDetected( void )                        const { return m_Detected; };
@@ -79,6 +81,7 @@ class OpticalPhoton: public TransientParticle {
   TRef m_PhotonDetector;
   uint64_t m_VolumeCopy;
   TVector3 m_DetectionPosition;
+  //TVector3 m_DetectionMomentum;
   TVector3 m_NormalSurface;
   double m_DetectionTime;
 

@@ -117,7 +117,7 @@ class CherenkovDetector: public TObject {
 
   // readout ID -> pixel position converter (for external usage)
   std::function<TVector3(long long int)> m_ReadoutIDToPosition; //!
-
+  std::function<TVector3(long long int)> m_ReadoutIDToNormal;	//!
  private:  
   TString m_Name;
   // This is needed for dd4hep cell index decoding;
