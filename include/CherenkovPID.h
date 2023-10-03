@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -56,7 +57,9 @@ class MassHypothesis {
 class CherenkovPID {
  public:
  CherenkovPID( void ) {};
-  ~CherenkovPID() {};
+  ~CherenkovPID() {
+    std::for_each(m_Hypotheses.begin(), m_Hypotheses.end(), [](auto* h){ delete h; });
+  };
 
   void AddMassHypothesis(double mass) { m_Hypotheses.push_back(new MassHypothesis(mass)); };
   unsigned GetHypothesesCount( void ) const { return m_Hypotheses.size(); };
