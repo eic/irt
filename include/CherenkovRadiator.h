@@ -108,7 +108,6 @@ class CherenkovRadiator: public TObject {
 
   // Transient variables for the ReconstructionFactory convenience;
   unsigned m_TrajectoryBinCount;                            //!
-  unsigned m_ID;                                            //!
 
   // This is a hack for now;
   double m_Smearing;                                        //!
@@ -129,6 +128,7 @@ class CherenkovRadiator: public TObject {
   unsigned m_YieldStat;                                     //!
   double m_YieldCff;                                        //!
   
+  unsigned m_ID;                                            //!
   std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
 
 #ifndef DISABLE_ROOT_IO
