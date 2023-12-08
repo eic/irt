@@ -96,7 +96,7 @@ if(IRT_ROOT_IO)
 endif()
 
 # linking
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics EG)
+target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::RIO ROOT::Rint ROOT::Tree ROOT::EG)
 
 #----------------------------------------------------------------------------
 # optional targets
