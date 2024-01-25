@@ -23,7 +23,9 @@ class ChargedParticleStep: public TObject {
   //double m_Length;
   double m_Time;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ChargedParticleStep, 2);
+#endif
 };
 
 #endif

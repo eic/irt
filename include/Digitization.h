@@ -4,8 +4,8 @@
 #ifndef _DIGITIZATION_
 #define _DIGITIZATION_
 
-#include <DigitizedHit.h>
-#include <Configuration.h>
+#include "DigitizedHit.h"
+#include "Configuration.h"
 class CherenkovPhotonDetector;
 
 struct BlackoutCell {

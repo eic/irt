@@ -1,8 +1,8 @@
 
 #include <TH1D.h>
 
-#include <CherenkovDetector.h>
-#include <Configuration.h>
+#include "CherenkovDetector.h"
+#include "Configuration.h"
 
 #define _SPE_THETA_RESOLUTION_DEFAULT_ (0.0040)
 

@@ -1,5 +1,5 @@
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 #ifndef _IRT_SPHERICAL_SURFACE_
 #define _IRT_SPHERICAL_SURFACE_
@@ -43,7 +43,9 @@ class SphericalSurface: public ParametricSurface {
   bool m_Concave;
   double m_Radius;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurface, 2);
+#endif
 };
 
 #endif

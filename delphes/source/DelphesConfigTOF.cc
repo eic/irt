@@ -1,5 +1,5 @@
 
-#include <DelphesConfigTOF.h>
+#include "DelphesConfigTOF.h"
 
 // Speed of light; [mm/ps];
 #define _SoL_      (  0.29979)

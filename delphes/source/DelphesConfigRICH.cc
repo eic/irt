@@ -1,6 +1,6 @@
 
 
-#include <DelphesConfigRICH.h>
+#include "DelphesConfigRICH.h"
 
 // -------------------------------------------------------------------------------------
 

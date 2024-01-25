@@ -1,7 +1,7 @@
 
 #include <assert.h>
 
-#include <CylindricalSurface.h>
+#include "CylindricalSurface.h"
 
 // -------------------------------------------------------------------------------------
 

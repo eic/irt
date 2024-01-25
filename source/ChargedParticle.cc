@@ -9,7 +9,7 @@
 
 #include <TRandom.h>
 
-#include <ChargedParticle.h>
+#include "ChargedParticle.h"
 
 // -------------------------------------------------------------------------------------
 

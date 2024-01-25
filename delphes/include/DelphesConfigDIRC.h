@@ -2,7 +2,7 @@
 #ifndef _DELPHES_CONFIG_DIRC_
 #define _DELPHES_CONFIG_DIRC_
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 class DelphesConfigDIRC: public DelphesConfig {
  public:
@@ -59,7 +59,9 @@ class DelphesConfigDIRC: public DelphesConfig {
 
   std::string m_ParameterizationMap;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfigDIRC, 1)
+#endif
 };
 
 #endif

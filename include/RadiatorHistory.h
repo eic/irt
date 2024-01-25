@@ -7,8 +7,8 @@
 #ifndef _RADIATOR_HISTORY_
 #define _RADIATOR_HISTORY_
 
-#include <OpticalPhoton.h>
-#include <ChargedParticleStep.h>
+#include "OpticalPhoton.h"
+#include "ChargedParticleStep.h"
 
 class RadiatorHistory: public TObject {
  public:
@@ -78,7 +78,9 @@ class RadiatorHistory: public TObject {
 
   std::map<double, TVector3> m_StepBuffer;           //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(RadiatorHistory, 1);
+#endif
 };
 
 #endif

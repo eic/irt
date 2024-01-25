@@ -11,7 +11,7 @@ class TH1D;
 #ifndef _CHERENKOV_RADIATOR_
 #define _CHERENKOV_RADIATOR_
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
@@ -37,7 +37,7 @@ class CherenkovRadiator: public TObject {
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
     m_TrajectoryBinCount(1), m_Smearing(0.0), 
     m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
-    m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0) {
+    m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0), m_ID(0) {
     m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
@@ -108,6 +108,7 @@ class CherenkovRadiator: public TObject {
 
   // Transient variables for the ReconstructionFactory convenience;
   unsigned m_TrajectoryBinCount;                            //!
+
   // This is a hack for now;
   double m_Smearing;                                        //!
   bool m_GaussianSmearing;                                  //!
@@ -127,9 +128,12 @@ class CherenkovRadiator: public TObject {
   unsigned m_YieldStat;                                     //!
   double m_YieldCff;                                        //!
   
+  unsigned m_ID;                                            //!
   std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovRadiator, 8);
+#endif
 };
 
 #endif

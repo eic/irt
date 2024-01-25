@@ -1,9 +1,9 @@
 
 class TParticlePDG;
 
-#include <Configuration.h>
-#include <Calibration.h>
-#include <Digitization.h>
+#include "Configuration.h"
+#include "Calibration.h"
+#include "Digitization.h"
 
 #ifndef _RECONSTRUCTION_FACTORY_
 #define _RECONSTRUCTION_FACTORY_

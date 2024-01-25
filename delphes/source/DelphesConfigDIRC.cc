@@ -1,6 +1,6 @@
 
-#include <DelphesConfigDIRC.h>
-#include <DrcPidFast.h>
+#include "DelphesConfigDIRC.h"
+#include "DrcPidFast.h"
 
 // -------------------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@
 #ifndef _REFRACTION_POINT_
 #define _REFRACTION_POINT_
 
-#include <CherenkovRadiator.h>
+#include "CherenkovRadiator.h"
 
 class RefractionPoint: public TObject {
  public:
@@ -25,7 +25,9 @@ class RefractionPoint: public TObject {
   //unsigned m_VolumeCopy;
   TVector3 m_Position, m_Momenta[2];
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(RefractionPoint, 1);
+#endif
 };
 
 #endif

@@ -3,7 +3,7 @@
 // Yes, prefer to keep it separately even that it is a subset of a ConicalSurface;
 //
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 #ifndef _IRT_CYLINDRICAL_SURFACE_
 #define _IRT_CYLINDRICAL_SURFACE_
@@ -74,7 +74,9 @@ class CylindricalSurface: public ParametricSurface {
   TVector3 m_Nz, m_Nr;
   double m_Radius, m_Alfa;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CylindricalSurface, 1);
+#endif
 };
 
 #endif
