@@ -55,6 +55,7 @@ file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h )
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/ToricSurface.cc
   ${PROJECT_SOURCE_DIR}/source/CylindricalSurface.cc
   ${PROJECT_SOURCE_DIR}/source/ConicalSurface.cc
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc

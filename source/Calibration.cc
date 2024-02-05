@@ -185,7 +185,6 @@ void Calibration::CalibratePhotonEmissionPoints( void )
     double theta = mcparticle->GetVertexMomentum().Theta();
     unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
     double p = mcparticle->GetVertexMomentum().Mag();
-    //printf("%d\n", mcparticle->GetPDG());
     double m = m_DatabasePDG->GetParticle(mcparticle->GetPDG())->Mass();
     double beta = 1./sqrt(1. + pow(m/p, 2));
 
@@ -193,6 +192,9 @@ void Calibration::CalibratePhotonEmissionPoints( void )
       auto history  = mcparticle->GetHistory (rhptr);
       auto radiator = mcparticle->GetRadiator(rhptr);
       
+      // FIXME: this is not dramatically efficient;
+      if (!GetMyRICH()->RadiatorRegistered(radiator)) continue;
+
       double z0 = radiator->m_Calibrations[ibin].m_AverageZvtx;
 
       std::map<double, OpticalPhoton*> dpoints, tpoints;

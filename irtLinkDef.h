@@ -30,6 +30,7 @@
 
 #pragma link C++ class ParametricSurface+;
 #pragma link C++ class SphericalSurface+;
+#pragma link C++ class ToricSurface+;
 #pragma link C++ class CylindricalSurface+;
 #pragma link C++ class ConicalSurface+;
 #pragma link C++ class LocalCoordinatesXY+;
