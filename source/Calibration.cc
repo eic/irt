@@ -88,6 +88,9 @@ void Calibration::PerformCalibration(unsigned stat)
 	auto radiator = mcparticle->GetRadiator(rhptr);
 	auto history  = mcparticle->GetHistory (rhptr);
 	
+	// FIXME: this is not dramatically efficient;
+	if (!GetMyRICH()->RadiatorRegistered(radiator)) continue;
+
 	double theta = mcparticle->GetVertexMomentum().Theta();
 	unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
 
