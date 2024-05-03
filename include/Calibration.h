@@ -1,4 +1,6 @@
 
+#include <map>
+
 class TDatabasePDG;
 #include <TRandom.h>
 
@@ -22,6 +24,8 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
   void UseAutomaticCalibration( void )        { m_AutomaticCalibrationRequired = true; };
   CherenkovEvent *GetNextEvent(bool calibration = false);
 
+  void ImportTrackingSmearing(const char *ftheta, const char *fphi);
+
  protected:
   void CalibratePhotonEmissionPoints( void );
   virtual CherenkovEvent *GetEvent(unsigned ev, bool calibration = false) = 0;
@@ -41,6 +45,13 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
 
   TRandom m_rndm; 
   //TH1D *m_hcalib;
+
+  std::map<std::pair<double, double>, std::pair<double, double>> m_ThetaSmearing, m_PhiSmearing;
+
+  std::pair<double, double> GetTrackingSmearing(double momentum, double eta);
+  std::pair<double, double> GetTrackingSmearing(const TVector3 &momentum) {
+    return GetTrackingSmearing(momentum.Mag(), momentum.Eta());
+  };
 };
 
 

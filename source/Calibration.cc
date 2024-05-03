@@ -34,6 +34,70 @@ CherenkovEvent *Calibration::GetNextEvent(bool calibration)
 
 // -------------------------------------------------------------------------------------
 
+void Calibration::ImportTrackingSmearing(const char *ftheta, const char *fphi)
+{
+  std::map<std::pair<double, double>, std::pair<double, double>> *sarr[2] = 
+    {&m_ThetaSmearing, &m_PhiSmearing};
+  const char *farr[2] = {ftheta, fphi};
+  //std::map<std::pair<double, double>, std::pair<double, double>> m_ThetaSmearing, m_PhiSmearing;
+
+  for(unsigned iq=0; iq<2; iq++) {
+    auto fin = fopen(farr[iq], "r");
+
+    //float emin, emax, a, ea, b, eb;
+    float emin, emax, a, b;//ea, b, eb;
+    //unsigned lcounter = 0;
+    char buffer[1024];
+    while (fgets(buffer, 1024-1, fin)) {
+      //-if (lcounter++ <= 1) continue;
+      //printf("%s", buffer);
+
+      //sscanf(buffer, "%f %f %f %f %f %f", &emin, &emax, &a, &ea, &b, &eb);
+      sscanf(buffer, "%f %f %f %f", &emax, &emin, &a, &b);//ea, &b, &eb);
+      //printf("%f %f %f %f\n", emin, emax, a, b);//ea, b, eb);
+
+      (*sarr[iq])[std::make_pair(emin, emax)] = std::make_pair(a, b);
+    } //while
+  } //fr iq
+
+  //exit(0);//
+  //TVector3 p(0.0, 0.5, -5.0);
+  //GetTrackingSmearing(p);
+} // Calibration::ImportTrackingSmearing()
+
+// -------------------------------------------------------------------------------------
+
+std::pair<double, double> Calibration::GetTrackingSmearing(double momentum, double eta)
+{
+  double dtheta = 0.0, dphi = 0.0, theta = 2*atan(exp(-eta));
+
+  // FIXME: very inefficient;
+  for(auto &entry: m_ThetaSmearing)
+    if (entry.first.first <= eta && eta <= entry.first.second) {
+      double A = entry.second.first, B = entry.second.second; 
+      dtheta = 1E-3*sqrt(pow(A/momentum, 2) + B*B);
+      //printf("%f %f -> %f\n", entry.first.first, entry.first.second, dtheta);
+
+      break;
+    } //for entry .. if
+  for(auto &entry: m_PhiSmearing)
+    if (entry.first.first <= eta && eta <= entry.first.second) {
+      double A = entry.second.first, B = entry.second.second; 
+      dphi = 1E-3*sqrt(pow(A/momentum, 2) + B*B) * fabs(tan(theta));//momentum.Theta()));
+      //printf("%f\n", fabs(dphi * tan(momentum.Theta())));
+
+      break; 
+    } //for entry .. if
+
+  //printf("<p> = %8.3f [GeV/c], <eta> = %6.2f -> dtheta: %7.5f, dphi: %7.5f\n", 
+  //	 momentum, eta, dtheta, dphi);  
+  // Yes, make it simple for now;
+  //return sqrt(dtheta*dtheta + dphi*dphi);
+  return std::make_pair(dtheta, dphi);//*dtheta + dphi*dphi);
+} // Calibration::GetTrackingSmearing()
+
+// -------------------------------------------------------------------------------------
+
 void Calibration::PerformCalibration(unsigned stat)
 {
   unsigned nEvents = GetInputTreeEntryCount();
@@ -220,6 +284,35 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	} //for photon
 	
 	if (stat) history->m_AverageParentMomentum *= 1./stat;
+#if _OK_
+	if (stat && m_ThetaSmearing.size() && m_PhiSmearing.size()) {
+	  auto &p = history->m_AverageParentMomentum;
+	  double theta = p.Theta(), phi = p.Phi();
+	  auto smearing = GetTrackingSmearing(p);
+ 
+	  theta += m_rndm.Gaus(0.0, smearing.first);//0.010);
+	  phi   += m_rndm.Gaus(0.0, smearing.second);//0.010);
+
+	  auto nn = TVector3(sin(theta)*cos(phi), 
+			     sin(theta)*sin(phi), 
+			     cos(theta));
+	  p = p.Mag()*nn;
+	} //if
+#endif
+#if 0
+	{
+	  auto &p = history->m_AverageParentMomentum;//, q = history->m_AverageParentMomentum.Unit();
+	  double /*pp = p.Mag(),*/ theta = p.Theta(), phi = p.Phi();
+	 	  
+	  theta += m_rndm.Gaus(0.0, 0.010);
+	  phi   += m_rndm.Gaus(0.0, 0.010);
+
+	  auto nn = TVector3(sin(theta)*cos(phi), 
+			     sin(theta)*sin(phi), 
+			     cos(theta));
+	  p = p.Mag()*nn;
+	}
+#endif
 #if 0
 	{
 	  auto &p = history->m_AverageParentMomentum, q = history->m_AverageParentMomentum.Unit();
