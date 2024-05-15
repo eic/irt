@@ -13,19 +13,19 @@ class ParametricSurface: public TObject {
  ParametricSurface(const TVector3 &x0, double umin, double umax, double vmin, double vmax):
   m_Center(x0), m_Umin(umin), m_Umax(umax), m_Vmin(vmin), m_Vmax(vmax) {};
   ~ParametricSurface() {};
-
+  
   // 2D parameter ranges (call them U&V);
   double Umin( void ) const { return m_Umin; };
   double Umax( void ) const { return m_Umax; };
   double Vmin( void ) const { return m_Vmin; };
   double Vmax( void ) const { return m_Vmax; };
-  bool IsInside(double u, double v) const {
+
+  virtual bool IsInside(double u, double v) const {
     return (u >= m_Umin && u <= m_Umax && v >= m_Vmin && v <= m_Vmax);
-  };
+  };  
   void SetUVranges(double umin, double umax, double vmin, double vmax) {
     m_Umin = umin; m_Umax = umax; m_Vmin = vmin; m_Vmax = vmax;
   };
-
   virtual TVector3 GetSpacePoint(double u, double v) const = 0;
   // There is no check that the point actually belongs to the surface;
   // it is assumed that GEANT stepping was done correctly, so the point 
@@ -76,6 +76,14 @@ class SphericalSurface: public ParametricSurface {
   ParametricSurface(x0, umin, umax, vmin, vmax), m_Concave(true), m_Radius(r0) {};
   ~SphericalSurface() {};
 
+  bool IsInside(double u, double v) const {
+    // override, accounting for \phi periodicity
+    if (Vmin() <= Vmax()) {
+      return (u >= Umin() && u <= Umax() && v >= Vmin() && v <= Vmax());
+    } else {
+      return ( (v >= Vmin() || v <= Vmax()) && (u >= Umin() && u <= Umax() ) );
+    }    
+  }
   // FIXME: no range check?; 
   TVector3 GetSpacePoint(double theta, double phi) const {
     TVector3 nn(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta));
