@@ -81,7 +81,11 @@ class UniformPDF: public SinglePDF {
 class VectorPDF: public TObject {
  public:
   VectorPDF() {};
-  ~VectorPDF() {};
+  ~VectorPDF() {
+    for(auto pdf : m_Members) {
+      delete pdf;
+    }
+  };
   
   void AddMember(UniformPDF *pdf) { m_Members.push_back(pdf); };
   unsigned GetWithinRangeCount(double x, double dx = 0.0) const {
