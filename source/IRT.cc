@@ -8,7 +8,9 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
+  
   bool transport_in_progress = false;
+  bool reflected = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
   // or refraction on that particular surface;
@@ -17,20 +19,32 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto surface = boundary->m_Surface;
 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
-
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
     // refractive boundary; then just skip to the next one without changing [x0,n0]); 
     // however if one valid boundary was handled already, this must be a no-crossing case; 
     // then return false immediately;
-    if (!ok) {
-      if (transport_in_progress) 
-	return false;
-      else
-	continue;
-    } //if
-    transport_in_progress = true;
 
+    // Connor, multi-mirror PR:
+    // If we will only have cases of one reflection, but with different possible reflecting
+    // surfaces, this can be generalized by checking if we already had a reflection when
+    // the propagation to the next mirror surface fails.
+    if (!ok) {
+      // sensor crossing
+      if (transport_in_progress && !boundary->m_Radiator.GetObject()){
+	return false;
+      }
+      // already reflected and checking other mirror boundary
+      if(transport_in_progress && reflected && !boundary->m_Refractive){
+	continue;
+      }
+      else{
+	continue;
+      }
+    } //if    
+
+    transport_in_progress = true;
+    
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
     TVector3 ns = surface->GetNormal(boundary->m_ImpactPoint);
     TVector3 na = ns.Cross(boundary->m_IncomingDirection);
@@ -55,6 +69,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
       } //if
     } else {
       // Reflection;
+      reflected = true;
       boundary->m_OutgoingDirection.Rotate(M_PI - 2*acos(ns.Dot(boundary->m_IncomingDirection)), na);
     } //if
 
@@ -124,8 +139,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
       //printf("%10.4f\n", dist);
 
       if (dist < m_Precision) {
-	solution.m_Converged = true;
-
+	solution.m_Converged = true;	
 	{ 
 	  double slope = acos(nfrom.Dot(beam));
 	  auto axis = nfrom.Cross(beam).Unit();
