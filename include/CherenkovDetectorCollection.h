@@ -8,6 +8,7 @@ class G4LogicalVolume;
 class G4RadiatorMaterial;
 class G4OpticalSurface;
 
+//class OpticalPhoton;
 class CherenkovMirror;
 class CherenkovPhotonDetector;
 
@@ -75,6 +76,8 @@ class CherenkovDetectorCollection: public BitMask {
     radiator->AddLogicalVolume(lv);
     m_RadiatorLookup[lv] = radiator;
   };
+
+  //inline void AddOrphanPhoton(OpticalPhoton *photon) { m_OrphanPhotons.push_back(photon); };
 
   void AddPhotonDetector(CherenkovDetector *det, const G4LogicalVolume *lv, 
 			 CherenkovPhotonDetector *pd) {
@@ -147,8 +150,9 @@ class CherenkovDetectorCollection: public BitMask {
   std::map<TString, CherenkovDetector*> _m_Detectors;
   
 #ifndef DISABLE_ROOT_IO
+  //std::vector<OpticalPhoton*> m_OrphanPhotons; 
   ClassDef(CherenkovDetectorCollection, 2);
-#endif
+#endif // !DISABLE_ROOT_IO
 };
 
 #endif

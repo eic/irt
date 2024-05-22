@@ -352,15 +352,20 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       unsigned id = icbest;
       
       for(auto mcparticle: Event()->ChargedParticles()) {
+      //for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) {
+      //auto mcparticle = *Event()->ChargedParticles()[ip];
+
 	unsigned hypo = id%hdim;
 	auto rcparticle = m_Hypotheses[hypo];
 
 	//if (mcparticle->m_HadronicInteractionOccured) continue;
 	
-	if (abs(mcparticle->GetPDG()) == abs(rcparticle->PdgCode())) {
+	if (mcparticle->GetRecoCherenkovHitCount() == 0) {
 	  m_hmatch->Fill(0.5);
-	} else {
+	} else if (abs(mcparticle->GetPDG()) == abs(rcparticle->PdgCode())) {
 	  m_hmatch->Fill(1.5);
+	} else {
+	  m_hmatch->Fill(2.5);
 	  if (BeVerbose()) printf("PID Failure!\n");
 	} //if	  
 

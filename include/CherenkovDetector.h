@@ -68,6 +68,13 @@ class CherenkovDetector: public TObject {
 
     return _m_Radiators[name];
   };
+  bool RadiatorRegistered(const CherenkovRadiator *radiator) {
+    for(auto &ptr: _m_Radiators)
+      if (ptr.second == radiator)
+	return true;
+
+    return false;
+  };
 
   void SetReadoutCellMask(uint64_t mask) { m_ReadoutCellMask = mask; };
   inline uint64_t GetReadoutCellMask( void ) const { return m_ReadoutCellMask; };

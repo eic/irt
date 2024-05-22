@@ -45,6 +45,7 @@ class ReconstructionFactory : /*public virtual GeantImport,*/ public Digitizatio
 
   std::vector<TParticlePDG*> m_Hypotheses;
 
+
   void LaunchRingFinder(bool calibration);
 };
 
