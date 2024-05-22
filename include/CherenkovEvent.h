@@ -4,7 +4,7 @@
 #ifndef _CHERENKOV_EVENT_
 #define _CHERENKOV_EVENT_
 
-#include <ChargedParticle.h>
+#include "ChargedParticle.h"
 
 class OpticalPhoton;
 
@@ -31,10 +31,11 @@ class CherenkovEvent: public TObject {
 
  private:
   std::set<ChargedParticle*> m_ChargedParticles;
-
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovEvent, 2);
+#endif
 };
 
 #endif

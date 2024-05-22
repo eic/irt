@@ -71,7 +71,9 @@ class ParametricSurface: public TObject {
  private:
   double m_Umin, m_Umax, m_Vmin, m_Vmax;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ParametricSurface, 1);
+#endif
 };
 
 class LocalCoordinatesXY: public TObject {
@@ -82,7 +84,9 @@ class LocalCoordinatesXY: public TObject {
   virtual double GetLocalX(const TVector3 &xx) const = 0;
   virtual double GetLocalY(const TVector3 &xx) const = 0;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(LocalCoordinatesXY, 1);
+#endif
 }; 
 
 #endif

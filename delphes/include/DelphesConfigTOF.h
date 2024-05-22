@@ -2,7 +2,7 @@
 #ifndef _DELPHES_CONFIG_TOF_
 #define _DELPHES_CONFIG_TOF_
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 class DelphesConfigTOF: public DelphesConfig {
  public:
@@ -73,7 +73,9 @@ class DelphesConfigTOF: public DelphesConfig {
 
   double m_InstallationDistance;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfigTOF, 2)
+#endif
 };
 
 #endif

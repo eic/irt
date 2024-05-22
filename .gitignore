@@ -2,3 +2,6 @@
 build
 athena
 sim/macro/tmp*.mac
+
+# macOs
+.DS_STORE

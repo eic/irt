@@ -11,8 +11,8 @@
 #include "dd4pod/TrackerHitCollection.h"
 
 // IRT
-#include <CherenkovEvent.h>
-#include <CherenkovDetectorCollection.h>
+#include "CherenkovEvent.h"
+#include "CherenkovDetectorCollection.h"
 
 // Optionally: mimic low wave length cutoff and average QE x Geometric sensor efficiency;
 #define _WAVE_LENGTH_CUTOFF_ (350.0)

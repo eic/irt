@@ -6,7 +6,7 @@ class TH1D;
 #ifndef _CONFIGURATION_
 #define _CONFIGURATION_
 
-#include <GeantImport.h>
+#include "GeantImport.h"
 class CherenkovRadiator;
 
 class Configuration: public virtual GeantImport {

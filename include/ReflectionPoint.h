@@ -6,7 +6,7 @@
 #ifndef _REFLECTION_POINT_
 #define _REFLECTION_POINT_
 
-#include <CherenkovMirror.h>
+#include "CherenkovMirror.h"
 
 class ReflectionPoint: public TObject {
  public:
@@ -20,7 +20,9 @@ class ReflectionPoint: public TObject {
   //unsigned m_VolumeCopy; // FIXME: unused
   TVector3 m_Position, m_Momentum;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ReflectionPoint, 1);
+#endif
 };
 
 #endif

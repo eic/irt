@@ -7,7 +7,7 @@ class TDatabasePDG;
 #ifndef _CALIBRATION_
 #define _CALIBRATION_
 
-#include <Configuration.h>
+#include "Configuration.h"
 
 // 5 degree binning for calibration purposes suffices?;
 #define _THETA_BIN_COUNT_ (180/5)

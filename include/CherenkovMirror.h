@@ -2,12 +2,12 @@
 #ifndef _CHERENKOV_MIRROR_
 #define _CHERENKOV_MIRROR_
 
-#include <G4Object.h>
-#include <FlatSurface.h>
-#include <SphericalSurface.h>
-#include <CylindricalSurface.h>
-#include <ConicalSurface.h>
-#include <ParametricSurface.h>
+#include "G4Object.h"
+#include "FlatSurface.h"
+#include "SphericalSurface.h"
+#include "CylindricalSurface.h"
+#include "ConicalSurface.h"
+#include "ParametricSurface.h"
 
 class CherenkovWaveLengthRange;
 
@@ -18,7 +18,9 @@ class SurfaceCopy: public G4ObjectCopy {
 
   ParametricSurface *m_Surface;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(SurfaceCopy, 1);
+#endif
 };
 
 class CherenkovMirror: public G4Object {
@@ -45,7 +47,9 @@ class CherenkovMirror: public G4Object {
  private:
   G4OpticalSurface *m_MirrorSurface;   //!
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovMirror, 1);
+#endif
 };
 
 class FlatMirror: public CherenkovMirror, public FlatSurface {
@@ -56,7 +60,9 @@ class FlatMirror: public CherenkovMirror, public FlatSurface {
   CherenkovMirror(solid, material), FlatSurface(x0, nx, ny, sx, sy) {};
   ~FlatMirror() {};
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(FlatMirror, 2);
+#endif
 };
 
 class SphericalMirror: public CherenkovMirror, public SphericalSurface {
@@ -66,7 +72,9 @@ class SphericalMirror: public CherenkovMirror, public SphericalSurface {
  CherenkovMirror(solid, material), SphericalSurface(x0, r0) {};
   ~SphericalMirror() {};
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(SphericalMirror, 2);
+#endif
 };
 
 class CylindricalMirror: public CherenkovMirror, public CylindricalSurface {
@@ -76,7 +84,9 @@ class CylindricalMirror: public CherenkovMirror, public CylindricalSurface {
  CherenkovMirror(solid, material), CylindricalSurface(x0, nz, r0, dz) {};
   ~CylindricalMirror() {};
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(CylindricalMirror, 1);
+#endif
 };
 
 class ConicalMirror: public CherenkovMirror, public ConicalSurface {
@@ -86,7 +96,9 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
  CherenkovMirror(solid, material), ConicalSurface(x0, nz, r0, r1, dz) {};
   ~ConicalMirror() {};
   
+#ifndef DISABLE_ROOT_IO
   ClassDef(ConicalMirror, 1);
+#endif
 };
 
 #if 0
@@ -100,7 +112,9 @@ class CherenkovMirrorGroup: public TObject {
  private:
   std::vector<CherenkovMirror*> m_Mirrors;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovMirrorGroup, 1);
+#endif
 };
 #endif
 

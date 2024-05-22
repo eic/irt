@@ -8,7 +8,7 @@
 #ifndef _CHERENKOV_DETECTOR_
 #define _CHERENKOV_DETECTOR_
 
-#include <CherenkovPhotonDetector.h>
+#include "CherenkovPhotonDetector.h"
 class CherenkovMirrorGroup;
 class OpticalBoundary;
 class G4LogicalVolume;
@@ -129,6 +129,9 @@ class CherenkovDetector: public TObject {
     m_OpticalBoundaryStorage.push_back(boundary);
   };
 
+  // readout ID -> pixel position converter (for external usage)
+  std::function<TVector3(long long int)> m_ReadoutIDToPosition; //!
+
  private:  
   TString m_Name;
   // This is needed for dd4hep cell index decoding;
@@ -142,7 +145,9 @@ class CherenkovDetector: public TObject {
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   //+std::vector<CherenkovMirrorGroup*> m_MirrorGroups;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovDetector, 6);
+#endif
 };
 
 #endif

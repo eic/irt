@@ -4,12 +4,12 @@
 #ifndef _CHERENKOV_PHOTON_DETECTOR_
 #define _CHERENKOV_PHOTON_DETECTOR_
 
-#include <G4Object.h>
-#include <FlatSurface.h>
+#include "G4Object.h"
+#include "FlatSurface.h"
 
 class G4DataInterpolation;
 
-#include <IRT.h>
+#include "IRT.h"
 
 class CherenkovPhotonDetector: public G4Object {
  public:
@@ -89,7 +89,9 @@ class CherenkovPhotonDetector: public G4Object {
 
   unsigned m_CopyIdentifierLevel;     //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovPhotonDetector, 6);
+#endif
 };
 
 #endif

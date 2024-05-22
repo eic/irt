@@ -9,8 +9,8 @@
 #ifndef _DIGITIZED_HIT_
 #define _DIGITIZED_HIT_
 
-#include <CherenkovPhotonDetector.h>
-#include <SinglePDF.h>
+#include "CherenkovPhotonDetector.h"
+#include "SinglePDF.h"
 class ChargedParticle;
 class IRT;
 

@@ -4,7 +4,7 @@
 #ifndef _DELPHES_CONFIG_RICH_
 #define _DELPHES_CONFIG_RICH_
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 class DelphesConfigRICH: public DelphesConfig {
  public:
@@ -33,7 +33,9 @@ class DelphesConfigRICH: public DelphesConfig {
     return GetTrackingSmearing(momentum.Mag(), momentum.Eta());
   };
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(DelphesConfigRICH, 3)
+#endif
 };
 
 #endif
