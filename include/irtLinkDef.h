@@ -30,6 +30,7 @@
 
 #pragma link C++ class ParametricSurface+;
 #pragma link C++ class SphericalSurface+;
+#pragma link C++ class SphericalSurfaceWithHalfSpace+;
 #pragma link C++ class LocalCoordinatesXY+;
 #pragma link C++ class FlatSurface+;
 
@@ -41,6 +42,7 @@
 #pragma link C++ class CherenkovMirrorGroup+;
 #pragma link C++ class FlatMirror+;
 #pragma link C++ class SphericalMirror+;
+#pragma link C++ class SphericalMirrorWithHalfSpace+;
 
 #pragma link C++ class CherenkovPhotonDetector+;
 
