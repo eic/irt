@@ -75,8 +75,11 @@ class SphericalSurface: public ParametricSurface {
 		  double vmin = 0.0, double vmax = 2*M_PI): 
   ParametricSurface(x0, umin, umax, vmin, vmax), m_Concave(true), m_Radius(r0) {};
   ~SphericalSurface() {};
-
-  bool IsInside(double u, double v) const {
+  using ParametricSurface::IsInside;
+  virtual bool IsInside(TVector3 p) const {
+    double u = p.Theta();
+    double v = p.Phi();
+    if (v < 0) v += 2*M_PI;
     // override, accounting for \phi periodicity
     if (Vmin() <= Vmax()) {
       return (u >= Umin() && u <= Umax() && v >= Vmin() && v <= Vmax());
@@ -113,6 +116,26 @@ class SphericalSurface: public ParametricSurface {
 
 #ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurface, 2);
+#endif
+};
+
+// want the same behavior as a SphericalSurface, but also checking
+// that any crossing point is also passing the given half-space condition
+class SphericalSurfaceWithHalfSpace: public SphericalSurface {
+public:
+  SphericalSurfaceWithHalfSpace(): SphericalSurface() {} ;
+  SphericalSurfaceWithHalfSpace(const TVector3 &x0, double r0, const TVector3 &pNorm, const TVector3 &pPoint, double umin = 0.0, double umax = M_PI, 
+		  double vmin = 0.0, double vmax = 2*M_PI): 
+    SphericalSurface(x0, r0, umin, umax, vmin, vmax), m_HSNorm(pNorm), m_HSPoint(pPoint) {};
+  ~SphericalSurfaceWithHalfSpace() {};
+
+  bool IsInside(TVector3 p) const;
+private:
+  // point and normal defining half-space
+  TVector3 m_HSNorm;
+  TVector3 m_HSPoint;
+#ifndef DISABLE_ROOT_IO
+  ClassDef(SphericalSurfaceWithHalfSpace, 1);
 #endif
 };
 
