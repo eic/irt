@@ -22,18 +22,8 @@ bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVect
       if (t < 0.0) continue;
       *crs = x0 + t*n0;
 
-      TVector3 crsSphereFrame = x0 + t*n0 - GetCenter();
-      
-      double theta = crsSphereFrame.Theta();
-      //double phi = crsSphereFrame.Phi();
-      //double thetaLab = crs->Theta();
-      double phiLab = crs->Phi();
-      if (phiLab < 0) phiLab += 2*M_PI;
-      
       // want to check if this is inside the theta/phi acceptance of a mirror
-      // \theta cut (in epic geometry) is applied in the sphere's reference frame,
-      // but \phi cut is applied in ePIC reference frame
-      bool insidecheck = IsInside(theta, phiLab);
+      bool insidecheck = IsInside(*crs);
       
       if(!(insidecheck)) continue;
       if ( check_normal && n0.Dot(GetNormal(*crs)) >= 0.0) continue;
