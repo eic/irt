@@ -12,10 +12,10 @@ class OpticalBoundary: public TObject {
   friend class IRT;
 
  public:
- OpticalBoundary(): m_Radiator(0), m_Surface(0), m_Refractive(true) {};
+  OpticalBoundary(): m_Radiator(0), m_Surface(0), m_Refractive(true), m_Reflective(false) {};
   // The "0" as a radiator ptr implicitly says "there is no photon life beyond this boundary in IRT";
- OpticalBoundary(/*const*/ CherenkovRadiator *radiator, const ParametricSurface *surface, bool refractive): 
-  m_Radiator(radiator), m_Surface(surface), m_Refractive(refractive) {};
+  OpticalBoundary(/*const*/ CherenkovRadiator *radiator, const ParametricSurface *surface, bool refractive, bool reflective): 
+    m_Radiator(radiator), m_Surface(surface), m_Refractive(refractive), m_Reflective(reflective) {};
   ~OpticalBoundary() {};
 
   CherenkovRadiator *GetRadiator( void ) const {
@@ -32,7 +32,7 @@ class OpticalBoundary: public TObject {
 
   // Boundary surface; either refractive or reflective; 
   const ParametricSurface *m_Surface;
-  bool m_Refractive;
+  bool m_Refractive, m_Reflective;
 
   // Working variables; FIXME: not multithreading friendly;
   static thread_local TVector3 m_ImpactPoint, m_IncomingDirection, m_OutgoingDirection; //!

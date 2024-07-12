@@ -8,7 +8,6 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
-  
   bool transport_in_progress = false;
   bool reflected = false;
   TVector3 x0 = xfrom, n0 = nfrom;
@@ -18,40 +17,33 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto boundary = GetOpticalBoundary(iq), prev = iq ? GetOpticalBoundary(iq-1) : 0;
     auto surface = boundary->m_Surface;
 
+    // if already reflected, skip following mirrors
+    if(reflected && boundary->m_Reflective) continue;
+    
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
+    printf("boundary %d, isOK %d \n", iq, ok);
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
     // refractive boundary; then just skip to the next one without changing [x0,n0]); 
     // however if one valid boundary was handled already, this must be a no-crossing case; 
     // then return false immediately;
-
-    // Connor, multi-mirror PR:
-    // If we will only have cases of one reflection, but with different possible reflecting
-    // surfaces, this can be generalized by checking if we already had a reflection when
-    // the propagation to the next mirror surface fails.
     if (!ok) {
-      // sensor crossing
-      if (transport_in_progress && !boundary->m_Radiator.GetObject()){
+      // if a mirror was missed, can still hit the next mirror.
+      // if missed a non-mirror boundary, return false
+      if (transport_in_progress && !boundary->m_Reflective) 
 	return false;
-      }
-      // already reflected and checking other mirror boundary
-      if(transport_in_progress && reflected && !boundary->m_Refractive){
+      else
 	continue;
-      }
-      else{
-	continue;
-      }
-    } //if    
-
+    } //if
     transport_in_progress = true;
-    
+
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
     TVector3 ns = surface->GetNormal(boundary->m_ImpactPoint);
     TVector3 na = ns.Cross(boundary->m_IncomingDirection);
 
     boundary->m_OutgoingDirection = boundary->m_IncomingDirection;
     // Must be the sensor dump; FIXME:: do this check better;
-    if (!boundary->m_Radiator.GetObject()) return true;
+    if (!boundary->m_Radiator.GetObject() && !boundary->m_Reflective) return true;
 
     if (boundary->m_Refractive) {
       // Will not be able to determine the refractive index;
@@ -139,7 +131,8 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
       //printf("%10.4f\n", dist);
 
       if (dist < m_Precision) {
-	solution.m_Converged = true;	
+	solution.m_Converged = true;
+
 	{ 
 	  double slope = acos(nfrom.Dot(beam));
 	  auto axis = nfrom.Cross(beam).Unit();
