@@ -15,8 +15,12 @@ bool SphericalSurfaceWithHalfSpace::IsInside(TVector3 p) const {
     insideSphere = (u >= Umin() && u <= Umax() && v >= Vmin() && v <= Vmax());
   } else {
     insideSphere = ( (v >= Vmin() || v <= Vmax()) && (u >= Umin() && u <= Umax() ) );
-  }  
-  auto insideHalfSpace = (m_HSNorm.Dot(p-m_HSPoint) > 0);
+  }
   
-  return (insideSphere && insideHalfSpace);
+  // check if outside of any given half spaces
+  for(int i = 0; i < m_HSNorm.size(); i++){
+    if (m_HSNorm[i].Dot(p-m_HSPoint[i]) < 0) return false;
+  }
+  
+  return insideSphere;
 } // SphericalSurfaceWithHalfSpace::IsInside()

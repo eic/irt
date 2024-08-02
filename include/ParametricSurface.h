@@ -124,16 +124,22 @@ class SphericalSurface: public ParametricSurface {
 class SphericalSurfaceWithHalfSpace: public SphericalSurface {
 public:
   SphericalSurfaceWithHalfSpace(): SphericalSurface() {} ;
-  SphericalSurfaceWithHalfSpace(const TVector3 &x0, double r0, const TVector3 &pNorm, const TVector3 &pPoint, double umin = 0.0, double umax = M_PI, 
-		  double vmin = 0.0, double vmax = 2*M_PI): 
-    SphericalSurface(x0, r0, umin, umax, vmin, vmax), m_HSNorm(pNorm), m_HSPoint(pPoint) {};
+  SphericalSurfaceWithHalfSpace(const TVector3 &x0, double r0, const std::vector<std::pair<TVector3, TVector3>> &halfSpaces,
+				double umin = 0.0, double umax = M_PI, 
+				double vmin = 0.0, double vmax = 2*M_PI): 
+    SphericalSurface(x0, r0, umin, umax, vmin, vmax){
+    for (const auto &halfSpace : halfSpaces) {
+      m_HSNorm.push_back(halfSpace.first);
+      m_HSPoint.push_back(halfSpace.second);
+    }
+  }
   ~SphericalSurfaceWithHalfSpace() {};
-
+  
   bool IsInside(TVector3 p) const;
 private:
   // point and normal defining half-space
-  TVector3 m_HSNorm;
-  TVector3 m_HSPoint;
+  std::vector<TVector3> m_HSNorm;
+  std::vector<TVector3> m_HSPoint;
 #ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurfaceWithHalfSpace, 1);
 #endif
