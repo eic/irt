@@ -21,7 +21,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     if(reflected && boundary->m_Reflective) continue;
     
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
-    printf("boundary %d, isOK %d \n", iq, ok);
+    
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
     // refractive boundary; then just skip to the next one without changing [x0,n0]); 
