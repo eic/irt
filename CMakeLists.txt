@@ -55,6 +55,7 @@ list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 # sources
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/SphericalSurfaceWithHalfSpace.cc
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc

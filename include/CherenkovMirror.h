@@ -71,6 +71,18 @@ class SphericalMirror: public CherenkovMirror, public SphericalSurface {
 #endif
 };
 
+class SphericalMirrorWithHalfSpace: public CherenkovMirror, public SphericalSurfaceWithHalfSpace {
+ public:
+  SphericalMirrorWithHalfSpace() {};
+  SphericalMirrorWithHalfSpace(G4VSolid *solid, G4Material *material, const TVector3 &x0, double r0, const std::vector<std::pair<TVector3,TVector3>> halfSpaces): 
+    CherenkovMirror(solid, material), SphericalSurfaceWithHalfSpace(x0, r0, halfSpaces) {};
+  ~SphericalMirrorWithHalfSpace() {};
+  
+#ifndef DISABLE_ROOT_IO
+  ClassDef(SphericalMirrorWithHalfSpace, 2);
+#endif
+};
+
 class CherenkovMirrorGroup: public TObject {
  public:
   CherenkovMirrorGroup() {};

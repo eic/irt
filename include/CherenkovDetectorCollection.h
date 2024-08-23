@@ -55,13 +55,13 @@ class CherenkovDetectorCollection: public BitMask {
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift(( thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(path, new OpticalBoundary(radiator,                  boundary, true));
+      det->AddOpticalBoundary(path, new OpticalBoundary(radiator,                  boundary, true, false));
       radiator->m_Borders[path].first = boundary;
     }
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift((-thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(path, new OpticalBoundary(det->GetContainerVolume(), boundary, true));
+      det->AddOpticalBoundary(path, new OpticalBoundary(det->GetContainerVolume(), boundary, true, false));
 
       radiator->m_Borders[path].second = boundary;
       // This will most likely be a temporary assignment;
@@ -106,7 +106,7 @@ class CherenkovDetectorCollection: public BitMask {
     // This is most likely a temporary assignment;
     radiator->m_Borders[path].first = surface;
 
-    det->AddOpticalBoundary(path, new OpticalBoundary(FindRadiator(lv), surface, true));
+    det->AddOpticalBoundary(path, new OpticalBoundary(FindRadiator(lv), surface, true, false));
     //det->SetContainerVolume(lv);
     det->SetContainerVolume(radiator);
 

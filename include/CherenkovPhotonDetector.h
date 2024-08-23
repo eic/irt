@@ -31,7 +31,7 @@ class CherenkovPhotonDetector: public G4Object {
   double GetGeometricEfficiency( void ) const { return m_GeometricEfficiency; };
 
   void AddItselfToOpticalBoundaries(IRT *irt, ParametricSurface *surface) /*const*/ {
-    auto boundary = new OpticalBoundary(0, surface, true);
+    auto boundary = new OpticalBoundary(0, surface, true, false);
     irt->AddOpticalBoundary(boundary);
 
     m_OpticalBoundaryStorage.push_back(boundary);

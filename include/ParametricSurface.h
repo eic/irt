@@ -13,19 +13,19 @@ class ParametricSurface: public TObject {
  ParametricSurface(const TVector3 &x0, double umin, double umax, double vmin, double vmax):
   m_Center(x0), m_Umin(umin), m_Umax(umax), m_Vmin(vmin), m_Vmax(vmax) {};
   ~ParametricSurface() {};
-
+  
   // 2D parameter ranges (call them U&V);
   double Umin( void ) const { return m_Umin; };
   double Umax( void ) const { return m_Umax; };
   double Vmin( void ) const { return m_Vmin; };
   double Vmax( void ) const { return m_Vmax; };
-  bool IsInside(double u, double v) const {
+
+  virtual bool IsInside(double u, double v) const {
     return (u >= m_Umin && u <= m_Umax && v >= m_Vmin && v <= m_Vmax);
-  };
+  };  
   void SetUVranges(double umin, double umax, double vmin, double vmax) {
     m_Umin = umin; m_Umax = umax; m_Vmin = vmin; m_Vmax = vmax;
   };
-
   virtual TVector3 GetSpacePoint(double u, double v) const = 0;
   // There is no check that the point actually belongs to the surface;
   // it is assumed that GEANT stepping was done correctly, so the point 
@@ -75,7 +75,18 @@ class SphericalSurface: public ParametricSurface {
 		  double vmin = 0.0, double vmax = 2*M_PI): 
   ParametricSurface(x0, umin, umax, vmin, vmax), m_Concave(true), m_Radius(r0) {};
   ~SphericalSurface() {};
-
+  using ParametricSurface::IsInside;
+  virtual bool IsInside(TVector3 p) const {
+    double u = p.Theta();
+    double v = p.Phi();
+    if (v < 0) v += 2*M_PI;
+    // override, accounting for \phi periodicity
+    if (Vmin() <= Vmax()) {
+      return (u >= Umin() && u <= Umax() && v >= Vmin() && v <= Vmax());
+    } else {
+      return ( (v >= Vmin() || v <= Vmax()) && (u >= Umin() && u <= Umax() ) );
+    }    
+  }
   // FIXME: no range check?; 
   TVector3 GetSpacePoint(double theta, double phi) const {
     TVector3 nn(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta));
@@ -105,6 +116,32 @@ class SphericalSurface: public ParametricSurface {
 
 #ifndef DISABLE_ROOT_IO
   ClassDef(SphericalSurface, 2);
+#endif
+};
+
+// want the same behavior as a SphericalSurface, but also checking
+// that any crossing point is also passing the given half-space condition
+class SphericalSurfaceWithHalfSpace: public SphericalSurface {
+public:
+  SphericalSurfaceWithHalfSpace(): SphericalSurface() {} ;
+  SphericalSurfaceWithHalfSpace(const TVector3 &x0, double r0, const std::vector<std::pair<TVector3, TVector3>> &halfSpaces,
+				double umin = 0.0, double umax = M_PI, 
+				double vmin = 0.0, double vmax = 2*M_PI): 
+    SphericalSurface(x0, r0, umin, umax, vmin, vmax){
+    for (const auto &halfSpace : halfSpaces) {
+      m_HSNorm.push_back(halfSpace.first);
+      m_HSPoint.push_back(halfSpace.second);
+    }
+  }
+  ~SphericalSurfaceWithHalfSpace() {};
+  
+  bool IsInside(TVector3 p) const;
+private:
+  // point and normal defining half-space
+  std::vector<TVector3> m_HSNorm;
+  std::vector<TVector3> m_HSPoint;
+#ifndef DISABLE_ROOT_IO
+  ClassDef(SphericalSurfaceWithHalfSpace, 1);
 #endif
 };
 
