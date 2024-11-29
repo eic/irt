@@ -9,6 +9,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 {
   bool transport_in_progress = false;
+  bool reflected = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   // Just go through the optical boundaries, and calculate either reflection 
   // or refraction on that particular surface;
@@ -16,15 +17,20 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     auto boundary = GetOpticalBoundary(iq), prev = iq ? GetOpticalBoundary(iq-1) : 0;
     auto surface = boundary->m_Surface;
 
+    // if already reflected, skip following mirrors
+    if(reflected && boundary->m_Reflective) continue;
+    
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
-
+    
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
     // refractive boundary; then just skip to the next one without changing [x0,n0]); 
     // however if one valid boundary was handled already, this must be a no-crossing case; 
     // then return false immediately;
     if (!ok) {
-      if (transport_in_progress) 
+      // if a mirror was missed, can still hit the next mirror.
+      // if missed a non-mirror boundary, return false
+      if (transport_in_progress && !boundary->m_Reflective) 
 	return false;
       else
 	continue;
@@ -37,7 +43,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 
     boundary->m_OutgoingDirection = boundary->m_IncomingDirection;
     // Must be the sensor dump; FIXME:: do this check better;
-    if (!boundary->m_Radiator.GetObject()) return true;
+    if (!boundary->m_Radiator.GetObject() && !boundary->m_Reflective) return true;
 
     if (boundary->m_Refractive) {
       // Will not be able to determine the refractive index;
@@ -55,6 +61,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
       } //if
     } else {
       // Reflection;
+      reflected = true;
       boundary->m_OutgoingDirection.Rotate(M_PI - 2*acos(ns.Dot(boundary->m_IncomingDirection)), na);
     } //if
 

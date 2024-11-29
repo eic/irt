@@ -21,7 +21,12 @@ bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVect
 
       if (t < 0.0) continue;
       *crs = x0 + t*n0;
-      if (check_normal && n0.Dot(GetNormal(*crs)) >= 0.0) continue;
+
+      // want to check if this is inside the theta/phi acceptance of a mirror
+      bool insidecheck = IsInside(*crs);
+      
+      if(!(insidecheck)) continue;
+      if ( check_normal && n0.Dot(GetNormal(*crs)) >= 0.0) continue;
 
       return true;
     } //for iq
