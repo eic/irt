@@ -35,7 +35,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 
     auto pd = photon->GetPhotonDetector();
     const auto irt = pd->GetIRT(photon->GetVolumeCopy());
-    if (!irt) {
+     if (!irt) {
       printf("No photosensor with this cellID found!\n");
       continue;
     } //if
@@ -46,7 +46,17 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       if (radiator->m_Locations.size() != zdim+1) continue;
       
       TVector3 phx = photon->GetDetectionPosition();
-      
+	  // ADding Stuff
+	  const auto norm = (photon->GetNormalSurface());
+	  const auto mom  = (1e9*photon->GetVertexMomentum());
+	  photon->m_Angle[radiator]=norm.Dot(mom);
+	  //float  angle = photon->m_Angle[radiator];
+	  //if((angle*(180/M_PI)) > 0)
+      //printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 - (angle*(180/M_PI)));
+      //if((angle*(180/M_PI)) < 0)
+      //printf("-->IRT %lf %lf %lf %lf \n",norm.X(),norm.Y(),norm.Z(),180 + (angle*(180/M_PI)));
+      // up to here
+    	
       // Get effective attenuation length for this radiator, as well as the 
       // parameterization of its rear surface in this particular sector; this is
       // not really a clean procedure for dRICH aerogel, but should be good enough 
