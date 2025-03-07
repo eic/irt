@@ -8,7 +8,7 @@
 #ifndef _CHERENKOV_DETECTOR_
 #define _CHERENKOV_DETECTOR_
 
-#include <CherenkovPhotonDetector.h>
+#include "CherenkovPhotonDetector.h"
 class CherenkovMirrorGroup;
 class OpticalBoundary;
 class G4LogicalVolume;

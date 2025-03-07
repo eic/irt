@@ -5,7 +5,7 @@
 #ifndef _OPTICAL_BOUNDARY_
 #define _OPTICAL_BOUNDARY_
 
-#include <CherenkovRadiator.h>
+#include "CherenkovRadiator.h"
 class ParametricSurface;
 
 class OpticalBoundary: public TObject {

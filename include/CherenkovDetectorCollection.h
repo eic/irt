@@ -12,8 +12,8 @@ class G4OpticalSurface;
 class CherenkovMirror;
 class CherenkovPhotonDetector;
 
-#include <BitMask.h>
-#include <CherenkovDetector.h>
+#include "BitMask.h"
+#include "CherenkovDetector.h"
 
 #define _STORE_ORPHAN_PHOTONS_    (0x00000001)
 #define _STORE_REFLECTION_POINTS_ (0x00000002)
