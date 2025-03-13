@@ -101,26 +101,28 @@ class CherenkovDetector: public TObject {
 
     // Determine sector (in EIC DRICH terminology);
     unsigned isec = GetSector(x0);
-
     // Now loop through all radiators, and check boundaries in this sector;
     for(auto rptr: _m_Radiators) {
       const auto radiator = rptr.second;
- 
+      //printf("%s\n", rptr.first.Data());
+      
       // Front and rear surfaces for this particular sector;
       auto s1 = radiator->GetFrontSide(isec);
       auto s2 = radiator->GetRearSide (isec);
 
-      //printf("Here-A! %f %f %f\n", x0[0], x0[1], x0[2]);
+      //printf("Here-A! %f %f %f %p %p\n", x0[0], x0[1], x0[2], s1, s2);
       TVector3 from, to;
       // Go backwards and ignore surface orientation mismatch;
       bool b1 = s1->GetCrossing(x0, -1*n0, &from, false);
       bool b2 = s2->GetCrossing(x0,    n0, &to);
       //printf("Here-B %d %d\n", b1, b2);
+      //#if _TODAY_
       if (!b1 || !b2) continue;
 
       if ((x0 - from).Dot(to - x0) > 0.0) return radiator;
+      //#endif
     } //for radiator
-   
+    
     // Seemingly this 3D point does not belong to any radiator;
     return 0;
   };

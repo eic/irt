@@ -58,6 +58,12 @@ class CherenkovDetectorCollection: public BitMask {
       boundary->Shift(( thickness/2)*surface->GetNormal());
       det->AddOpticalBoundary(where, path, new OpticalBoundary(radiator,                  boundary, true));
       radiator->m_Borders[path].first = boundary;
+
+      // FIXME: this cannot work for dRICH; and it is a hack anyway;
+      if (where == CherenkovDetector::Downstream && !det->GetContainerVolume()->GetRearSide(path)) {
+	//printf("@@@ AddFlatRadiator()\n");
+	det->GetContainerVolume()->m_Borders[path].second = boundary;
+      } //if
     }
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));

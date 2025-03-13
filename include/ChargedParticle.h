@@ -86,7 +86,7 @@ class ChargedParticle: public TransientParticle {
   void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
   
  private:
-  TVector3 m_VertexPosition, m_VertexMomentum;
+  //?TVector3 m_VertexPosition, m_VertexMomentum;
 
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 

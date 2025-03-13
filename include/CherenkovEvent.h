@@ -4,7 +4,7 @@
 #ifndef _CHERENKOV_EVENT_
 #define _CHERENKOV_EVENT_
 
-#include <ChargedParticle.h>
+#include "ChargedParticle.h"
 
 class OpticalPhoton;
 
