@@ -26,6 +26,8 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
 
   void ImportTrackingSmearing(const char *ftheta, const char *fphi);
 
+  void UseActsTracking( void ) { m_UseActsTracking = true; };
+  
  protected:
   void CalibratePhotonEmissionPoints( void );
   virtual CherenkovEvent *GetEvent(unsigned ev, bool calibration = false) = 0;
@@ -46,6 +48,8 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
   TRandom m_rndm; 
   //TH1D *m_hcalib;
 
+  bool m_UseActsTracking;
+  
   std::map<std::pair<double, double>, std::pair<double, double>> m_ThetaSmearing, m_PhiSmearing;
 
   std::pair<double, double> GetTrackingSmearing(double momentum, double eta);

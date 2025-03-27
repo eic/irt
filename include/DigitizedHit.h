@@ -82,5 +82,9 @@ class DigitizedHit {
   int m_iX, m_iY;                                                 //!
 
   std::vector<double> m_DetectionTimes;                           //!
+
+  // FIXME: remove once EICrecon debugging is over;
+  //TVector3 m_PhotonVertexPosition;                                //!
+  //TVector3 m_PhotonVertexMomentum;                                //!
 };
 #endif

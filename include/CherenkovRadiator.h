@@ -33,11 +33,13 @@ class CherenkovRadiator: public TObject {
   // NB: do not want to use physical volume here because a particle can cross more than one of them
   // (at the sector boundary), while there is no good reason to separate these contributions;
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
-  /*m_LogicalVolume(volume),*/ m_Material(material), m_OpticalPhotonGenerationEnabled(true),
-    m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
-    m_TrajectoryBinCount(1), m_Smearing(0.0), 
-    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
-    m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0) {
+   /*m_LogicalVolume(volume),*/
+   m_Material(material), m_OpticalPhotonGenerationEnabled(true),
+   m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
+   m_TrajectoryBinCount(1), m_Smearing(0.0), 
+   m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
+   m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0),
+   m_IgnoredInRingImaging(false) {
     m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
@@ -73,6 +75,9 @@ class CherenkovRadiator: public TObject {
   void DisableOpticalPhotonGeneration( void ) { m_OpticalPhotonGenerationEnabled = false; };
   bool OpticalPhotonGenerationEnabled( void ) const { return m_OpticalPhotonGenerationEnabled; };
 
+  void IgnoreInRingImaging( void ) { m_IgnoredInRingImaging = true; };
+  bool IgnoredInRingImaging( void ) { return m_IgnoredInRingImaging; };
+     
  protected:
   // Run-time variables for the GEANT pass;
   //+const G4LogicalVolume *m_LogicalVolume;          //!
@@ -128,6 +133,8 @@ class CherenkovRadiator: public TObject {
   double m_YieldCff;                                        //!
   
   std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
+
+  bool m_IgnoredInRingImaging;                              //!
 
   ClassDef(CherenkovRadiator, 8);
 };

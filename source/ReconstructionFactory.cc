@@ -62,6 +62,8 @@ int ReconstructionFactory::AddHypothesis(const char *pdg)
 
 void ReconstructionFactory::LaunchRingFinder(bool calibration)
 {
+  printf("@@@ ReconstructionFactory::LaunchRingFinder(): %d\n", calibration);
+  
   unsigned const hdim = m_Hypotheses.size();
   
   unsigned cdim = 1, pdim = Event()->ChargedParticles().size(), icbest = 0;
@@ -128,6 +130,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  auto radiator = mcparticle->GetRadiator(rhptr);
 	  
 	  momenta[radiator] = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
+	  printf("%f\n", momenta[radiator]);
 	  paths  [radiator] = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
 	} //for rhptr
 	
@@ -174,6 +177,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	      // FIXME: exception;
 	      double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
+	      //printf("thp: %f\n", 1000*thp);
 	      double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
 	      double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
 	      
@@ -415,8 +419,10 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
   // to scale with H*M^{N}, where H is the number of digitized hits;
   if (!m_ExperimentalMode) LaunchRingFinder(calibration);
   
+  //#if _TODAY_
   if (BeVerbose() && !(ev%100)) printf("Event %5d ...\n", ev);
-
+  //#endif
+  
   return Event();
 } // ReconstructionFactory::GetEvent()
 

@@ -40,11 +40,13 @@ void Digitization::ProduceDigitizedHits(bool calibration)
   // First mix all photons from all particles and "digitize" them; FIXME: add stray background;
   // NB: first iteration makes use of the "calibration" photons, for various purposes; the second
   // one deals with the "real" (detected) ones;
-  for(unsigned itr=0; itr<2; itr++) {
+  for(unsigned itr=0; itr</*2*/2; itr++) {
     for(auto mcparticle: Event()->ChargedParticles())
       for(auto rhptr: mcparticle->GetRadiatorHistory()) 
 	for(auto photon: mcparticle->GetHistory(rhptr)->Photons()) {
-	  auto pd = photon->GetPhotonDetector();
+	  //+auto pd = photon->GetPhotonDetector();
+	  auto pd = GetMyRICH()->m_PhotonDetectors[0];
+	  
 	  auto radiator = mcparticle->GetRadiator(rhptr);
 
 	  //if (!photon->WasDetected() /*|| photon->m_ReflectionPoints.size() != 1*/) continue;
@@ -66,7 +68,8 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	    //m_SelectedRadiators.find(radiator) != m_SelectedRadiators.end()) {
 	    m_hwl->Fill(1239.8/(photon->GetVertexMomentum().Mag()));
 	    // FIXME: offset hardcoded;
-	    m_hvtx->Fill(photon->GetVertexPosition().Z() + 1185.5);
+	    //+m_hvtx->Fill(photon->GetVertexPosition().Z() + 1185.5);
+	    m_hvtx->Fill(photon->GetVertexPosition().Z() - 1300.0);
 	    m_hri->Fill(photon->GetVertexRefractiveIndex() - 1.0);
 	  } //if
 
@@ -75,7 +78,7 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	    
 	    hit.m_PhotonDetector = pd;
 	    hit.m_Copy = photon->GetVolumeCopy();
-	    //printf("%d\n", hit.m_Copy);
+	    printf("%d %p %f\n", hit.m_Copy, pd, photon->GetVertexRefractiveIndex());
 	    
 	    hit.m_IRTs = pd->GetIRTs(photon->GetVolumeCopy());
 	    if (!hit.m_IRTs) {
@@ -83,9 +86,12 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	      continue;
 	    } //if
 	    
+#if 1//_TODAY_
 	    TVector3 phx = photon->GetDetectionPosition();
+	    //printf("@D@ %f %f %f\n", phx.x(), phx.y(), phx.z());
 	    if (m_SensorActiveAreaPixellation) {
 	      double size = pd->GetActiveAreaSize(), half = size/2;
+	      //printf("%f\n", size);
 	      // All IRTs are terminated at the photosensor; use the first one; extract 3D 
 	      // parameterization of this particular photosensor;
 	      auto sensor = dynamic_cast<const FlatSurface*>((*hit.m_IRTs)[0]->tail()->GetSurface());
@@ -113,7 +119,9 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	      //  hit.m_iY < 0 || hit.m_iY >= (int)m_SensorActiveAreaPixellation)
 	      //printf("%2d %2d\n", hit.m_iX, hit.m_iY);
 	      double dx = pitch*(hit.m_iX + 0.5), dy = pitch*(hit.m_iY + 0.5);
+#if 1//_BACK_
 	      phx = sensor->GetSpacePoint(x0 + dx, y0 + dy);
+#endif
 	      
 	      // FIXME: very inefficient;
 	      for(auto &ptr: m_Hits)
@@ -144,7 +152,12 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 		  (duplicate ? duplicate : &hit)->m_DetectionTimes.push_back(timing);
 		  
 		  if (!duplicate) {
+		    // FIXME: a hack for the time being;
+		    //hit.m_PhotonVertexPosition = photon->GetVertexPosition();
+		    //hit.m_PhotonVertexMomentum = photon->GetVertexMomentum();
+		    
 		    // NB: in case of digitization, for duplicate hits this setting will be identical;
+		    //printf("@D@ %f %f %f\n", phx.x(), phx.y(), phx.z());
 		    hit.m_DetectionPosition = phx;
 		    
 		    m_Hits.push_back(hit);
@@ -159,6 +172,7 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 		break;
 	      } //switch
 	    }
+#endif
 	  }
 	} //for particle..photon    
   } //for itr

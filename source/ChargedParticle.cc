@@ -187,17 +187,26 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid, bool use_seed)
 
 void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed)
 {
+  printf("ChargedParticle::ProcessHits(): %ld hit(s), seed usage: %d\n", hits.size(), use_seed);
+  //use_seed = false;
+  
   // Loop through all digitized hits of a given event; apply IRT on a pre-calculated 
   // [vertex,momentum] pair for each hit-to-radiator association; no sampling any 
   // longer (assume gaussian errors);
   //
   // FIXME: add orphan (a la DCR) photons;
   for(auto &hit: hits) {
+    //auto &phx = hit.m_DetectionPosition;
+    //printf("@Q@ %f %f %f\n", phx.x(), phx.y(), phx.z());
+
     // Loop through all optical paths for this photosensor;
     for(auto irt: *hit.m_IRTs) {
       for(auto rhistory: GetRadiatorHistory()) {
 	auto history  = GetHistory (rhistory);
+	
 	auto radiator = GetRadiator(rhistory);
+	if (radiator->IgnoredInRingImaging()) continue;
+	
 	auto tag = std::make_pair(radiator, irt);
 	
 	{
@@ -206,9 +215,24 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
 	  // Loop through all of the provided seeds until IRT converges (yes, assume 
 	  // the solution is unique);
 	  unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
+	  //printf("smax: %d\n", smax);
 	  for(unsigned iq=0; iq<smax; iq++) {
 	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
 
+	    {
+#if 0
+	      auto const &evtx = hit.m_PhotonVertexPosition;//history->m_EstimatedVertex;
+	      auto const &dvtx = hit.GetDetectionPosition();
+	      auto const n0 = history->m_AverageParentMomentum.Unit();
+	      TVector3 np = hit.m_PhotonVertexMomentum.Unit();//(dvtx - evtx).Unit();
+	      printf("@@@ %f %f %f ->  %f %f %f -> %f %f %f -> %7.2f mrad\n",
+		     evtx.x(), evtx.y(), evtx.z(), dvtx.x(), dvtx.y(), dvtx.z(), n0.x(), n0.y(), n0.z(),
+		     1000*acos(np.Dot(n0)));
+#endif	      
+	      // FIXME: fake news;
+	      //history->m_EstimatedVertex = hit.m_PhotonVertexPosition;
+	      //hit.m_DetectionPosition = hit.m_PhotonVertexPosition + (1755.00 - hit.m_PhotonVertexPosition.z())*(hit.m_PhotonVertexMomentum.Unit());
+	    }
 	    auto &solution = hit.m_Solutions[this].m_All[tag] = 
 	      irt->Solve(history->m_EstimatedVertex,
 			 //irt->Solve(radiator->m_AverageVertex,
@@ -218,6 +242,7 @@ void ChargedParticle::ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed
 			 TVector3(0,0,1), false, use_seed ? &seed : 0);
 	    //solution.m_Time = history->m_AverageTime + solution.m_Length/300;
 	    solution.m_Time = solution.m_Length/300;
+	    printf("--> %7.2f\n", 1000*solution.m_Theta);
 
 	    if (solution.m_Converged) break;
 	  } //for iq

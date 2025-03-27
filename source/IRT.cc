@@ -8,7 +8,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length)
 {
-  //printf("\nIRT::Transport()!\n");
+  //printf("\nIRT::Transport(): %ld boundaries to follow!\n", _m_OpticalBoundaries.size());
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
   if (length) *length = 0.0;
@@ -19,6 +19,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
     auto surface = boundary->m_Surface;
 
     bool ok = surface->GetCrossing(x0, n0, &boundary->m_ImpactPoint);
+    //printf("boundary #%2d, ok: %d\n", iq, ok); 
 
     // The logic here is that the first few boundaries may be irrelenat for this 
     // emission point (say for the gas case the emission point is beyond the aerogel-gas
@@ -58,7 +59,7 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
       if (!prev) return false;
       double n1 = prev->GetRadiator()->n(), n2 = boundary->GetRadiator()->n();
       //printf("   %7.5f %7.5f\n", n1, n2);
-
+      
       // Refraction; check that the refractive indices are different;
       if (n1 != n2) {
 	double theta1 = acos(boundary->m_IncomingDirection.Dot(-1*ns));
@@ -84,9 +85,23 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
 
 // -------------------------------------------------------------------------------------
 
+#include "FlatSurface.h"
+
 IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
+#if 0
+  {
+    for(unsigned iq=0; iq<_m_OpticalBoundaries.size(); iq++) {
+      auto boundary = GetOpticalBoundary(iq);
+      //auto surface = boundary->m_Surface;
+      auto plane = dynamic_cast<const FlatSurface*>(boundary->m_Surface);
+
+      printf("%2d -> %7.2f\n", iq, plane->GetSpacePoint(0.0, 0.0).z());
+    } //for iq
+  }
+#endif
+  
   IRTSolution solution; 
   if (!_m_OpticalBoundaries.size()) return solution;
   //return solution;
@@ -97,7 +112,8 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
   
   // XY in the local sensor coordinate system; 
   double m0[2] = {sensor->GetLocalX(xto), sensor->GetLocalY(xto)};
-
+  //m0[1] *= -1.;
+  //printf("m0[2]: %f %f\n", m0[0], m0[1]);
   return Solve(xfrom, nfrom, m0, beam, derivatives, seed);
 } // IRT::Solve()
 
@@ -142,7 +158,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
     // Check the transported-to-measured 2D distance; if it is small enough, return;
     {
       double dist = sqrt(pow(mc[0] - m0[0], 2) + pow(mc[1] - m0[1], 2));
-      //printf("%10.4f\n", dist);
+      printf("dist: %10.4f\n", dist);
 
       if (dist < m_Precision) {
 	solution.m_Converged = true;
@@ -160,7 +176,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	  solution.m_Theta = nn.Theta();
 	  // Yes, as of 2023/03/02 subtract the changed particle phi angle;
 	  solution.m_Phi   = nn.Phi() - nfrom.Phi();
-	  //printf(" -> %7.2f [mrad], %7.2f [degree]\n", 1000*solution.m_Theta, (180/M_PI)*solution.m_Phi);
+	  printf(" -> %7.2f [mrad], %7.2f [degree]\n", 1000*solution.m_Theta, (180/M_PI)*solution.m_Phi);
 	}
 
 	// Calculate derivatives if needed; FIXME: coding style;

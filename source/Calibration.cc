@@ -9,13 +9,15 @@
 // FIXME: yes, fix it please;
 static unsigned hdim = 100;
 static double hmin = -30.0, hmax = 30.0, hbin = (hmax - hmin)/hdim, hwnd = 15.0; 
+//static double hmin = -200.0, hmax = 200.0, hbin = (hmax - hmin)/hdim, hwnd = 50.0; 
 
 // -------------------------------------------------------------------------------------
 
 Calibration::Calibration():
   m_AutomaticCalibrationRequired(false),
-  m_CurrentEvent(0)//, 
+  m_CurrentEvent(0), 
   //m_hcalib(0)
+  m_UseActsTracking(false)
 {
   m_DatabasePDG = new TDatabasePDG();
 
@@ -178,6 +180,8 @@ void Calibration::PerformCalibration(unsigned stat)
   // Well, this loop is also across ALL radiators (not just selected ones?);
   for(auto rptr: GetMyRICH()->Radiators()) {
     auto radiator = rptr.second;
+
+    printf("--> %s -> %d %d\n", rptr.first.Data(), radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount);
     
     //if (radiator->m_CalibrationPhotonCount)
     //printf("%6d, %6d -> %7.5f %7.5f\n", radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount, 
@@ -191,6 +195,8 @@ void Calibration::PerformCalibration(unsigned stat)
       if (calib.m_Stat) {
 	calib.m_AverageRefractiveIndex /= calib.m_Stat;
 	calib.m_AverageZvtx            /= calib.m_Stat;
+
+	printf("   %f %f\n", calib.m_AverageRefractiveIndex, calib.m_AverageZvtx);
       } //for calib .. if
   } //for rptr
 
@@ -211,6 +217,9 @@ void Calibration::PerformCalibration(unsigned stat)
     for(unsigned ev=0; ev<evmax; ev++) 
       GetEvent(ev, true);
 
+
+    
+#if 1//_TODAY_
     for(auto rptr: GetMyRICH()->Radiators()) {
       auto radiator = rptr.second;
 
@@ -225,6 +234,7 @@ void Calibration::PerformCalibration(unsigned stat)
 
       for(auto &calib: radiator->m_Calibrations) {
 	auto *hcalib = calib.m_hcalib;
+	//printf("Calibration: %4d entries\n", hcalib->GetEntries());
 	if (!hcalib->GetEntries()) continue;
 
 	int max = hcalib->GetMaximumBin();
@@ -241,7 +251,8 @@ void Calibration::PerformCalibration(unsigned stat)
     
     // Reset event counter;
     m_CurrentEvent = 0;
-  }
+#endif
+  } //if
 } // Calibration::PerformCalibration()
 
 // -------------------------------------------------------------------------------------
@@ -263,9 +274,17 @@ void Calibration::CalibratePhotonEmissionPoints( void )
       if (!GetMyRICH()->RadiatorRegistered(radiator)) continue;
 
       double z0 = radiator->m_Calibrations[ibin].m_AverageZvtx;
+      //printf("%s -> %f\n", 
 
       std::map<double, OpticalPhoton*> dpoints, tpoints;
 
+      if (m_UseActsTracking && history->StepCount()) {
+	for(unsigned iq=0; iq<history->StepCount(); iq++)
+	  history->m_AverageParentMomentum += history->GetStep(iq)->GetMomentum();
+	
+	history->m_AverageParentMomentum *= 1./history->StepCount();
+      } //if
+      
       {
 	unsigned stat = 0;
 
@@ -273,17 +292,20 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	  // Choose only (unused) photons, which follow the same QE(lambda) distribution as the 
 	  // detected ones, but did not make to be detected because of the efficiency cut;
 	  if (!photon->IsUsefulForCalibration()) continue;
-	  
-	  stat++;
-	  history->m_AverageParentMomentum += photon->GetVertexParentMomentum();
-	  
+
+	  if (!m_UseActsTracking) {
+	    stat++;
+	    history->m_AverageParentMomentum += photon->GetVertexParentMomentum();
+	  } //if
+	    
 	  // Ordered by distance from the most probable Z-vtx location;
 	  dpoints[fabs(photon->GetVertexPosition().Z() - radiator->m_Calibrations[ibin].m_AverageZvtx)] = photon;
 	  // Ordered along the trajectory;
 	  tpoints[fabs(photon->GetVertexPosition().Z())]                                                = photon;
 	} //for photon
-	
-	if (stat) history->m_AverageParentMomentum *= 1./stat;
+
+	//printf("%d\n", stat);
+	if (!m_UseActsTracking && stat) history->m_AverageParentMomentum *= 1./stat;
 #if _OK_
 	if (stat && m_ThetaSmearing.size() && m_PhiSmearing.size()) {
 	  auto &p = history->m_AverageParentMomentum;
@@ -340,8 +362,11 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	double t1 = ph1->GetVertexTime(), t2 = ph2->GetVertexTime();
 	double a = (t2 - t1) / (z2 - z1), t0 = t1 + a*(z0 - z1);
 	history->m_EstimatedPath = beta*300*t0;
+
+	//printf("path: %f\n", history->m_EstimatedPath);
       } //if
 
+#if 1//_TODAY_
       {
 	unsigned qstat = 0;
 	
@@ -359,7 +384,13 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	} //for it
 
 	if (qstat) history->m_EstimatedVertex *= 1./qstat;
+
+	{
+	  //auto const &vtx = history->m_EstimatedVertex;
+	  //printf("%f %f %f\n", vtx.x(), vtx.y(), vtx.z());
+	}
       }
+#endif
     } //for radiator
   } //for particle
 } // Calibration::CalibratePhotonEmissionPoints()
