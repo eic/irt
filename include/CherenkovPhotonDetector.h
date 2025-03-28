@@ -18,7 +18,7 @@ class CherenkovPhotonDetector: public G4Object {
     m_GeometricEfficiency(0.0), m_CopyIdentifierLevel(0) {};
   ~CherenkovPhotonDetector() {};
 
-  void SetQE(double min, double max, const G4DataInterpolation *qe, double scale = 1.0) { 
+  void SetQE(double min, double max, /*const*/ G4DataInterpolation *qe, double scale = 1.0) { 
     m_QERangeMin = min; 
     m_QERangeMax = max; 
 
@@ -27,7 +27,7 @@ class CherenkovPhotonDetector: public G4Object {
   };
 
   inline bool CheckQERange(double e) const { return m_QE && e >= m_QERangeMin && e <= m_QERangeMax; };
-  const G4DataInterpolation *GetQE( void ) const { return m_QE; };
+  /*const*/ G4DataInterpolation *GetQE( void ) const { return m_QE; };
   double GetScaleFactor( void ) const { return m_ScaleFactor; };
   void SetGeometricEfficiency(double value) { m_GeometricEfficiency = value; };
   double GetGeometricEfficiency( void ) const { return m_GeometricEfficiency; };
@@ -75,7 +75,7 @@ class CherenkovPhotonDetector: public G4Object {
   // NB: the actual getQE() method can not be in this class since it will require linking 
   // against GEANT libraries; that's fine;
   double m_QERangeMin, m_QERangeMax;  //!
-  const G4DataInterpolation *m_QE;    //!
+  /*const*/ G4DataInterpolation *m_QE;    //!
   // May want to renormalize the QE curve, for instance to peak at 100%, but keep the 
   // QE(lambda) dependency; also helps to select undetected photons, which follow the 
   // QE(lambda) curve (so are representative for e.g. <n> calculation), but do not pass 
