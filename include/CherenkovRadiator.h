@@ -15,6 +15,8 @@ class TH1D;
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
+class G4DataInterpolation;
+
 struct CherenkovRadiatorCalibration {
   //public:
 CherenkovRadiatorCalibration(): m_Stat(0), m_AverageRefractiveIndex(0.0), 
@@ -48,6 +50,7 @@ class CherenkovRadiator: public TObject {
   double GetReferenceAttenuationLength( void )   const { return m_ReferenceAttenuationLength; };
 
   void SetReferenceRefractiveIndex(double n)   { m_ReferenceRefractiveIndex   = n; };
+  double GetReferenceRefractiveIndex(void)       const { return m_ReferenceRefractiveIndex; };
   void SetReferenceAttenuationLength(double l) { m_ReferenceAttenuationLength = l; };
 
   void AddLogicalVolume(const G4LogicalVolume *volume) { m_LogicalVolumes.push_back(volume); };
@@ -136,6 +139,10 @@ class CherenkovRadiator: public TObject {
 
   bool m_IgnoredInRingImaging;                              //!
 
+  // FIXME;
+public:
+  G4DataInterpolation *m_RefractiveIndex;                   //!
+  
   ClassDef(CherenkovRadiator, 8);
 };
 

@@ -75,6 +75,14 @@ class CherenkovDetector: public TObject {
 
     return false;
   };
+  // FIXME: create a lookup table;
+  const char *GetRadiatorName(const CherenkovRadiator *radiator) {
+    for(auto &ptr: _m_Radiators)
+      if (ptr.second == radiator)
+	return ptr.first.Data();
+
+    return 0;
+  };
 
   void SetReadoutCellMask(uint64_t mask) { m_ReadoutCellMask = mask; };
   inline uint64_t GetReadoutCellMask( void ) const { return m_ReadoutCellMask; };
