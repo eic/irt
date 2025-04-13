@@ -48,9 +48,16 @@ include_directories(
 
   # For now assume that newly installed edm4eic::(CherenkovPID, ...) event structures are available 
   # in the same place where IRT is supposed to be installed;
-  ${CMAKE_INSTALL_PREFIX}/include 
+  ${CMAKE_INSTALL_PREFIX}/include
+
+  # Help ePIC installation find json.hpp if needed;
+  #/opt/local/include
 )
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h )
+
+#if(DEFINED EICRECON)
+#   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEICRECON")
+#endif()
 
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc

@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <vector>
 #include <map>
 
@@ -13,10 +15,18 @@ class CherenkovMirrorGroup;
 class OpticalBoundary;
 class G4LogicalVolume;
 
+//#include <nlohmann/json.hpp>
+//class json;
+//namespace nlohmann {
+//using json = basic_json<>;
+//class json;
+//};
+//using namespace nlohmann;
+
 class CherenkovDetector: public TObject {
  public:
  CherenkovDetector(const char *name = 0): /*m_ContainerVolume(0),*/ m_Name(name ? name : ""), 
-    m_ReadoutCellMask(0x0)/*, m_SectorBoundaryOffset(0.0)*/ {};
+					  m_ReadoutCellMask(0x0)/*, m_SectorBoundaryOffset(0.0)*/ {};//, m_eicrecon_config(0) {};
   ~CherenkovDetector() {};
 
   enum ud {Upstream, Downstream};
@@ -152,6 +162,11 @@ class CherenkovDetector: public TObject {
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   //+std::vector<CherenkovMirrorGroup*> m_MirrorGroups;
 
+  //public:
+  //nlohmann::json m_eicrecon_config; //!
+  //nlohmann::json *m_eicrecon_config; //!
+  //nlohmann::json *m_eicrecon_config; //!
+  
   ClassDef(CherenkovDetector, 6);
 };
 
