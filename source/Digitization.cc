@@ -70,8 +70,10 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	    // FIXME: offset hardcoded;
 	    //+m_hvtx->Fill(photon->GetVertexPosition().Z() + 1185.5);
 	    //m_hvtx->Fill(photon->GetVertexPosition().Z() - 1300.0);
-	    m_hvtx->Fill(photon->GetVertexPosition().Z() + 1300.0);
+	    //m_hvtx->Fill(photon->GetVertexPosition().Z() + 1300.0);
+	    m_hvtx->Fill(photon->GetVertexPosition().Z() - 2270.0);
 	    m_hri->Fill(photon->GetVertexRefractiveIndex() - 1.0);
+	    //printf("@Q@ %f\n", photon->GetVertexRefractiveIndex());
 	  } //if
 
 	  {
