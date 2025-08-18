@@ -65,12 +65,17 @@ class OpticalPhoton: public TransientParticle {
     return dynamic_cast<CherenkovPhotonDetector*>(m_PhotonDetector.GetObject());
   };
 
+  void StoreRefractiveIndex(double ri) {
+    m_RefractiveIndices.push_back(ri);
+  };
+  const std::vector<double> &StoredRefractiveIndices( void )   const { return m_RefractiveIndices; };
+  
  private:
-  // Vertex and 3D at birth as given by GEANT; 
-  TVector3 /*m_VertexPosition, m_VertexMomentum,*/ m_VertexParentMomentum;
+  // 3D momentum vector of a parent particle at the photon production vertex location;
+  TVector3 m_VertexParentMomentum;
 
   // Attenuation length for this wave length (if radiator was known); 
-  double m_VertexAttenuationLength;//, m_VertexTime;
+  double m_VertexAttenuationLength;
 
   // Refractive index for this wave length (if radiator was known);
   double m_VertexRefractiveIndex;
@@ -89,6 +94,9 @@ class OpticalPhoton: public TransientParticle {
   // 'true' if the photon was actually detected; QE-based and geometric efficiency accounted; 
   bool m_Detected, m_CalibrationFlag, m_BlackoutFlag;
 
+  // For all known radiators, for a completeness;
+  std::vector<double> m_RefractiveIndices;
+  
   // Transient variables for some convenience in an analysis script;
  public:
   std::set<std::pair<unsigned, CherenkovRadiator*>> _m_Selected;  //!
@@ -98,7 +106,7 @@ class OpticalPhoton: public TransientParticle {
   // Average estimated phi angle; no need to know it precisely (?);
   std::map<CherenkovRadiator*, double> m_Phi;                     //!
 
-  ClassDef(OpticalPhoton, 11);
+  ClassDef(OpticalPhoton, 12);
 };
 
 #endif

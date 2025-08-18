@@ -41,7 +41,6 @@ void GeantImport::GetInputTreeEntry(unsigned ev) const
     auto &particles = m_Event->ChargedParticles();
 
     for(auto it = particles.begin(); it != particles.end(); )
-      //if (!(*it)->IsPrimary())// || (*it)->GetVertexMomentum().Mag() < .2)
       if (!(*it)->IsPrimary() || (*it)->GetVertexMomentum().Mag() < m_MomentumCutoff)
 	it = particles.erase(it);
       else

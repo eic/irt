@@ -8,7 +8,6 @@ class G4LogicalVolume;
 class G4RadiatorMaterial;
 class G4OpticalSurface;
 
-//class OpticalPhoton;
 class CherenkovMirror;
 class CherenkovPhotonDetector;
 
@@ -59,11 +58,10 @@ class CherenkovDetectorCollection: public BitMask {
       det->AddOpticalBoundary(where, path, new OpticalBoundary(radiator,                  boundary, true));
       radiator->m_Borders[path].first = boundary;
 
-      // FIXME: this cannot work for dRICH; and it is a hack anyway;
-      if (where == CherenkovDetector::Downstream && !det->GetContainerVolume()->GetRearSide(path)) {
-	//printf("@@@ AddFlatRadiator()\n");
+      // FIXME (?): in case of dRICH (and FRICH) this boundary is assigned by hand (a spherical
+      // mirror surface), so it should kind of work;
+      if (where == CherenkovDetector::Downstream && !det->GetContainerVolume()->GetRearSide(path))
 	det->GetContainerVolume()->m_Borders[path].second = boundary;
-      } //if
     }
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));

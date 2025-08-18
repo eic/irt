@@ -10,6 +10,7 @@
 #include <TTree.h>
 #include <TH1D.h>
 #include <TF1.h>
+#include <TCanvas.h>
 #include <TDatabasePDG.h>
 #include <Math/ProbFunc.h>
 
@@ -22,13 +23,17 @@
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
 					     const char *dname):
   GeantImport(dfname, cfname, dname),
+  m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
   m_ResolveHitOwnership(true),
   m_UsePoissonTermInChiSquare(true),
-  m_ExperimentalMode(false), 
+  //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
-  m_UseMcTruthPhotonDirectionSeed(true)
+  m_UseMcTruthPhotonDirectionSeed(true),
+  m_Plots(0),
+  // Require at least one associated hit per default;
+  m_HitCountCutoff(1)
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 
@@ -60,10 +65,65 @@ int ReconstructionFactory::AddHypothesis(const char *pdg)
 
 // -------------------------------------------------------------------------------------
 
+void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector<DigitizedHit> &hits, bool use_seed)
+{ 
+  double theta = mcparticle->GetVertexMomentum().Theta();
+  unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
+	
+  // Loop through all digitized hits of a given event; apply IRT on a pre-calculated 
+  // [vertex,momentum] pair for each hit-to-radiator association; no sampling any 
+  // longer (assume gaussian errors);
+  //
+  // FIXME: add orphan (a la DCR) photons;
+  for(auto &hit: hits) {
+    // Loop through all optical paths for this photosensor;
+    for(auto irt: *hit.m_IRTs) {
+      for(auto rhistory: mcparticle->GetRadiatorHistory()) {
+	auto history  = mcparticle->GetHistory (rhistory);
+	
+	auto radiator = mcparticle->GetRadiator(rhistory);
+	if (!radiator->UsedInRingImaging()) continue;
+	
+	auto tag = std::make_pair(radiator, irt);
+
+	{
+	  unsigned ir = 0;
+	  auto *calib = &radiator->m_Calibrations[ibin];
+	  
+	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
+	    rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
+	} 
+	
+	{
+	  IRTSolution seed;
+
+	  // Loop through all of the provided seeds until IRT converges (yes, assume 
+	  // the solution is unique);
+	  unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
+	  for(unsigned iq=0; iq<smax; iq++) {
+	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
+
+	    auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
+	      irt->Solve(history->m_EstimatedVertex,
+			 // FIXME: give beam line as a parameter;
+			 history->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
+			 TVector3(0,0,1), false, use_seed ? &seed : 0);
+	    
+	    solution.m_Time = solution.m_Length/300;
+
+	    if (solution.m_Converged) break;
+	  } //for iq
+	  //solution.m_Time = radiator->m_AverageTime + solution.m_Length/300;
+	}
+      } //for rhistory
+    } //for irt
+  } //for hit
+} // ReconstructionFactory::ProcessHits()
+
+// -------------------------------------------------------------------------------------
+
 void ReconstructionFactory::LaunchRingFinder(bool calibration)
 {
-  printf("@@@ ReconstructionFactory::LaunchRingFinder(): %d\n", calibration);
-  
   unsigned const hdim = m_Hypotheses.size();
   
   unsigned cdim = 1, pdim = Event()->ChargedParticles().size(), icbest = 0;
@@ -116,12 +176,6 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	// depends on this;
 	double theta = mcparticle->GetVertexMomentum().Theta();
 	unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
- 	{	  
-	  // NB: here the loop is over selected radiators only;
-	  for(auto radiator: m_SelectedRadiators) 
-	    // This one will be used in IRT tracing and time calculation;
-	    radiator->SetReferenceRefractiveIndex(radiator->m_Calibrations[ibin].m_AverageRefractiveIndex);
-	}
 
 	// FIXME: why do we need these intermediate arrays?!;
 	std::map<CherenkovRadiator*, double> momenta;
@@ -130,7 +184,6 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  auto radiator = mcparticle->GetRadiator(rhptr);
 	  
 	  momenta[radiator] = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
-	  printf("%f\n", momenta[radiator]);
 	  paths  [radiator] = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
 	} //for rhptr
 	
@@ -140,7 +193,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	
 	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
 	// is problematic; do it better later;
-	mcparticle->ProcessHits(Hits(), m_UseMcTruthPhotonDirectionSeed);//true);
+	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
 	
 	//
 	// By this moment every detected hit is evaluated with respect to this particle 
@@ -162,7 +215,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	    auto radiator = tag.first.first;
 	    auto &solution = tag.second;
 
-	    if (!IsSelected(radiator)) continue;
+	    //if (!_IsSelected(radiator)) continue;
+	    if (!radiator->UsedInRingImaging()) continue;
 	    
 	    double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
 	      //radiator->GetSmearing() : radiator->m_Calibrations[ibin].m_Csigma;
@@ -177,7 +231,6 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	      // FIXME: exception;
 	      double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
-	      //printf("thp: %f\n", 1000*thp);
 	      double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
 	      double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
 	      
@@ -226,11 +279,16 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 		
 		// Sure of interest is only to see a distribution for the right hypothesis; 
 		if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
-		  if (itr && !calibration) m_hthph->Fill(1000*thdiff);
+		  if (itr && !calibration && sptr->m_rbest->Plots())
+		    sptr->m_rbest->Plots()->hthph()->Fill(1000*thdiff);
+		  
 		  if (itr &&  calibration) 		    
 		    sptr->m_rbest->m_Calibrations[ibin].m_hcalib->Fill(1000*thdiff);
-		  if (itr && !calibration) m_hdtph->Fill(1000*tmdiff);		  
-		  if (itr && !calibration) m_hccdfph->Fill(ccdf);
+		  
+		  if (itr && !calibration && Plots()) Plots()->hdtph()->Fill(1000*tmdiff);
+		  
+		  if (itr && !calibration && sptr->m_rbest->Plots())
+		    sptr->m_rbest->Plots()->hccdfph()->Fill(ccdf);
 		} //if
 	      } //if
 	    } //if
@@ -297,13 +355,11 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	    for(auto rhptr: mcparticle->GetRadiatorHistory()) {
 	      auto radiator = mcparticle->GetRadiator(rhptr);
 
-	      if (!IsSelected(radiator)) continue;
+	      //if (!_IsSelected(radiator)) continue;
+	      if (!radiator->UsedInRingImaging()) continue;
 
 	      double theta = mcparticle->GetRecoCherenkovAverageTheta(radiator);
-	      //printf("%7.3f -> %3d ... expect %7.1f\n", theta, npe, 347.*0.36*pow(sin(theta), 2));
 	      if (theta) {
-		//printf("%f %f\n", radiator->m_YieldCff, radiator->m_DetectedToCalibrationPhotonRatio);//m_Calibrations[ibin]);
-		//double texp = 347.*0.36*pow(sin(theta), 2);
 		double texp = radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*pow(sin(theta), 2);
 		chi2tr += npe ? 2*(texp - npe + npe*log(npe/texp)) : 0.0;
 		ndftr++;
@@ -343,36 +399,38 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     // Now check how the PID procedure performed and fill out histograms;
     // Sure of interest is only to see a flat CCDF distribution for the right combination 
     // of event-level hypotheses; 
-    m_hccdfev->Fill(ccdfevsave[icbest]);
+    if (Plots()) {
+      Plots()->hccdfev()->Fill(ccdfevsave[icbest]);
     
-    for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) {
-      //if (npetrsave [icbest][ip])
-      m_hccdftr->Fill(ccdftrsave[icbest][ip]);
-      m_hnpetr ->Fill(npetrsave [icbest][ip]);
-    } //for ip
+      for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) 
+	Plots()->hccdftr()->Fill(ccdftrsave[icbest][ip]);
+    } //if
     
     {
       // A running variable, to simplify hypothesis calculation;
       unsigned id = icbest;
       
       for(auto mcparticle: Event()->ChargedParticles()) {
-      //for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) {
-      //auto mcparticle = *Event()->ChargedParticles()[ip];
-
 	unsigned hypo = id%hdim;
 	auto rcparticle = m_Hypotheses[hypo];
 
 	//if (mcparticle->m_HadronicInteractionOccured) continue;
-	
-	if (mcparticle->GetRecoCherenkovHitCount() == 0) {
-	  m_hmatch->Fill(0.5);
-	} else if (abs(mcparticle->GetPDG()) == abs(rcparticle->PdgCode())) {
-	  m_hmatch->Fill(1.5);
-	} else {
-	  m_hmatch->Fill(2.5);
-	  if (BeVerbose()) printf("PID Failure!\n");
-	} //if	  
 
+	if (Plots()) {
+	  unsigned nhits = mcparticle->GetRecoCherenkovHitCount();
+	  
+	  if (nhits < m_HitCountCutoff) {
+	    Plots()->hmatch()->Fill(0.5);
+	    if (BeVerbose()) printf("Only %2d hits attached (min required %2d)!\n",
+				    nhits, m_HitCountCutoff);
+	  } else if (abs(mcparticle->GetPDG()) == abs(rcparticle->PdgCode())) {
+	    Plots()->hmatch()->Fill(1.5);
+	  } else {
+	    Plots()->hmatch()->Fill(2.5);
+	    if (BeVerbose()) printf("PID Failure!\n");
+	  } //if	  
+	} //if
+	
 	// Make it the same sign as for the MC particle (assume tracker can 
 	// determine the charge sign);
 	int sign = mcparticle->GetPDG() < 0 ? -1 : 1;
@@ -386,6 +444,38 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 // -------------------------------------------------------------------------------------
 
+int ReconstructionFactory::VerifyEventStructure( void )
+{
+  bool ret = 0;
+  
+  // FIXME: duplicate code;
+  for(auto mcparticle: Event()->ChargedParticles()) {
+    unsigned npe_per_track = 0;
+
+    for(auto rhptr: mcparticle->GetRadiatorHistory()) {
+      auto radiator = mcparticle->GetRadiator(rhptr);
+      if (!radiator->UsedInRingImaging()) continue;
+		  
+      for(auto photon: mcparticle->GetHistory(rhptr)->Photons()) 
+	if (photon->WasDetected()) 
+	  npe_per_track++;
+    } // for rhistory
+
+    if (!npe_per_track) {
+      mcparticle->m_GoodForReconstruction = false;
+
+      // If at least one MC particle had no detected photons associated with it,
+      // skip the event all together; FIXME: once the debugging phase is over,
+      // just exclude particular particles; 
+      ret = -1;
+    } //if
+  } //for mcparticle
+
+  return ret;
+} // ReconstructionFactory::VerifyEventStructure()
+
+// -------------------------------------------------------------------------------------
+
 CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
 {
   // Prepair for next event;
@@ -395,9 +485,11 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
   // Get it from the ROOT tree;
   GetInputTreeEntry(ev);
 
+  if (VerifyEventStructure()) return Event();
+  
   // Use undetected photons (HERE DO THIS ON TRACK PER TRACK BASIS) to extract the 
   // expected average emission point 3D location, time and parent particle 3D momentum;  
-  if (!m_ExperimentalMode) CalibratePhotonEmissionPoints();
+  /*if (!m_ExperimentalMode)*/ CalibratePhotonEmissionPoints();
 
   // Loop through all photons (both calibration and detected ones) of all tracks and 
   // produce event-level hit array; "calibration" (undetected) photons will be passed through 
@@ -417,13 +509,88 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
   // a current combination of the particle hypothesis best, and choose the best one; performance is
   // a non-issue here at the moment, let AI/ML do the job better later; at present complexity seems
   // to scale with H*M^{N}, where H is the number of digitized hits;
-  if (!m_ExperimentalMode) LaunchRingFinder(calibration);
+  /*if (!m_ExperimentalMode)*/ LaunchRingFinder(calibration);
+
+  // Build plots if needed;
+  if (!calibration)
+    for(auto mcparticle: Event()->ChargedParticles()) {
+      unsigned npe_per_track = 0, nhits_per_track = 0;
+
+      for(auto rhptr: mcparticle->GetRadiatorHistory()) {
+	auto radiator = mcparticle->GetRadiator(rhptr);
+	if (!radiator->UsedInRingImaging()) continue;
+	
+	unsigned npe_per_radiator = 0, nhits_per_radiator = 0;
+	
+	nhits_per_radiator = mcparticle->GetRecoCherenkovPhotonCount(radiator);
+	nhits_per_track += nhits_per_radiator;
+	
+	auto *plots = radiator->Plots();
+	  
+	for(auto photon: mcparticle->GetHistory(rhptr)->Photons()) 
+	  if (photon->WasDetected()) {
+	    npe_per_radiator++;
+
+	    if (plots) {
+	      plots->hwl()->Fill(1239.8/(photon->GetVertexMomentum().Mag()));
+	      if (plots->hri())  plots->hri() ->Fill(photon->GetVertexRefractiveIndex() - 1.0);
+	      if (plots->hvtx()) plots->hvtx()->Fill(photon->GetVertexPosition().Z());
+	    } //if
+	  } //for photon .. if
+	
+	if (plots) {
+	  plots->hnpe()  ->Fill(npe_per_radiator);
+	  
+	  plots->hnhits()->Fill(nhits_per_radiator);
+	  plots->hthtr() ->Fill(1000*mcparticle->GetRecoCherenkovAverageTheta(radiator));
+	}
+		
+	npe_per_track += npe_per_radiator;
+      } //for rhistory
+            
+      if (Plots()) {
+	Plots()->hnhits()->Fill(nhits_per_track);
+	Plots()->hnpe()  ->Fill(npe_per_track);
+      } //if
+    } //for mcparticle
   
-  //#if _TODAY_
   if (BeVerbose() && !(ev%100)) printf("Event %5d ...\n", ev);
-  //#endif
   
   return Event();
 } // ReconstructionFactory::GetEvent()
+
+// -------------------------------------------------------------------------------------
+
+ReconstructionFactoryPlots::ReconstructionFactoryPlots( void )
+{
+  m_hnpe    = new TH1D("npe",    "Detected MC photons per track",      60,   0.0,   60.0);
+  m_hnhits  = new TH1D("nhits",  "Used digitized hits per track",      60,   0.0,   60.0);
+  
+  m_hdtph   = new TH1D("dtph",   "Timing offset (photons)",           100,  -500,    500);
+  m_hmatch  = new TH1D("match",  "PID evaluation correctness",          3,     0,      3);
+  
+  m_hccdftr = new TH1D("ccdftr", "Track-level chi^2 CCDF",             50,   0.0,    1.0);
+  m_hccdftr->SetMinimum(0);
+  m_hccdfev = new TH1D("ccdfev", "Event-level chi^2 CCDF",             50,   0.0,    1.0);
+  m_hccdfev->SetMinimum(0);
+} // ReconstructionFactoryPlots::ReconstructionFactoryPlots()
+
+// -------------------------------------------------------------------------------------
+
+void ReconstructionFactory::DisplayStandardPlots(const char *cname, int wtopx,
+					     unsigned wtopy, unsigned wx, unsigned wy) const
+{
+  if (!Plots()) return;
+  
+  auto cv = new TCanvas("", cname, wtopx, wtopy, wx, wy);
+  cv->Divide(2, 4);
+  
+  cv->cd(1);                      Plots()->hnpe()   ->Draw();
+  cv->cd(2);                      Plots()->hnhits() ->Draw();
+  cv->cd(3);                      Plots()->hccdftr()->Draw();
+  cv->cd(4);                      Plots()->hccdfev()->Draw();
+  cv->cd(5);                      Plots()->hdtph()  ->Fit("gaus");
+  cv->cd(6);                      Plots()->hmatch() ->Draw();
+} // ReconstructionFactory::DisplayStandardPlots()
 
 // -------------------------------------------------------------------------------------

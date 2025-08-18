@@ -18,16 +18,44 @@ class G4RadiatorMaterial;
 class G4DataInterpolation;
 
 struct CherenkovRadiatorCalibration {
-  //public:
-CherenkovRadiatorCalibration(): m_Stat(0), m_AverageRefractiveIndex(0.0), 
+  CherenkovRadiatorCalibration(): m_Stat(0), 
     m_AverageZvtx(0.0), m_hcalib(0), m_Coffset(0.0), m_Csigma(0.0) {};
   ~CherenkovRadiatorCalibration() {};
 
   unsigned m_Stat;
-  double m_AverageRefractiveIndex, m_AverageZvtx;
-
+  double /*m_AverageRefractiveIndex,*/ m_AverageZvtx;
+  // Averaged across photons produced in this particular radiator (and for parent particles
+  // in a given theta bin), calculated for ALL registered radiators (will be needed for
+  // IRT algorithm to function properly);
+  std::vector<double> m_AverageRefractiveIndices;
+  
   TH1D *m_hcalib;
   double m_Coffset, m_Csigma;
+};
+
+struct CherenkovRadiatorPlots {
+  CherenkovRadiatorPlots(const char *tag);
+  ~CherenkovRadiatorPlots() {};
+
+  void SetRefractiveIndexRange(double min, double max);
+  void SetPhotonVertexRange(double min, double max);
+  void SetCherenkovAngleRange(double min, double max);
+
+  // Monte-Carlo plots;
+  TH1D *hvtx()              const { return m_hvtx;  };
+  TH1D *hnpe()              const { return m_hnpe;  };
+  TH1D *hwl()               const { return m_hwl;  };
+  TH1D *hri()               const { return m_hri;  };
+
+  // Reconstruction plots;
+  TH1D *hnhits()            const { return m_hnhits;  };
+  TH1D *hthph()             const { return m_hthph;  };
+  TH1D *hccdfph()           const { return m_hccdfph;  };
+  TH1D *hthtr()             const { return m_hthtr;  };
+
+private:
+  std::string m_Tag;
+  TH1D *m_hvtx, *m_hnpe, *m_hwl, *m_hri, *m_hnhits, *m_hthph, *m_hccdfph, *m_hthtr;
 };
 
 class CherenkovRadiator: public TObject {
@@ -41,7 +69,7 @@ class CherenkovRadiator: public TObject {
    m_TrajectoryBinCount(1), m_Smearing(0.0), 
    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
    m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0),
-   m_IgnoredInRingImaging(false) {
+   m_UsedInRingImaging(false), m_Plots(0) {
     m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
@@ -78,8 +106,12 @@ class CherenkovRadiator: public TObject {
   void DisableOpticalPhotonGeneration( void ) { m_OpticalPhotonGenerationEnabled = false; };
   bool OpticalPhotonGenerationEnabled( void ) const { return m_OpticalPhotonGenerationEnabled; };
 
-  void IgnoreInRingImaging( void ) { m_IgnoredInRingImaging = true; };
-  bool IgnoredInRingImaging( void ) { return m_IgnoredInRingImaging; };
+  CherenkovRadiator *UseInRingImaging( void ) {
+    m_UsedInRingImaging = true;
+    
+    return this;
+  };
+  bool UsedInRingImaging( void ) const { return m_UsedInRingImaging; };
      
  protected:
   // Run-time variables for the GEANT pass;
@@ -119,7 +151,6 @@ class CherenkovRadiator: public TObject {
   // This is a hack for now;
   double m_Smearing;                                        //!
   bool m_GaussianSmearing;                                  //!
-  //std::map<unsigned, std::vector<std::pair<TVector3, TVector3>>> _m_Locations; //!
   std::vector<std::pair<TVector3, TVector3>> m_Locations;   //!
   std::vector<double> m_Times;                              //!
 
@@ -137,10 +168,19 @@ class CherenkovRadiator: public TObject {
   
   std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
 
-  bool m_IgnoredInRingImaging;                              //!
+  bool m_UsedInRingImaging;                                 //!
 
-  // FIXME;
-public:
+  CherenkovRadiator *InitializePlots(const char *tag) {  
+    m_Plots = new CherenkovRadiatorPlots(tag);
+
+    // Simplify scripting;
+    return this;
+  };
+  CherenkovRadiatorPlots *Plots( void ) const { return m_Plots; };
+  void DisplayStandardPlots(const char *cname, int wtopx, unsigned wtopy, unsigned wx, unsigned wy) const;
+  
+  CherenkovRadiatorPlots  *m_Plots;                         //!
+
   G4DataInterpolation *m_RefractiveIndex;                   //!
   
   ClassDef(CherenkovRadiator, 8);

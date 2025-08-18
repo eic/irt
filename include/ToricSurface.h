@@ -4,6 +4,9 @@
 //
 // Parameterization: R - major radius, r - donut tube radius;
 //
+// NB: this class is actually disfunctional (a crossing point with a straight line
+// in 3D ends up with a quartic equation);
+//
 
 #ifndef _IRT_TORIC_SURFACE_
 #define _IRT_TORIC_SURFACE_

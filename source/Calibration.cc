@@ -9,15 +9,16 @@
 // FIXME: yes, fix it please;
 static unsigned hdim = 100;
 static double hmin = -30.0, hmax = 30.0, hbin = (hmax - hmin)/hdim, hwnd = 15.0; 
-//static double hmin = -200.0, hmax = 200.0, hbin = (hmax - hmin)/hdim, hwnd = 50.0; 
+
+#define _SPE_THETA_RESOLUTION_DEFAULT_ (0.0040)
 
 // -------------------------------------------------------------------------------------
 
 Calibration::Calibration():
-  m_AutomaticCalibrationRequired(false),
+  m_AutomaticCalibrationRequired(true),//false),
   m_CurrentEvent(0), 
-  //m_hcalib(0)
-  m_UseActsTracking(false)
+  m_UseActsTracking(true),//false),
+  m_DefaultSinglePhotonThetaResolution(_SPE_THETA_RESOLUTION_DEFAULT_)
 {
   m_DatabasePDG = new TDatabasePDG();
 
@@ -35,7 +36,7 @@ CherenkovEvent *Calibration::GetNextEvent(bool calibration)
 } // Calibration::GetNextEvent()
 
 // -------------------------------------------------------------------------------------
-
+#if _OBSOLETE_
 void Calibration::ImportTrackingSmearing(const char *ftheta, const char *fphi)
 {
   std::map<std::pair<double, double>, std::pair<double, double>> *sarr[2] = 
@@ -97,7 +98,7 @@ std::pair<double, double> Calibration::GetTrackingSmearing(double momentum, doub
   //return sqrt(dtheta*dtheta + dphi*dphi);
   return std::make_pair(dtheta, dphi);//*dtheta + dphi*dphi);
 } // Calibration::GetTrackingSmearing()
-
+#endif
 // -------------------------------------------------------------------------------------
 
 void Calibration::PerformCalibration(unsigned stat)
@@ -109,21 +110,29 @@ void Calibration::PerformCalibration(unsigned stat)
   for(auto rptr: GetMyRICH()->Radiators()) {
     auto radiator = rptr.second;
 
+    radiator->SetGaussianSmearing(m_DefaultSinglePhotonThetaResolution);
+    
     radiator->m_CalibrationPhotonCount = radiator->m_DetectedPhotonCount = 0;
 
     radiator->m_Calibrations.clear();
-    for(unsigned iq=0; iq<_THETA_BIN_COUNT_; iq++)
+    for(unsigned iq=0; iq<_THETA_BIN_COUNT_; iq++) {
       radiator->m_Calibrations.push_back(CherenkovRadiatorCalibration());
+
+      // FIXME: getting the same pointer in a rather awkward way;
+      auto *calib = &radiator->m_Calibrations[iq];
+      for(unsigned ir=0; ir<GetMyRICH()->Radiators().size(); ir++)
+	calib->m_AverageRefractiveIndices.push_back(0.0);
+    } //for iq
   } //for rptr
 
   memset(m_CalibrationBinStat, 0x00, sizeof(m_CalibrationBinStat));
 
-  // Assume that calibration only need to be performed in eta bins, and particle
+  // Assume that calibration only needs to be performed in eta bins, and particle
   // eta at birth (at the IP) is representative enough (solenoidal field, radiators 
   // perpendicular to the beam axis); the rationale is: emitted 
   // (and detected!) Cherenkov photon spectrum shape to first order does not depend on 
   // either momentum or particle species, as long as we are far from the acceptance 
-  // edge; there the case is getting complicated, ignore for now;
+  // edge; FIXME: there the case is getting complicated, ignore for now;
   {
     double thmin = M_PI, thmax = 0.0;
 
@@ -141,8 +150,6 @@ void Calibration::PerformCalibration(unsigned stat)
 	m_CalibrationBinStat[ibin]++;
       } //for mcparticle
     } //for ev
-
-    //printf("THETA: %f %f %d\n", thmin, thmax, thmin == thmax);
   }
 
   // First calculate average refractive index for all detected photons for every radiator;
@@ -170,7 +177,14 @@ void Calibration::PerformCalibration(unsigned stat)
 
 	  auto *calib = &radiator->m_Calibrations[ibin];
 	  calib->m_Stat++;
-	  calib->m_AverageRefractiveIndex += photon->GetVertexRefractiveIndex();
+	  //?calib->m_AverageRefractiveIndex += photon->GetVertexRefractiveIndex();
+	  //for(auto [name,rad]: GetMyRICH()->Radiators())
+	  {
+	    auto vec = photon->StoredRefractiveIndices();
+	    
+	    for(unsigned ir=0; ir<vec.size(); ir++)
+	      calib->m_AverageRefractiveIndices[ir] += vec[ir];
+	  }
 	  calib->m_AverageZvtx            += photon->GetVertexPosition().Z();
 	} //for photon
       } //for radiator
@@ -181,30 +195,23 @@ void Calibration::PerformCalibration(unsigned stat)
   for(auto rptr: GetMyRICH()->Radiators()) {
     auto radiator = rptr.second;
 
-    printf("--> %s -> %d %d\n", rptr.first.Data(), radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount);
-    
-    //if (radiator->m_CalibrationPhotonCount)
-    //printf("%6d, %6d -> %7.5f %7.5f\n", radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount, 
-    //	     1.0*radiator->m_DetectedPhotonCount/(radiator->m_CalibrationPhotonCount + radiator->m_DetectedPhotonCount),
-    //	     1.0*radiator->m_DetectedPhotonCount/radiator->m_CalibrationPhotonCount);
-    
+    //printf("--> %s -> %d %d\n", rptr.first.Data(), radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount);
+        
     radiator->m_DetectedToCalibrationPhotonRatio = radiator->m_CalibrationPhotonCount ?
       1.0*radiator->m_DetectedPhotonCount/radiator->m_CalibrationPhotonCount : 0.0;
     
     for(auto &calib: radiator->m_Calibrations)
       if (calib.m_Stat) {
-	calib.m_AverageRefractiveIndex /= calib.m_Stat;
+	for(unsigned ir=0; ir<calib.m_AverageRefractiveIndices.size(); ir++)
+	  calib.m_AverageRefractiveIndices[ir] /= calib.m_Stat;
+	
 	calib.m_AverageZvtx            /= calib.m_Stat;
-
-	printf("   %f %f\n", calib.m_AverageRefractiveIndex, calib.m_AverageZvtx);
       } //for calib .. if
   } //for rptr
 
   // Then run exactly the same event loop as for the "real" (detected) photons, but use the 
   // ones which did not make it through the QE selection during GEANT pass;
   if (AutomaticCalibrationRequired()) {
-    //m_hcalib  = new TH1D("",  "Cherenkov calibration angle (SPE)",hdim, hmin,   hmax);
-
     // Define 1D histograms to store SPE theta residuals; 
     for(auto rptr: GetMyRICH()->Radiators()) {
       auto radiator = rptr.second;
@@ -213,13 +220,10 @@ void Calibration::PerformCalibration(unsigned stat)
 	calib.m_hcalib  = new TH1D("",  "Cherenkov calibration angle (SPE)",hdim, hmin,   hmax);
     } //for rptr
 
-    // Run full reconstruction chain on these events;
+    // Run full reconstruction chain on these events; 'true': calibration mode;
     for(unsigned ev=0; ev<evmax; ev++) 
       GetEvent(ev, true);
-
-
     
-#if 1//_TODAY_
     for(auto rptr: GetMyRICH()->Radiators()) {
       auto radiator = rptr.second;
 
@@ -251,7 +255,6 @@ void Calibration::PerformCalibration(unsigned stat)
     
     // Reset event counter;
     m_CurrentEvent = 0;
-#endif
   } //if
 } // Calibration::PerformCalibration()
 
@@ -274,7 +277,6 @@ void Calibration::CalibratePhotonEmissionPoints( void )
       if (!GetMyRICH()->RadiatorRegistered(radiator)) continue;
 
       double z0 = radiator->m_Calibrations[ibin].m_AverageZvtx;
-      //printf("%s -> %f\n", 
 
       std::map<double, OpticalPhoton*> dpoints, tpoints;
 
@@ -304,55 +306,7 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	  tpoints[fabs(photon->GetVertexPosition().Z())]                                                = photon;
 	} //for photon
 
-	//printf("%d\n", stat);
 	if (!m_UseActsTracking && stat) history->m_AverageParentMomentum *= 1./stat;
-#if _OK_
-	if (stat && m_ThetaSmearing.size() && m_PhiSmearing.size()) {
-	  auto &p = history->m_AverageParentMomentum;
-	  double theta = p.Theta(), phi = p.Phi();
-	  auto smearing = GetTrackingSmearing(p);
- 
-	  theta += m_rndm.Gaus(0.0, smearing.first);//0.010);
-	  phi   += m_rndm.Gaus(0.0, smearing.second);//0.010);
-
-	  auto nn = TVector3(sin(theta)*cos(phi), 
-			     sin(theta)*sin(phi), 
-			     cos(theta));
-	  p = p.Mag()*nn;
-	} //if
-#endif
-#if 0
-	{
-	  auto &p = history->m_AverageParentMomentum;//, q = history->m_AverageParentMomentum.Unit();
-	  double /*pp = p.Mag(),*/ theta = p.Theta(), phi = p.Phi();
-	 	  
-	  theta += m_rndm.Gaus(0.0, 0.010);
-	  phi   += m_rndm.Gaus(0.0, 0.010);
-
-	  auto nn = TVector3(sin(theta)*cos(phi), 
-			     sin(theta)*sin(phi), 
-			     cos(theta));
-	  p = p.Mag()*nn;
-	}
-#endif
-#if 0
-	{
-	  auto &p = history->m_AverageParentMomentum, q = history->m_AverageParentMomentum.Unit();
-	  double pp = p.Mag(), theta = p.Theta(), phi = p.Phi();
-	  double at = 1.32949, bt = 0.08976, st = 0.001*sqrt((at*at)/(pp*pp) + bt*bt);
-	  double ap = 16.2526, bp = 0.31083, sp = 0.001*sqrt((ap*ap)/(pp*pp) + bp*bp);
-	  
-	  if (st) theta += m_rndm.Gaus(0.0, st);
-	  if (sp) phi   += m_rndm.Gaus(0.0, sp);
-	  
-	  auto nn = TVector3(sin(theta)*cos(phi), 
-			     sin(theta)*sin(phi), 
-			     cos(theta));
-	  p = p.Mag()*nn;
-
-	  printf("%8.4f\n", acos(nn.Dot(q)));
-	}
-#endif
       } 	
 
       if (dpoints.size() >= 2) {
@@ -362,11 +316,8 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	double t1 = ph1->GetVertexTime(), t2 = ph2->GetVertexTime();
 	double a = (t2 - t1) / (z2 - z1), t0 = t1 + a*(z0 - z1);
 	history->m_EstimatedPath = beta*300*t0;
-
-	//printf("path: %f\n", history->m_EstimatedPath);
       } //if
 
-#if 1//_TODAY_
       {
 	unsigned qstat = 0;
 	
@@ -384,13 +335,7 @@ void Calibration::CalibratePhotonEmissionPoints( void )
 	} //for it
 
 	if (qstat) history->m_EstimatedVertex *= 1./qstat;
-
-	{
-	  //auto const &vtx = history->m_EstimatedVertex;
-	  //printf("%f %f %f\n", vtx.x(), vtx.y(), vtx.z());
-	}
       }
-#endif
     } //for radiator
   } //for particle
 } // Calibration::CalibratePhotonEmissionPoints()
@@ -403,20 +348,15 @@ void Calibration::UpdateYields( void )
     for(auto rhptr: mcparticle->GetRadiatorHistory()) {
       auto radiator = mcparticle->GetRadiator(rhptr);
       
-      if (!IsSelected(radiator)) continue;
+      if (!radiator->UsedInRingImaging()) continue;
       
       // FIXME: should one also account for 0 stat cases?;
       unsigned npe = mcparticle->GetRecoCherenkovPhotonCount (radiator);
-      //if (npe) {
-      //double rctheta = mcparticle->GetRecoCherenkovAverageTheta(radiator);
       double mctheta = mcparticle->GetMocaCherenkovAverageTheta(radiator);
-      //printf("@@@ %3f %f\n", mctheta, rctheta);
-      //printf("@@@ %3d %f\n", npe, theta);
       
       radiator->m_YieldStat++;
       // No matter what the particle type it was, yield scales with npe ~ sin^2(theta);
       radiator->m_YieldCff += npe ? npe / pow(sin(mctheta), 2) : 0.0;
-      //}
     } //for mcparticle 
 } // Calibration:UpdateYields()
 

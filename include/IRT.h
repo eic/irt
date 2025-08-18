@@ -52,7 +52,6 @@ class IRT: public TObject {
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
-    //return (id < _m_OpticalBoundaries.size() ? _m_OpticalBoundaries[id] : 0);
   };
 
   IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
@@ -65,7 +64,6 @@ class IRT: public TObject {
   double m_Precision, m_JacobianStep; 
 
   std::vector<TRef> _m_OpticalBoundaries;
-  //std::vector<OpticalBoundary *> _m_OpticalBoundaries;
 
   ClassDef(IRT, 3);
 };

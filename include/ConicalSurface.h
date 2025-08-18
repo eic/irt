@@ -66,11 +66,9 @@ class ConicalSurface: public ParametricSurface {
     dx.Rotate(-m_Alfa, m_Nr);
     
     // FIXME: check units;
-    //printf("%f\n", dx.Phi());//(xx - GetCenter()).Dot(m_Nz));
     return dx.Phi();
   };
   double GetV(const TVector3 &xx) const {
-    //printf("%f\n", (xx - GetCenter()).Dot(m_Nz));
     return (xx - GetCenter()).Dot(m_Nz);
   };
 

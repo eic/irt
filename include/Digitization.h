@@ -5,7 +5,7 @@
 #define _DIGITIZATION_
 
 #include <DigitizedHit.h>
-#include <Configuration.h>
+#include <GeantImport.h>
 class CherenkovPhotonDetector;
 
 struct BlackoutCell {
@@ -25,7 +25,7 @@ BlackoutCell(CherenkovPhotonDetector *pd, unsigned icopy, unsigned iX, unsigned 
   unsigned m_Copy, m_iX, m_iY;
 };
 
-class Digitization : /*public virtual GeantImport,*/ public virtual Configuration {
+class Digitization : public virtual GeantImport {
  public:
   Digitization();
   ~Digitization() {};
@@ -64,8 +64,6 @@ class Digitization : /*public virtual GeantImport,*/ public virtual Configuratio
 
   double m_SinglePhotonTimingResolution;
   unsigned m_SensorActiveAreaPixellation;
-
-  //double 
 };
 
 #endif

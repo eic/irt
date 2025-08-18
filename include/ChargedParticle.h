@@ -16,7 +16,7 @@ class ChargedParticle: public TransientParticle {
  public:
  ChargedParticle(int pdg = 0, bool primary = true): 
   TransientParticle(pdg, primary), m_StopTracing(false), 
-    m_HadronicInteractionOccured(false) {};
+  m_HadronicInteractionOccured(false), m_GoodForReconstruction(true) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
       delete radiator.second;
@@ -66,11 +66,6 @@ class ChargedParticle: public TransientParticle {
     return entry.second;
   };
 
-  // Single particle case for now;
-  void PIDReconstruction(CherenkovPID &pid, bool use_seed = false);
-  // Multi-particle case;
-  void ProcessHits(std::vector<DigitizedHit> &hits, bool use_seed = false);
-
   void SetRecoPdgCode(int pdg)                    { m_RecoPdgCode = pdg; };
   int GetRecoPdgCode( void )                const { return m_RecoPdgCode; };
   unsigned GetRecoCherenkovHitCount( void ) const { return m_Hits.size(); };
@@ -86,8 +81,6 @@ class ChargedParticle: public TransientParticle {
   void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
   
  private:
-  //?TVector3 m_VertexPosition, m_VertexMomentum;
-
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
@@ -101,6 +94,9 @@ class ChargedParticle: public TransientParticle {
 
  public:
   bool m_HadronicInteractionOccured;
+
+  bool IsGoodForReconstruction( void ) { return m_GoodForReconstruction; };
+  bool m_GoodForReconstruction;      //!
 
   ClassDef(ChargedParticle, 6);
 };

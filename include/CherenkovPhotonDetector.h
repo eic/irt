@@ -58,7 +58,6 @@ class CherenkovPhotonDetector: public G4Object {
 
     return irt; 
   };
-  //IRT *GetIRT(uint64_t icopy) { return (_m_IRT.find(icopy) == _m_IRT.end() ? 0 : _m_IRT[icopy]); };
   IRT *GetIRT(uint64_t icopy) { return (m_IRT.find(icopy) == m_IRT.end() ? 0 : m_IRT[icopy][0]); };
   std::vector<IRT*> *GetIRTs(uint64_t icopy) { 
     return (m_IRT.find(icopy) == m_IRT.end() ? 0 : &m_IRT[icopy]); 
@@ -66,7 +65,6 @@ class CherenkovPhotonDetector: public G4Object {
 
  private:
   // One optical path for each clone (identified by a logical volume copy);
-  //+std::map<uint64_t, IRT*> _m_IRT;
   std::map<uint64_t, std::vector<IRT*>> m_IRT;
 
   // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;

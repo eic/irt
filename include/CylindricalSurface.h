@@ -3,7 +3,7 @@
 // Yes, prefer to keep it separately even that it is a subset of a ConicalSurface;
 //
 
-#include <ParametricSurface.h>
+#include "ParametricSurface.h"
 
 #ifndef _IRT_CYLINDRICAL_SURFACE_
 #define _IRT_CYLINDRICAL_SURFACE_
@@ -39,7 +39,6 @@ class CylindricalSurface: public ParametricSurface {
     auto dx = xx - GetCenter();
     dx -= dx.Dot(m_Nz)*m_Nz;
 
-    //return (m_Concave ? -1.0 : 1.0)*(xx - GetCenter()).Unit();
     return (m_Concave ? -1.0 : 1.0)*dx.Unit();
   };
 

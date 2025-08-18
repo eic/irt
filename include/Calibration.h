@@ -7,13 +7,13 @@ class TDatabasePDG;
 #ifndef _CALIBRATION_
 #define _CALIBRATION_
 
-#include <Configuration.h>
+#include <GeantImport.h>
 
 // 5 degree binning for calibration purposes suffices?;
 #define _THETA_BIN_COUNT_ (180/5)
 #define _THETA_BIN_WIDTH_ (M_PI / _THETA_BIN_COUNT_)
 
-class Calibration : /*public virtual GeantImport,*/ public virtual Configuration {
+class Calibration : public virtual GeantImport {
  public:
   Calibration ();
   ~Calibration() {};
@@ -21,12 +21,16 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
   TDatabasePDG *m_DatabasePDG;
 
   void PerformCalibration(unsigned stat = 0);
-  void UseAutomaticCalibration( void )        { m_AutomaticCalibrationRequired = true; };
+  //?void UseAutomaticCalibration( void )        { m_AutomaticCalibrationRequired = true; };
   CherenkovEvent *GetNextEvent(bool calibration = false);
 
   void ImportTrackingSmearing(const char *ftheta, const char *fphi);
 
-  void UseActsTracking( void ) { m_UseActsTracking = true; };
+  //?void UseActsTracking( void ) { m_UseActsTracking = true; };
+  
+  void SetDefaultSinglePhotonThetaResolution(double value) {
+    m_DefaultSinglePhotonThetaResolution = value;
+  };
   
  protected:
   void CalibratePhotonEmissionPoints( void );
@@ -35,8 +39,10 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
 
   bool AutomaticCalibrationRequired( void ) const { return m_AutomaticCalibrationRequired; };
 
-  //TH1D *hcalib()            const { return m_hcalib;   };
-
+  double GetDefaultSinglePhotonThetaResolution( void ) const {
+    return m_DefaultSinglePhotonThetaResolution;
+  };
+  
  private:
   bool m_AutomaticCalibrationRequired;
 
@@ -46,16 +52,19 @@ class Calibration : /*public virtual GeantImport,*/ public virtual Configuration
   unsigned m_CalibrationBinStat[_THETA_BIN_COUNT_]; 
 
   TRandom m_rndm; 
-  //TH1D *m_hcalib;
 
   bool m_UseActsTracking;
-  
+
+#if _OBSOLETE_
   std::map<std::pair<double, double>, std::pair<double, double>> m_ThetaSmearing, m_PhiSmearing;
 
   std::pair<double, double> GetTrackingSmearing(double momentum, double eta);
   std::pair<double, double> GetTrackingSmearing(const TVector3 &momentum) {
     return GetTrackingSmearing(momentum.Mag(), momentum.Eta());
   };
+#endif
+  
+  double m_DefaultSinglePhotonThetaResolution;
 };
 
 

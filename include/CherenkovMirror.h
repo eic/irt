@@ -89,19 +89,4 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
   ClassDef(ConicalMirror, 1);
 };
 
-#if 0
-class CherenkovMirrorGroup: public TObject {
- public:
-  CherenkovMirrorGroup() {};
-  ~CherenkovMirrorGroup() {};
-
-  void AddMirror(CherenkovMirror *mirror) { m_Mirrors.push_back(mirror); };
-
- private:
-  std::vector<CherenkovMirror*> m_Mirrors;
-
-  ClassDef(CherenkovMirrorGroup, 1);
-};
-#endif
-
 #endif
