@@ -36,6 +36,25 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_HitCountCutoff(1)
 {
 } // ReconstructionFactory::ReconstructionFactory() 
+// -------------------------------------------------------------------------------------
+
+// FIXME: do it better later;
+ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geometry,
+					     CherenkovDetector *cdet, CherenkovEvent *event):
+  GeantImport(geometry, cdet, event),
+  m_VerboseMode(true), 
+  m_UseTimingInChiSquare(true),
+  m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
+  m_ResolveHitOwnership(true),
+  m_UsePoissonTermInChiSquare(true),
+  //m_ExperimentalMode(false), 
+  // Help conical mirrors a bit;
+  m_UseMcTruthPhotonDirectionSeed(true),
+  m_Plots(0),
+  // Require at least one associated hit per default;
+  m_HitCountCutoff(1)
+{
+} // ReconstructionFactory::ReconstructionFactory() 
 
 // -------------------------------------------------------------------------------------
 
@@ -482,14 +501,17 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
   ClearBlackoutCells();
   ClearDigitizedHits();
 
-  // Get it from the ROOT tree;
-  GetInputTreeEntry(ev);
+  // Get it from the ROOT tree; otherwise assume it is an EICrecon mode where event structure
+  // has been populated by the IrtInterface already;
+  if (m_Tree) GetInputTreeEntry(ev);
 
   if (VerifyEventStructure()) return Event();
+  //return 0;
   
   // Use undetected photons (HERE DO THIS ON TRACK PER TRACK BASIS) to extract the 
   // expected average emission point 3D location, time and parent particle 3D momentum;  
   /*if (!m_ExperimentalMode)*/ CalibratePhotonEmissionPoints();
+  //return 0;
 
   // Loop through all photons (both calibration and detected ones) of all tracks and 
   // produce event-level hit array; "calibration" (undetected) photons will be passed through 

@@ -4,8 +4,8 @@
 #ifndef _DIGITIZATION_
 #define _DIGITIZATION_
 
-#include <DigitizedHit.h>
-#include <GeantImport.h>
+#include "DigitizedHit.h"
+#include "GeantImport.h"
 class CherenkovPhotonDetector;
 
 struct BlackoutCell {

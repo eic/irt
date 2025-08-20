@@ -1,10 +1,11 @@
 
 #include <TF1.h>
 #include <TH1D.h>
+#include <TFile.h>
 #include <TDatabasePDG.h>
 
 #include <Calibration.h>
-#include <CherenkovDetector.h>
+#include <CherenkovDetectorCollection.h>
 
 // FIXME: yes, fix it please;
 static unsigned hdim = 100;
@@ -114,6 +115,7 @@ void Calibration::PerformCalibration(unsigned stat)
     
     radiator->m_CalibrationPhotonCount = radiator->m_DetectedPhotonCount = 0;
 
+    // Yes, clear the vector first, to be on a safe side;
     radiator->m_Calibrations.clear();
     for(unsigned iq=0; iq<_THETA_BIN_COUNT_; iq++) {
       radiator->m_Calibrations.push_back(CherenkovRadiatorCalibration());
@@ -262,6 +264,8 @@ void Calibration::PerformCalibration(unsigned stat)
 
 void Calibration::CalibratePhotonEmissionPoints( void )
 {
+  //printf("@C@ --> %ld\n", Event()->ChargedParticles().size());
+  
   for(auto mcparticle: Event()->ChargedParticles()) {
     double theta = mcparticle->GetVertexMomentum().Theta();
     unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
@@ -359,5 +363,18 @@ void Calibration::UpdateYields( void )
       radiator->m_YieldCff += npe ? npe / pow(sin(mctheta), 2) : 0.0;
     } //for mcparticle 
 } // Calibration:UpdateYields()
+
+// -------------------------------------------------------------------------------------
+
+void Calibration::ExportModifiedOpticsFile(const char *fname)
+{
+  auto *fout = new TFile(fname, "RECREATE");
+  if (!fout) return;
+
+  fout->cd();
+  GetIrtGeometry()->Write();
+
+  fout->Close();
+} // Calibration::ExportModifiedOpticsFile()
 
 // -------------------------------------------------------------------------------------

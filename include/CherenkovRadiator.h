@@ -17,7 +17,7 @@ class G4RadiatorMaterial;
 
 class G4DataInterpolation;
 
-struct CherenkovRadiatorCalibration {
+struct CherenkovRadiatorCalibration: public TObject {
   CherenkovRadiatorCalibration(): m_Stat(0), 
     m_AverageZvtx(0.0), m_hcalib(0), m_Coffset(0.0), m_Csigma(0.0) {};
   ~CherenkovRadiatorCalibration() {};
@@ -31,6 +31,8 @@ struct CherenkovRadiatorCalibration {
   
   TH1D *m_hcalib;
   double m_Coffset, m_Csigma;
+  
+  ClassDef(CherenkovRadiatorCalibration, 1);
 };
 
 struct CherenkovRadiatorPlots {
@@ -67,8 +69,8 @@ class CherenkovRadiator: public TObject {
    m_Material(material), m_OpticalPhotonGenerationEnabled(true),
    m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
    m_TrajectoryBinCount(1), m_Smearing(0.0), 
-   m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), 
-   m_DetectedToCalibrationPhotonRatio(0.0), m_YieldStat(0), m_YieldCff(0.0),
+   m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), m_YieldStat(0), 
+   m_YieldCff(0.0), m_DetectedToCalibrationPhotonRatio(0.0), 
    m_UsedInRingImaging(false), m_Plots(0) {
     m_LogicalVolumes.push_back(volume);
   };
@@ -161,12 +163,11 @@ class CherenkovRadiator: public TObject {
   // basically any way to calculate their effective ratio for Poisson statistics purposes;
   unsigned m_CalibrationPhotonCount;                        //!
   unsigned m_DetectedPhotonCount;                           //!
-  double m_DetectedToCalibrationPhotonRatio;                //!
-
   unsigned m_YieldStat;                                     //!
-  double m_YieldCff;                                        //!
   
-  std::vector<CherenkovRadiatorCalibration> m_Calibrations; //!
+  double m_YieldCff;                                   
+  double m_DetectedToCalibrationPhotonRatio;                    
+  std::vector<CherenkovRadiatorCalibration> m_Calibrations;
 
   bool m_UsedInRingImaging;                                 //!
 
@@ -183,7 +184,7 @@ class CherenkovRadiator: public TObject {
 
   G4DataInterpolation *m_RefractiveIndex;                   //!
   
-  ClassDef(CherenkovRadiator, 8);
+  ClassDef(CherenkovRadiator, 9);
 };
 
 #endif

@@ -21,6 +21,7 @@
 #pragma link C++ class IRT+;
 
 #pragma link C++ class CherenkovRadiator+;
+#pragma link C++ class CherenkovRadiatorCalibration+;
 #pragma link C++ class CherenkovDetector+;
 #pragma link C++ class CherenkovDetectorCollection+;
 #pragma link C++ class CherenkovEvent+;

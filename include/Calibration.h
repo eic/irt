@@ -7,7 +7,7 @@ class TDatabasePDG;
 #ifndef _CALIBRATION_
 #define _CALIBRATION_
 
-#include <GeantImport.h>
+#include "GeantImport.h"
 
 // 5 degree binning for calibration purposes suffices?;
 #define _THETA_BIN_COUNT_ (180/5)
@@ -31,6 +31,8 @@ class Calibration : public virtual GeantImport {
   void SetDefaultSinglePhotonThetaResolution(double value) {
     m_DefaultSinglePhotonThetaResolution = value;
   };
+  
+  void ExportModifiedOpticsFile(const char *fname);
   
  protected:
   void CalibratePhotonEmissionPoints( void );

@@ -1,8 +1,8 @@
 
 class TParticlePDG;
 
-#include <Calibration.h>
-#include <Digitization.h>
+#include "Calibration.h"
+#include "Digitization.h"
 
 #ifndef _RECONSTRUCTION_FACTORY_
 #define _RECONSTRUCTION_FACTORY_
@@ -28,6 +28,7 @@ private:
 class ReconstructionFactory : public Digitization, public Calibration {
  public:
   ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, const char *dname = 0);
+  ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event);
   virtual ~ReconstructionFactory() {};
 
   void IgnoreTimingInChiSquare( void )               { m_UseTimingInChiSquare = false; };
