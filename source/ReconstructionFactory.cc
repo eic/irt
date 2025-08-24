@@ -535,6 +535,7 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
 
   // Build plots if needed;
   if (!calibration)
+    // FIXME: duplicate code;
     for(auto mcparticle: Event()->ChargedParticles()) {
       unsigned npe_per_track = 0, nhits_per_track = 0;
 
