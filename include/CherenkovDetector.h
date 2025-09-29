@@ -92,7 +92,7 @@ class CherenkovDetector: public TObject {
     // FIXME: may require tuning for a dual-mirror setup;
     unsigned nSectors = m_OpticalBoundaries[0].size();
 
-    // Either a single "sector" or sector structure not define yet -> return 0;
+    // Either a single "sector" or sector structure not defined yet -> return 0;
     if (nSectors <= 1) return 0;
 
     // FIXME: this offset is only defined by the way Chris positions sector #0; 
