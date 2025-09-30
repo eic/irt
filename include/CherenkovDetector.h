@@ -18,7 +18,8 @@ class G4LogicalVolume;
 class CherenkovDetector: public TObject {
  public:
  CherenkovDetector(const char *name = 0): /*m_ContainerVolume(0),*/ m_Name(name ? name : ""), 
-					  m_ReadoutCellMask(0x0)/*, m_SectorBoundaryOffset(0.0)*/ {};
+					  m_ReadoutCellMask(0x0), m_SectorCount(0), m_SectorPhase(0.0)
+					  /*, m_SectorBoundaryOffset(0.0)*/ {};
   ~CherenkovDetector() {};
 
   enum ud {Upstream, Downstream};
@@ -31,6 +32,9 @@ class CherenkovDetector: public TObject {
     _m_Radiators[name] = radiator; 
   };
 
+  void SetSectorCount(unsigned count) { m_SectorCount = count; };
+  void SetSectorPhase(double phase)   {m_SectorPhase = phase; };
+  
   // FIXME: "sector" is in fact *some* index rather than an azimuthal segmentation index;
   void AddPhotonDetector(CherenkovPhotonDetector *pd) { 
     m_PhotonDetectors.push_back(pd); 
@@ -90,24 +94,28 @@ class CherenkovDetector: public TObject {
   // FIXME: not at all clean (uses implicit phase assumptions); 
   unsigned GetSector(const TVector3 &pt) {
     // FIXME: may require tuning for a dual-mirror setup;
-    unsigned nSectors = m_OpticalBoundaries[0].size();
+    //unsigned nSectors = m_OpticalBoundaries[0].size();
 
     // Either a single "sector" or sector structure not defined yet -> return 0;
-    if (nSectors <= 1) return 0;
+    //if (nSectors <= 1) return 0;
+    if (m_SectorCount <= 1) return 0;
 
     // FIXME: this offset is only defined by the way Chris positions sector #0; 
-    double bin = 2*M_PI/nSectors, offset = -bin/2;
+    //double bin = 2*M_PI/nSectors, offset = -bin/2;
+    double bin = 2*M_PI/m_SectorCount, offset = m_SectorPhase;
     
-    return (unsigned)floor((pt.Phi() + 4*M_PI - offset)/bin) % nSectors;
+    //return (unsigned)floor((pt.Phi() + 4*M_PI - offset)/bin) % nSectors;
+    return (unsigned)floor((pt.Phi() + 4*M_PI - offset)/bin) % m_SectorCount;
   };
 
   // FIXME: get rid of the second argument here;
   CherenkovRadiator *GuessRadiator(const TVector3 &x0, const TVector3 &n0) {
-    // FIXME: may want to do a better check; FIXME: '0' or 'isec' here?;
-    if (m_OpticalBoundaries[0].empty()) return 0;
-
     // Determine sector (in EIC DRICH terminology);
     unsigned isec = GetSector(x0);
+    
+    // FIXME: may want to do a better check; FIXME: '0' or 'isec' here?;
+    if (m_OpticalBoundaries[CherenkovDetector::Upstream][isec].empty()) return 0;
+
     // Now loop through all radiators, and check boundaries in this sector;
     for(auto rptr: _m_Radiators) {
       const auto radiator = rptr.second;
@@ -141,9 +149,22 @@ class CherenkovDetector: public TObject {
   // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;
   std::vector<OpticalBoundary*> m_OpticalBoundaryStorage;
 
+  // These are needed to calculate to which detector sector (think of a dRICH) a
+  // particular 3D point belongs; a respective call is used in two different cases:
+  //  (1) to define to which radiator a photon production vertex belongs
+  //  (2) to define to which sector a particular sensor hit belongs
+  //
+  // In principle a photon can be produced in one sector, but be detected in a different
+  // one, but this seemingly does not cause any confusion since each radiator is treated
+  // "globally", so effectively case #1 is only about using a proper section of a spherical
+  // mirror in case of dRICH to define whether a photon vertex was inside or outside of
+  // the gas volume;
+  unsigned m_SectorCount;
+  double m_SectorPhase;
+  
   std::map<TString, CherenkovRadiator*> _m_Radiators;
   
-  ClassDef(CherenkovDetector, 6);
+  ClassDef(CherenkovDetector, 7);
 };
 
 #endif

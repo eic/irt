@@ -30,6 +30,9 @@ class CherenkovDetectorCollection: public BitMask {
 
     return det;
   };
+  void AddNewDetector(CherenkovDetector *det) {
+    _m_Detectors[det->GetName()] = det;
+  };
 
   CherenkovRadiator *FindOrAddRadiator(CherenkovDetector *det, const char *name, const G4LogicalVolume *volume, 
 				 const G4RadiatorMaterial *material) {

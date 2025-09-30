@@ -70,20 +70,26 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 	    
 	    hit.m_PhotonDetector = pd;
 	    hit.m_Copy = photon->GetVolumeCopy();
-	    
-	    hit.m_IRTs = pd->GetIRTs(photon->GetVolumeCopy());
+
+	    TVector3 phx = photon->GetDetectionPosition();
+	    unsigned isec = GetMyRICH()->GetSector(phx);
+	    //unsigned isec = (photon->GetVolumeCopy() >> 8) & 0x7;
+	    //printf("%d vs %d\n", isec, GetMyRICH()->GetSector(phx));
+	    hit.m_IRTs = pd->GetIRTs(isec, photon->GetVolumeCopy());// & 0xFFFFFFFFFFFFF8FF);
+	    //printf("   Photosensor with this cellID (%8lX) found!\n", photon->GetVolumeCopy());
 	    if (!hit.m_IRTs) {
-	      printf("No photosensor with this cellID found!\n");
+	      printf("No photosensor with this cellID (%8lX) found!\n", photon->GetVolumeCopy());
 	      continue;
 	    } //if
-	    
-	    TVector3 phx = photon->GetDetectionPosition();
-	    
+	    //else
+	    //printf("%ld\n", hit.m_IRTs->size());
+	    	    
 	    if (m_SensorActiveAreaPixellation) {
 	      double size = pd->GetActiveAreaSize(), half = size/2;
-	      // All IRTs are terminated at the photosensor; use the first one; extract 3D 
+	      // All IRTs are terminated at the photosensor; '0': use the first one; extract 3D 
 	      // parameterization of this particular photosensor;
 	      auto sensor = dynamic_cast<const FlatSurface*>((*hit.m_IRTs)[0]->tail()->GetSurface());
+	      //auto sensor = dynamic_cast<const FlatSurface*>((*hit.m_IRTs)[(photon->GetVolumeCopy() >> 8) & 0x7]->tail()->GetSurface());
 	      double lx = sensor->GetLocalX(phx)/* + half*/, ly = sensor->GetLocalY(phx)/* + half*/;
 	      // Assume 1um out is not an issue;
 	      if (fabs(lx) > half + 1E-3 || fabs(ly) > half + 1E-3) {
