@@ -26,13 +26,13 @@ class CherenkovDetectorCollection: public BitMask {
 
   CherenkovDetector *AddNewDetector(const char *name) {
     auto det = new CherenkovDetector(name);
-    _m_Detectors[det->GetName()] = det;
+    m_Detectors[det->GetName()] = det;
 
     return det;
   };
-  void AddNewDetector(CherenkovDetector *det) {
-    _m_Detectors[det->GetName()] = det;
-  };
+  //void AddNewDetector(CherenkovDetector *det) {
+  //m_Detectors[det->GetName()] = det;
+  //};
 
   CherenkovRadiator *FindOrAddRadiator(CherenkovDetector *det, const char *name, const G4LogicalVolume *volume, 
 				 const G4RadiatorMaterial *material) {
@@ -131,7 +131,7 @@ class CherenkovDetectorCollection: public BitMask {
 
   // FIXME: do it more efficient later;
   CherenkovDetector *GetDetectorByRadiator(const CherenkovRadiator *radiator) {
-    for(auto detector: _m_Detectors)
+    for(auto detector: m_Detectors)
       for(auto ptr: detector.second->Radiators())
 	if (ptr.second == radiator)
 	  return detector.second;
@@ -139,12 +139,12 @@ class CherenkovDetectorCollection: public BitMask {
     return 0;
   };
   CherenkovDetector *GetDetector(const char *name) {
-    if (_m_Detectors.find(name) == _m_Detectors.end()) return 0;
+    if (m_Detectors.find(name) == m_Detectors.end()) return 0;
 
-    return _m_Detectors[name];
+    return m_Detectors[name];
   };
   const std::map<TString, CherenkovDetector*> &GetDetectors( void ) const {
-    return _m_Detectors;
+    return m_Detectors;
   }; 
 
   // The lookup tables are global of course since the same particle can hit radiators
@@ -154,11 +154,11 @@ class CherenkovDetectorCollection: public BitMask {
   std::map<const G4LogicalVolume*, CherenkovMirror*>         m_MirrorLookup;           //!
   std::map<const G4LogicalVolume*, CherenkovPhotonDetector*> m_PhotonDetectorLookup;   //!
 
-  std::map<TString, CherenkovDetector*> _m_Detectors;
+  std::map<TString, CherenkovDetector*> m_Detectors;
   
   //std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
-  ClassDef(CherenkovDetectorCollection, 2);
+  ClassDef(CherenkovDetectorCollection, 3);
 };
 
 #endif

@@ -91,21 +91,13 @@ class CherenkovDetector: public TObject {
   void SetReadoutCellMask(uint64_t mask) { m_ReadoutCellMask = mask; };
   inline uint64_t GetReadoutCellMask( void ) const { return m_ReadoutCellMask; };
 
-  // FIXME: not at all clean (uses implicit phase assumptions); 
   unsigned GetSector(const TVector3 &pt) {
-    // FIXME: may require tuning for a dual-mirror setup;
-    //unsigned nSectors = m_OpticalBoundaries[0].size();
-
     // Either a single "sector" or sector structure not defined yet -> return 0;
-    //if (nSectors <= 1) return 0;
     if (m_SectorCount <= 1) return 0;
 
-    // FIXME: this offset is only defined by the way Chris positions sector #0; 
-    //double bin = 2*M_PI/nSectors, offset = -bin/2;
-    double bin = 2*M_PI/m_SectorCount, offset = m_SectorPhase;
+    double bin = 2*M_PI/m_SectorCount;
     
-    //return (unsigned)floor((pt.Phi() + 4*M_PI - offset)/bin) % nSectors;
-    return (unsigned)floor((pt.Phi() + 4*M_PI - offset)/bin) % m_SectorCount;
+    return (unsigned)floor((pt.Phi() + 4*M_PI - m_SectorPhase)/bin) % m_SectorCount;
   };
 
   // FIXME: get rid of the second argument here;
@@ -113,7 +105,7 @@ class CherenkovDetector: public TObject {
     // Determine sector (in EIC DRICH terminology);
     unsigned isec = GetSector(x0);
     
-    // FIXME: may want to do a better check; FIXME: '0' or 'isec' here?;
+    // FIXME: may want to do a better check; 
     if (m_OpticalBoundaries[CherenkovDetector::Upstream][isec].empty()) return 0;
 
     // Now loop through all radiators, and check boundaries in this sector;

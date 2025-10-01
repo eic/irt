@@ -45,22 +45,14 @@ class CherenkovPhotonDetector: public G4Object {
     m_OpticalBoundaryStorage.push_back(boundary);
   };
   IRT *AllocateIRT(unsigned sector, uint64_t icopy) { 
-    //+auto irt = new IRT(sector); _m_IRT[icopy] = irt; return irt; 
     auto irt = new IRT(/*sector*/); 
 
-    //printf("@Q@ Here-X: %ld\n", m_IRT.size());
-    if (__m_IRT.find(std::make_pair(sector, icopy)) == __m_IRT.end()) {
-      //printf("@Q@ Here-A\n");
+    if (m_IRT.find(std::make_pair(sector, icopy)) == m_IRT.end()) {
       std::vector<IRT*> ret;
       ret.push_back(irt);
-      __m_IRT[std::make_pair(sector,icopy)] = ret;
-      //printf("@Q@ Here-Y: %ld\n", m_IRT.size());
-    } else {
-      // FIXME: this assumes that this method is called with a 'sector' variable
-      // given in the ascending order; may want to check on this?;
-      __m_IRT[std::make_pair(sector,icopy)].push_back(irt);
-      //printf("@Q@ Here-B: %ld\n", m_IRT[icopy].size());
-    } //if
+      m_IRT[std::make_pair(sector,icopy)] = ret;
+    } else 
+      m_IRT[std::make_pair(sector,icopy)].push_back(irt);
 
     return irt; 
   };
@@ -70,13 +62,14 @@ class CherenkovPhotonDetector: public G4Object {
   //return (m_IRT.find(icopy) == m_IRT.end() ? 0 : &m_IRT[icopy]); 
   //};
   std::vector<IRT*> *GetIRTs(unsigned sector, uint64_t icopy) { 
-    return (__m_IRT.find(std::make_pair(sector,icopy)) == __m_IRT.end() ? 0 : &__m_IRT[std::make_pair(sector, icopy)]); 
+    return (m_IRT.find(std::make_pair(sector,icopy)) == m_IRT.end() ? 0 :
+	    &m_IRT[std::make_pair(sector, icopy)]); 
   };
 
  private:
   // One optical path for each clone (identified by a logical volume copy);
   //std::map<uint64_t, std::vector<IRT*>> m_IRT;
-  std::map<std::pair<unsigned,uint64_t>, std::vector<IRT*>> __m_IRT;
+  std::map<std::pair<unsigned,uint64_t>, std::vector<IRT*>> m_IRT;
 
   // IRT has a TRef by (unfortunate) design -> need a serialized storage buffer to refer to;
   std::vector<OpticalBoundary*> m_OpticalBoundaryStorage;
