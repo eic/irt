@@ -32,7 +32,7 @@ jobs:
             CC=${{matrix.cc}} CXX=${{matrix.cxx}} cmake -S . -B build -DDELPHES=ON -DEVALUATION=OFF -DCMAKE_INSTALL_PREFIX=install
             cmake --build build
             cmake --install build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: install_${{matrix.cc}}
           path: install
