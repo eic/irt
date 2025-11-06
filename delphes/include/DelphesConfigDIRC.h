@@ -2,7 +2,7 @@
 #ifndef _DELPHES_CONFIG_DIRC_
 #define _DELPHES_CONFIG_DIRC_
 
-#include <DelphesConfig.h>
+#include "DelphesConfig.h"
 
 class DelphesConfigDIRC: public DelphesConfig {
  public:

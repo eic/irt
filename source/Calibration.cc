@@ -4,8 +4,8 @@
 #include <TFile.h>
 #include <TDatabasePDG.h>
 
-#include <Calibration.h>
-#include <CherenkovDetectorCollection.h>
+#include "Calibration.h"
+#include "CherenkovDetectorCollection.h"
 
 // FIXME: yes, fix it please;
 static unsigned hdim = 100;

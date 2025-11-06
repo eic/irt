@@ -4,7 +4,7 @@
 #ifndef _CHERENKOV_PHOTON_DETECTOR_
 #define _CHERENKOV_PHOTON_DETECTOR_
 
-#include "G4Object.h"
+#include <G4Object.h>
 #include "FlatSurface.h"
 
 class G4DataInterpolation;

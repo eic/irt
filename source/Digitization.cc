@@ -1,10 +1,10 @@
 
 #include <TH1D.h>
 
-#include <CherenkovDetector.h>
+#include "CherenkovDetector.h"
 
-#include <GeantImport.h>
-#include <Digitization.h>
+#include "GeantImport.h"
+#include "Digitization.h"
 
 // Kind of digitization; may want to comment out (or set very fine) for debugging;
 #define _SENSOR_ACTIVE_AREA_PIXELLATION_DEFAULT_      (32)

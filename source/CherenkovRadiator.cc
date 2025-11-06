@@ -3,7 +3,7 @@
 #include <TCanvas.h>
 #include <TString.h>
 
-#include <CherenkovRadiator.h>
+#include "CherenkovRadiator.h"
 
 // -------------------------------------------------------------------------------------
 
