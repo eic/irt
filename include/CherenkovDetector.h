@@ -133,6 +133,9 @@ class CherenkovDetector: public TObject {
     m_OpticalBoundaryStorage.push_back(boundary);
   };
 
+  // readout ID -> pixel position converter (for external usage)
+  std::function<TVector3(long long int)> m_ReadoutIDToPosition; //!
+
  private:  
   TString m_Name;
   // This is needed for dd4hep cell index decoding;

@@ -68,7 +68,7 @@ class CherenkovRadiator: public TObject {
    /*m_LogicalVolume(volume),*/
    m_Material(material), m_OpticalPhotonGenerationEnabled(true),
    m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
-   m_TrajectoryBinCount(1), m_Smearing(0.0), 
+   m_ID(0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), m_YieldStat(0), 
    m_YieldCff(0.0), m_DetectedToCalibrationPhotonRatio(0.0), 
    m_UsedInRingImaging(false), m_Plots(0) {
@@ -149,7 +149,9 @@ class CherenkovRadiator: public TObject {
   void AddTime(double value) { m_Times.push_back(value); };
 
   // Transient variables for the ReconstructionFactory convenience;
+  unsigned m_ID;                                            //!
   unsigned m_TrajectoryBinCount;                            //!
+
   // This is a hack for now;
   double m_Smearing;                                        //!
   bool m_GaussianSmearing;                                  //!
