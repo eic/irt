@@ -87,7 +87,15 @@ class VectorPDF: public TObject {
     }
   };
   
+  void Reset( void ) {
+    for(auto member: m_Members)
+      delete member;
+    
+    m_Members.clear();
+  };
+
   void AddMember(UniformPDF *pdf) { m_Members.push_back(pdf); };
+  unsigned GetMemberCount( void ) const { return m_Members.size(); };
   unsigned GetWithinRangeCount(double x, double dx = 0.0) const {
     unsigned ret = 0;
 
@@ -115,6 +123,19 @@ class VectorPDF: public TObject {
 
     return (wtsum ? avg / wtsum : 0.0);
   };
+  double GetAverage(double min, double max) const {
+    double avg = 0.0, wtsum = 0.0;
+
+    for(auto member: m_Members) {
+      double value = member->GetAverage();
+      if (value < min || value > max) continue;
+
+      avg   += member->GetWeight() * value;//member->GetAverage();
+      wtsum += member->GetWeight();
+    } //for member
+
+    return (wtsum ? avg / wtsum : 0.0);
+  };
   inline double GetRangeIntegral(double x0, double x1) const {
     double ret = 0.0;
 
@@ -131,6 +152,11 @@ class VectorPDF: public TObject {
 
     return ret;
   };
+
+  UniformPDF *GetMember(unsigned id) const { 
+    return (id < m_Members.size() ? m_Members[id] : 0);
+  };
+  const std::vector<UniformPDF*> &GetMembers( void ) const { return m_Members; };
 
  private:
   std::vector<UniformPDF*> m_Members;

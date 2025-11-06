@@ -7,149 +7,88 @@
 // information about which photn was produced in which radiator;
 //
 
+#include <TRandom.h>
+
 #include "ChargedParticle.h"
 
 // -------------------------------------------------------------------------------------
 
-void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
+double ChargedParticle::GetRecoCherenkovPhotonTheta(unsigned id)
 {
-  std::vector<OpticalPhoton*> photons;
+  if (id >= m_Hits.size()) 
+    return -1.0;
+  else
+    return m_Hits[id]->m_Solutions[this].m_Best->GetTheta();
+} // ChargedParticle::GetRecoCherenkovPhotonTheta()
 
-  // Mix all photons together;
-  for(auto rhistory: GetRadiatorHistory()) 
-    for(auto photon: GetHistory(rhistory)->Photons())
-      photons.push_back(photon);
+// -------------------------------------------------------------------------------------
 
-  for(auto photon: photons)
-    photon->_m_Selected.clear();// = false;
+double ChargedParticle::GetRecoCherenkovPhotonPhi(unsigned id)
+{
+  if (id >= m_Hits.size()) 
+    return -1.0;
+  else
+    return m_Hits[id]->m_Solutions[this].m_Best->GetPhi();
+} // ChargedParticle::GetRecoCherenkovPhotonPhi()
 
-  // Loop through all of the photons recorded in all radiators; apply IRT on a fixed grid 
-  // of emission vertex locations and build kind of a PDF out of that to calculate weights;
-  // this approach may not be dramatically efficient, but it would 1) work in case of the 
-  // magnetic field bending, 2) allow easy extention to a dRICH case where each mass 
-  // hypothesis would evaluate each of the detected photons on the aerogel and gas grids
-  // independently and build a sum of their PDFs without much thinking about outlier photon
-  // rejection, average theta calculation and such;
-  for(auto photon: photons) {
-    if (!photon->WasDetected()) continue;
+// -------------------------------------------------------------------------------------
 
-    auto pd = photon->GetPhotonDetector();
-    const auto irt = pd->GetIRT(photon->GetVolumeCopy());
-    if (!irt) {
-      printf("No photosensor with this cellID found!\n");
-      continue;
-    } //if
+double ChargedParticle::GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator)
+{
+  unsigned stat = 0;
+  double sum = 0.0;
 
-    for(auto rhistory: GetRadiatorHistory()) {
-      auto radiator = GetRadiator(rhistory);
-      unsigned zdim = radiator->GetTrajectoryBinCount();
-      if (radiator->m_Locations.size() != zdim+1) continue;
-      
-      TVector3 phx = photon->GetDetectionPosition();
-      
-      // Get effective attenuation length for this radiator, as well as the 
-      // parameterization of its rear surface in this particular sector; this is
-      // not really a clean procedure for dRICH aerogel, but should be good enough 
-      // in most part of the cases;
-      double attenuation = radiator->GetReferenceAttenuationLength();
-      auto rear = radiator->GetRearSide(irt->GetSector());//photon->GetVolumeCopy());
-
-      {
-	bool all_converged = true;
-	IRTSolution solutions[zdim+1];
-	double weights[zdim+1];
-	for(unsigned iw=0; iw<zdim+1; iw++) weights[iw] = 0.0;
-	
-	photon->m_Phi[radiator] = 0.0;
-
-	for(unsigned iq=0; iq<zdim+1; iq++) {
-	  auto &solution = solutions[iq] = irt->Solve(radiator->m_Locations[iq].first,
-		       // FIXME: give beam line as a parameter;
-		       radiator->m_Locations[iq].second.Unit(), phx, TVector3(0,0,1), false);
-	  if (!solution.Converged()) {
-	    all_converged = false;
-	    break;
-	  } //if
-
-	  photon->m_Phi[radiator] += solution.GetPhi();
-
-	  if (attenuation) {
-	    TVector3 from = radiator->m_Locations[iq].first, to;
-	    bool ok = rear->GetCrossing(from, solution.m_Direction, &to);
-	    if (ok) {
-	      double length = (to - from).Mag();
-	      //printf("%02d -> %7.2f\n", iq, radiator->m_Locations[iq].first.z());
-	      //weights[iq] = 1.0;
-	      weights[iq] = exp(-length / attenuation);
-	    } //if
-	  } else
-	    weights[iq] = 1.0;
-	} //for iq
-	
-	if (!all_converged) continue;
-	
-	photon->m_Phi[radiator] /= (zdim+1);
-
-	for(unsigned iq=0; iq<zdim; iq++) {
-	  auto &s0 = solutions[iq], &s1 = solutions[iq+1];
-	  
-	  // NB: y0 & y1 values do not matter; what matters is that they were equidistant 
-	  // in the previous loop; FIXME: add some smearing later;
-	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 1.0));
-	  //printf("%2d -> %7.3f\n", iq, weights[iq]);
-	  photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), 
-							    (weights[iq] + weights[iq+1])/2));//1.0));
-	  //printf("attenuation=%f  weight=%f\n",attenuation,(weights[iq] + weights[iq+1])/2);
-	  //photon->_m_PDF[radiator].AddMember(new UniformPDF(s0.GetTheta(), s1.GetTheta(), fabs(cos(s0.GetPhi()))));
-	} //for iq
-      }
-    } //for rhistory
-  } //for photon
-
-  // And now that IRT is performed on a grid of possible emission vertex locations, 
-  // populate the requested mass hypothesis array;
-  for(unsigned ih=0; ih<pid.GetHypothesesCount(); ih++) {
-    auto hypothesis = pid.GetHypothesis(ih);
-    double m = hypothesis->GetMass();
-
-    // Reset photon count and weight;
-    hypothesis->Reset();
+  for(auto hit: m_Hits) {
+    auto solution = hit->m_Solutions[this].m_Best;
+    if (radiator && hit->m_Solutions[this].GetRadiator() != radiator) continue;
     
-    for(auto rhistory: GetRadiatorHistory()) {
-      auto radiator = GetRadiator(rhistory);
-      unsigned zdim = radiator->GetTrajectoryBinCount();
-      if (radiator->m_Locations.size() != zdim+1) continue;
-	
-      // Asume this estimate is good enough;
-      double pp = radiator->m_Locations[0].second.Mag();
-      double arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
-      // Threshold check; FIXME: do it better?;
-      if (fabs(arg) > 1.0) continue;
-      
-      {
-	double theta = acos(arg), dth = radiator->GetSmearing();
-	bool gaussian = radiator->UseGaussianSmearing();
-	// +/-3 sigma; FIXME: do it better later;
-	if (gaussian) dth *= 3;
+    stat++;
+    sum += solution->GetTheta();
+  } //for hit
+  
+  if (stat) sum /= stat;
 
-	for(auto photon: photons) {
-	  if (!photon->WasDetected()) continue;
-	  
-	  auto pdf = &photon->_m_PDF[radiator];
+  return sum;
+} // ChargedParticle::GetRecoCherenkovAverageTheta()
 
-	  // FIXME: unreadable;
-	  auto within_range = float(pdf->GetWithinRangeCount(theta, dth));
-	  //if (within_range) photon->m_Selected = true;
-	  if (within_range) photon->_m_Selected.insert(std::make_pair(ih, radiator));// = true;
+// -------------------------------------------------------------------------------------
 
-	  hypothesis->IncrementWeight(radiator, within_range/zdim, 
-				      (dth ? (gaussian ? pdf->GetGaussianIntegral(theta,dth) :
-					      pdf->GetRangeIntegral(theta - dth, theta + dth)) : 
-				       pdf->GetValue(theta))/zdim);
-	} //for photon
-      }
-    } //for rhistory
-  } //for ih
-} // ChargedParticle::PIDReconstruction()
+double ChargedParticle::GetMocaCherenkovAverageTheta(CherenkovRadiator *radiator)
+{
+  unsigned stat = 0;
+  double sum = 0.0;
+
+  for(auto rhptr: GetRadiatorHistory()) {
+    auto rptr = GetRadiator(rhptr);
+
+    if (rptr != radiator) continue; 
+
+    for(auto photon: GetHistory(rhptr)->Photons()) {    
+      auto n1 = photon->GetVertexParentMomentum().Unit(), n2 = photon->GetVertexMomentum().Unit();
+
+      stat++;
+      sum += acos(n1.Dot(n2));
+    } //for photon
+  } //for rhptr
+  
+  if (stat) sum /= stat;
+
+  return sum;
+} // ChargedParticle::GetMocaCherenkovAverageTheta()
+
+// -------------------------------------------------------------------------------------
+
+unsigned ChargedParticle::GetRecoCherenkovPhotonCount(CherenkovRadiator *radiator)
+{
+  unsigned stat = 0;
+
+  for(auto hit: m_Hits) {
+    if (radiator && hit->m_Solutions[this].GetRadiator() != radiator) continue;
+    
+    stat++;
+  } //for hit
+
+  return stat;
+} // ChargedParticle::GetRecoCherenkovPhotonCount()
 
 // -------------------------------------------------------------------------------------

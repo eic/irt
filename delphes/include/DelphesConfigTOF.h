@@ -6,11 +6,19 @@
 
 class DelphesConfigTOF: public DelphesConfig {
  public:
+  // FIXME: do it better later;
+ DelphesConfigTOF( void ): DelphesConfig(), 
+    m_T0Resolution(0.0), m_DetectorResolution(0.0), m_InstallationRadius(0.0),
+    m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
+    m_EtaBinCount(0), m_MomentumBinCount(0), m_MagneticField(0.0), 
+    m_MomentumResolutionA(0.0), m_MomentumResolutionB(0.0), m_PathLengthResolution(0.0),
+    m_InstallationDistance(0.0) {};
  DelphesConfigTOF(const char *dname): DelphesConfig(dname), 
     m_T0Resolution(0.0), m_DetectorResolution(0.0), m_InstallationRadius(0.0),
     m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
     m_EtaBinCount(0), m_MomentumBinCount(0), m_MagneticField(0.0), 
-    m_MomentumResolutionA(0.0), m_MomentumResolutionB(0.0), m_PathLengthResolution(0.0) {};
+    m_MomentumResolutionA(0.0), m_MomentumResolutionB(0.0), m_PathLengthResolution(0.0),
+    m_InstallationDistance(0.0) {};
   ~DelphesConfigTOF() {};
   
   void SetT0Resolution        (double value)     { m_T0Resolution         = value; }
@@ -21,7 +29,16 @@ class DelphesConfigTOF: public DelphesConfig {
     m_MomentumResolutionA = a; m_MomentumResolutionB = b;
   };
   void SetDetectorResolution  (double value)     { m_DetectorResolution   = value; }
-  void SetInstallationRadius  (double value)     { m_InstallationRadius   = value; }
+
+  void SetInstallationRadius  (double value)     { 
+    m_InstallationRadius   = value; 
+    m_InstallationDistance = 0.0; 
+  };
+  void SetInstallationDistance(double value)     { 
+    m_InstallationDistance = value; 
+    m_InstallationRadius   = 0.0; 
+  };
+
   void SetMagneticField       (double value)     { m_MagneticField        = value; }
   // Well, would be more natural to give Z-range along the beam line;
   void SetEtaRange(double min, double max, unsigned ebins) {
@@ -54,7 +71,9 @@ class DelphesConfigTOF: public DelphesConfig {
 
   double tof(double m, double p, double l);
 
-  ClassDef(DelphesConfigTOF, 1)
+  double m_InstallationDistance;
+
+  ClassDef(DelphesConfigTOF, 2)
 };
 
 #endif

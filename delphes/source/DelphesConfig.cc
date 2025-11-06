@@ -154,7 +154,7 @@ void DelphesConfig::DetermineThresholds( void )
 	  hypo->SetThreshold(min);
       } //for erange..mrange
 
-    printf("@T@ %d -> %7.2f\n", ih, hypo->GetThreshold());
+    printf("@T@ %d -> estimated threshold %7.3f [MeV/c]\n", ih, hypo->GetThreshold());
   } //for iq
 } // DelphesConfig::DetermineThresholds()
 

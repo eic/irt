@@ -26,10 +26,13 @@ class CherenkovDetectorCollection: public BitMask {
 
   CherenkovDetector *AddNewDetector(const char *name) {
     auto det = new CherenkovDetector(name);
-    _m_Detectors[det->GetName()] = det;
+    m_Detectors[det->GetName()] = det;
 
     return det;
   };
+  //void AddNewDetector(CherenkovDetector *det) {
+  //m_Detectors[det->GetName()] = det;
+  //};
 
   CherenkovRadiator *FindOrAddRadiator(CherenkovDetector *det, const char *name, const G4LogicalVolume *volume, 
 				 const G4RadiatorMaterial *material) {
@@ -44,7 +47,7 @@ class CherenkovDetectorCollection: public BitMask {
 
     return radiator;
   };
-  CherenkovRadiator *AddFlatRadiator(CherenkovDetector *det, const char *name, unsigned path, 
+  CherenkovRadiator *AddFlatRadiator(CherenkovDetector *det, const char *name, CherenkovDetector::ud where, unsigned path, 
 				     const G4LogicalVolume *volume, 
 				     const G4RadiatorMaterial *material, const FlatSurface *surface, 
 				     double thickness) {
@@ -55,21 +58,34 @@ class CherenkovDetectorCollection: public BitMask {
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift(( thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(path, new OpticalBoundary(radiator,                  boundary, true));
+      det->AddOpticalBoundary(where, path, new OpticalBoundary(radiator,                  boundary, true));
       radiator->m_Borders[path].first = boundary;
+
+      // FIXME (?): in case of dRICH (and FRICH) this boundary is assigned by hand (a spherical
+      // mirror surface), so it should kind of work;
+      if (where == CherenkovDetector::Downstream && !det->GetContainerVolume()->GetRearSide(path))
+	det->GetContainerVolume()->m_Borders[path].second = boundary;
     }
     {
       auto boundary = surface->_Clone(0.0, TVector3(0,0,1));
       boundary->Shift((-thickness/2)*surface->GetNormal());
-      det->AddOpticalBoundary(path, new OpticalBoundary(det->GetContainerVolume(), boundary, true));
-
+      det->AddOpticalBoundary(where, path, new OpticalBoundary(det->GetContainerVolume(), boundary, true));
       radiator->m_Borders[path].second = boundary;
-      // This will most likely be a temporary assignment;
-      det->GetContainerVolume()->m_Borders[path].first = boundary;
+
+      // This will most likely be a temporary assignment; only "upstream" boundaries are of interest 
+      // here since the "downstream" ones are essentially a sensor-side description;
+      if (where == CherenkovDetector::Upstream) det->GetContainerVolume()->m_Borders[path].first = boundary;
     }    
 
     return radiator;
   };
+  void AddRadiatorLogicalVolume(CherenkovRadiator *radiator, const G4LogicalVolume *lv) {
+    radiator->AddLogicalVolume(lv);
+    m_RadiatorLookup[lv] = radiator;
+  };
+
+  //inline void AddOrphanPhoton(OpticalPhoton *photon) { m_OrphanPhotons.push_back(photon); };
+
   void AddPhotonDetector(CherenkovDetector *det, const G4LogicalVolume *lv, 
 			 CherenkovPhotonDetector *pd) {
     // FIXME: a consistency check!;
@@ -106,7 +122,7 @@ class CherenkovDetectorCollection: public BitMask {
     // This is most likely a temporary assignment;
     radiator->m_Borders[path].first = surface;
 
-    det->AddOpticalBoundary(path, new OpticalBoundary(FindRadiator(lv), surface, true));
+    det->AddOpticalBoundary(CherenkovDetector::Upstream, path, new OpticalBoundary(FindRadiator(lv), surface, true));
     //det->SetContainerVolume(lv);
     det->SetContainerVolume(radiator);
 
@@ -115,7 +131,7 @@ class CherenkovDetectorCollection: public BitMask {
 
   // FIXME: do it more efficient later;
   CherenkovDetector *GetDetectorByRadiator(const CherenkovRadiator *radiator) {
-    for(auto detector: _m_Detectors)
+    for(auto detector: m_Detectors)
       for(auto ptr: detector.second->Radiators())
 	if (ptr.second == radiator)
 	  return detector.second;
@@ -123,12 +139,12 @@ class CherenkovDetectorCollection: public BitMask {
     return 0;
   };
   CherenkovDetector *GetDetector(const char *name) {
-    if (_m_Detectors.find(name) == _m_Detectors.end()) return 0;
+    if (m_Detectors.find(name) == m_Detectors.end()) return 0;
 
-    return _m_Detectors[name];
+    return m_Detectors[name];
   };
   const std::map<TString, CherenkovDetector*> &GetDetectors( void ) const {
-    return _m_Detectors;
+    return m_Detectors;
   }; 
 
   // The lookup tables are global of course since the same particle can hit radiators
@@ -138,10 +154,12 @@ class CherenkovDetectorCollection: public BitMask {
   std::map<const G4LogicalVolume*, CherenkovMirror*>         m_MirrorLookup;           //!
   std::map<const G4LogicalVolume*, CherenkovPhotonDetector*> m_PhotonDetectorLookup;   //!
 
-  std::map<TString, CherenkovDetector*> _m_Detectors;
+  std::map<TString, CherenkovDetector*> m_Detectors;
   
+  //std::vector<OpticalPhoton*> m_OrphanPhotons; 
+
 #ifndef DISABLE_ROOT_IO
-  ClassDef(CherenkovDetectorCollection, 2);
+  ClassDef(CherenkovDetectorCollection, 3);
 #endif
 };
 

@@ -53,5 +53,10 @@ void delphes_btof( void )
   // This is again some generic stuff;
   //btof->Print();
   btof->WriteTcl();
+  {
+    auto fout = new TFile("BTOF.root", "RECREATE");
+    btof->Write();
+    fout->Close();
+  }
   exit(0);
 } // delphes_btof()

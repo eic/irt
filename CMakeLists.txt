@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 project(IRT
-  VERSION 1.0.5
+  VERSION 2.1.0
   LANGUAGES CXX
 )
 
@@ -18,7 +18,7 @@ option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects" ON)
 
 list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-find_package(ROOT 6 REQUIRED COMPONENTS Core RIO Hist Tree)
+find_package(ROOT 6 REQUIRED COMPONENTS Core EG Hist MathCore RIO Tree)
 include(${ROOT_USE_FILE})
 
 #----------------------------------------------------------------------------
@@ -41,6 +41,8 @@ else()
   endif()
 endif()
 
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-cxx-extension")
+    
 #----------------------------------------------------------------------------
 # IRT library
 
@@ -48,16 +50,39 @@ endif()
 include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
+
+  # For now assume that newly installed edm4eic::(CherenkovPID, ...) event structures are available 
+  # in the same place where IRT is supposed to be installed;
+  ${CMAKE_INSTALL_PREFIX}/include
+
+  # Help ePIC installation find json.hpp if needed;
+  #/opt/local/include
 )
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
 list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
+#if(DEFINED EICRECON)
+#   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEICRECON")
+#endif()
+
 # sources
 set(IRT_SRC
+  ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/ToricSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/CylindricalSurface.cc
+  ${PROJECT_SOURCE_DIR}/source/ConicalSurface.cc
   ${PROJECT_SOURCE_DIR}/source/FlatSurface.cc
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
+  ${PROJECT_SOURCE_DIR}/source/CherenkovRadiator.cc
+
+  ${PROJECT_SOURCE_DIR}/source/DigitizedHit.cc
+  ${PROJECT_SOURCE_DIR}/source/GeantImport.cc
+  #${PROJECT_SOURCE_DIR}/source/Configuration.cc
+  ${PROJECT_SOURCE_DIR}/source/Calibration.cc
+  ${PROJECT_SOURCE_DIR}/source/Digitization.cc
+  ${PROJECT_SOURCE_DIR}/source/ReconstructionFactory.cc
 )
 if(IRT_ROOT_IO)
   set(IRT_DICT G__${CMAKE_PROJECT_NAME})
@@ -87,7 +112,7 @@ if(IRT_ROOT_IO)
 endif()
 
 # linking
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::Physics)
+target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
 
 #----------------------------------------------------------------------------
 # optional targets

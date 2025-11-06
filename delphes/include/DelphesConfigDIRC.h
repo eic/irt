@@ -6,6 +6,12 @@
 
 class DelphesConfigDIRC: public DelphesConfig {
  public:
+  // FIXME: do it better later;
+ DelphesConfigDIRC( void ): DelphesConfig(), m_InstallationRadius(0.0),
+    m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
+    m_EtaBinCount(0), m_MomentumBinCount(0), 
+    m_TrackerAngularResolutionA(0.0), m_TrackerAngularResolutionB(0.0), 
+    m_MagneticField(0.0) {};
  DelphesConfigDIRC(const char *dname): DelphesConfig(dname), m_InstallationRadius(0.0),
     m_EtaMin(0.0), m_EtaMax(0.0), m_MomentumMin(0.0), m_MomentumMax(0.0),
     m_EtaBinCount(0), m_MomentumBinCount(0), 

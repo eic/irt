@@ -21,6 +21,7 @@
 #pragma link C++ class IRT+;
 
 #pragma link C++ class CherenkovRadiator+;
+#pragma link C++ class CherenkovRadiatorCalibration+;
 #pragma link C++ class CherenkovDetector+;
 #pragma link C++ class CherenkovDetectorCollection+;
 #pragma link C++ class CherenkovEvent+;
@@ -30,6 +31,9 @@
 
 #pragma link C++ class ParametricSurface+;
 #pragma link C++ class SphericalSurface+;
+#pragma link C++ class ToricSurface+;
+#pragma link C++ class CylindricalSurface+;
+#pragma link C++ class ConicalSurface+;
 #pragma link C++ class LocalCoordinatesXY+;
 #pragma link C++ class FlatSurface+;
 
@@ -38,8 +42,10 @@
 
 #pragma link C++ class SurfaceCopy+;
 #pragma link C++ class CherenkovMirror+;
-#pragma link C++ class CherenkovMirrorGroup+;
+//#pragma link C++ class CherenkovMirrorGroup+;
 #pragma link C++ class FlatMirror+;
+#pragma link C++ class ConicalMirror+;
+#pragma link C++ class CylindricalMirror+;
 #pragma link C++ class SphericalMirror+;
 
 #pragma link C++ class CherenkovPhotonDetector+;
@@ -47,5 +53,7 @@
 // Are these two really needed?;
 #pragma link C++ class std::pair<TRef, TRef>+;
 #pragma link C++ class std::vector<TRef>+;
+
+#pragma link C++ class ReconstructionFactory+;
 
 #endif

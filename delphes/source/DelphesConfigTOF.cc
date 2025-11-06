@@ -20,7 +20,8 @@ int DelphesConfigTOF::DoSigmaCalculations( void )
   //
   // FIXME: sanity check on the input parameters is needed;
   //
-  assert(m_PtMode);
+  //+assert(m_PtMode);
+  assert(!m_PtMode);
 
   double etaStep = (m_EtaMax      - m_EtaMin     ) / m_EtaBinCount;
   double pStep   = (m_MomentumMax - m_MomentumMin) / m_MomentumBinCount;
@@ -36,16 +37,21 @@ int DelphesConfigTOF::DoSigmaCalculations( void )
     // Loop though all of the requested momentum bins;
     for(unsigned ip=0; ip<m_MomentumBinCount; ip++) {
       // So momentum has a meaning of Pt in this code; see assert() above;
-      double pt = m_MomentumMin + pStep*(ip +0.5), p = pt / sin(theta);
+      //+double pt = m_MomentumMin + pStep*(ip +0.5), p = pt / sin(theta);
+      double p = m_MomentumMin + pStep*(ip +0.5), pt = p * sin(theta);
     
       // Assign momentum range; avoid machine accuracy issues when checking continuity;
       auto mrange = erange->GetMomentumRange(ip ? erange->LastMomentumRange()->GetMax() : 
-					     pt - pStep/2, pt + pStep/2);
-      // mnemonic rule: 30 MeV/c in 1kGs field -> curvature radius of 1m; convert to [mm];
-      double r = 1000*(0.1/m_MagneticField)*(pt/0.03);
+					     //+pt - pStep/2, pt + pStep/2);
+					     p - pStep/2, p + pStep/2);
 
-      // Particle will not reach the barrel layer; FIXME: may want to give few cm up?; 
-      if (2*r < m_InstallationRadius) continue;
+      // mnemonic rule: 30 MeV/c in 1kGs field -> curvature radius of 1m; convert to [mm];
+      if (m_InstallationRadius) {
+	double r = 1000*(0.1/m_MagneticField)*(pt/0.03);
+
+	// Particle will not reach the barrel layer; FIXME: may want to give few cm up?; 
+	if (2*r < m_InstallationRadius) continue;
+      } //if
 
       // Loop through all of the mass hypotheses and populate entries one by one;
       for(unsigned ih=0; ih<m_MassHypotheses.size(); ih++) {
@@ -53,9 +59,18 @@ int DelphesConfigTOF::DoSigmaCalculations( void )
 	double m = m_MassHypotheses[ih]->Mass();
 
 	{
-	  double alfa = 2*asin(m_InstallationRadius/(2.0*r));
-	  double lxy =  r*alfa, l = lxy/sin(theta);
-	  double e = sqrt(p*p + m*m), beta = p/e;
+	  double e = sqrt(p*p + m*m), beta = p/e, l = 0.0;
+	  if (m_InstallationRadius) {
+	    // FIXME: duplicate line;
+	    double r = 1000*(0.1/m_MagneticField)*(pt/0.03);
+	    double alfa = 2*asin(m_InstallationRadius/(2.0*r));
+	    double lxy =  r*alfa;
+
+	    l = lxy/sin(theta);
+	  } else {
+	    // FIXME: calculate helix length correctly; suffices for now;
+	    l = m_InstallationDistance / cos(theta);
+	  } //if
 	      
 	  double sp = ((0.01*m_MomentumResolutionA)*p + (0.01*m_MomentumResolutionB))*p, t = tof(m, p, l);
 	  // A lousy way to calculate dt/dp differential;
@@ -64,7 +79,7 @@ int DelphesConfigTOF::DoSigmaCalculations( void )
 
 	  // Now calculate the uncertainties; (0.2*sp) comes from the differential calculation;
 	  double s1 = m_T0Resolution, s2 = m_DetectorResolution, s3 = m_PathLengthResolution / _SoL_;
-	  double s4 = sp*fabs(dt)/(0.2*sp), s = sqrt(s1*s1+s2*s2+s3*s3+s4*s4);
+	  double s4 = sp ? sp*fabs(dt)/(0.2*sp) : 0.0, s = sqrt(s1*s1+s2*s2+s3*s3+s4*s4);
 
 	  //printf("%3d %3d: eta= %5.2f th=%5.1f pt= %5.2f p= %5.2f, r= %7.2f, m= %6.4f alfa=%5.1f, "
 	  //	 "beta= %5.3f, l = %5.1f t = %7.4f  s=%7.4f\n", 

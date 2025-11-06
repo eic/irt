@@ -6,10 +6,12 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 // -------------------------------------------------------------------------------------
 
-bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
+bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length)
 {
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
+  if (length) *length = 0.0;
+  
   // Just go through the optical boundaries, and calculate either reflection 
   // or refraction on that particular surface;
   for(unsigned iq=0; iq<_m_OpticalBoundaries.size(); iq++) {
@@ -31,19 +33,25 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
     } //if
     transport_in_progress = true;
 
+    if (length) {
+      auto *radiator = prev ? prev->GetRadiator() : 0;
+
+      *length += (boundary->m_ImpactPoint - x0).Mag()*(radiator ? radiator->n() : 1.0);
+    } //if
+
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
     TVector3 ns = surface->GetNormal(boundary->m_ImpactPoint);
     TVector3 na = ns.Cross(boundary->m_IncomingDirection);
 
     boundary->m_OutgoingDirection = boundary->m_IncomingDirection;
-    // Must be the sensor dump; FIXME:: do this check better;
+    // Must be the sensor dump; FIXME: do this check better;
     if (!boundary->m_Radiator.GetObject()) return true;
 
     if (boundary->m_Refractive) {
       // Will not be able to determine the refractive index;
       if (!prev) return false;
       double n1 = prev->GetRadiator()->n(), n2 = boundary->GetRadiator()->n();
-
+      
       // Refraction; check that the refractive indices are different;
       if (n1 != n2) {
 	double theta1 = acos(boundary->m_IncomingDirection.Dot(-1*ns));
@@ -70,10 +78,9 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom)
 
 IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
-{
+{ 
   IRTSolution solution; 
   if (!_m_OpticalBoundaries.size()) return solution;
-  //return solution;
 
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);
@@ -81,7 +88,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
   
   // XY in the local sensor coordinate system; 
   double m0[2] = {sensor->GetLocalX(xto), sensor->GetLocalY(xto)};
-
+  
   return Solve(xfrom, nfrom, m0, beam, derivatives, seed);
 } // IRT::Solve()
 
@@ -90,11 +97,9 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
 IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double m0[2], 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
-  //printf("Here-1!\n");
-  IRTSolution solution; if (seed) solution = *seed;
+  IRTSolution solution; if (seed) solution.Set(seed);
   if (!_m_OpticalBoundaries.size()) return solution;
 
-  //printf("Here-2!\n");
   // Simplify the situation for now: assume a single flat surface at the end;
   auto sensor = dynamic_cast<const LocalCoordinatesXY*>(tail()->m_Surface);
   if (!sensor) return solution;
@@ -103,28 +108,29 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // to shoot; since the refraction on aerogel/C2F6 boundary kicks propagation out of 2D, 
   // and there can be an additional flat mirror installed, there is no good reason to 
   // try solving the initial approximation analytically;
-  if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
+  if (!seed) {
+    solution.m_Theta = nfrom.Theta(); 
+    solution.m_Phi   = nfrom.Phi();
+  } //if
 
-  //printf("Here-3!\n");
   for(unsigned itr=0; ; itr++ ) {
-    //printf("Here-4!\n");
+    double length;
     if (itr == m_IterationLimit) return solution;
     {
       auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
 			 sin(solution.m_Theta)*sin(solution.m_Phi), 
 			 cos(solution.m_Theta));
-      if (!Transport(xfrom, nn)) return solution;
+      if (!Transport(xfrom, nn, &length)) return solution;
     }
-    //printf("Here-5!\n");
     double mc[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
     
     // Check the transported-to-measured 2D distance; if it is small enough, return;
     {
       double dist = sqrt(pow(mc[0] - m0[0], 2) + pow(mc[1] - m0[1], 2));
-      //printf("%10.4f\n", dist);
-
+      
       if (dist < m_Precision) {
 	solution.m_Converged = true;
+	solution.m_Length = length;
 
 	{ 
 	  double slope = acos(nfrom.Dot(beam));
@@ -136,7 +142,8 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	  nn.Rotate(slope, axis); 
 
 	  solution.m_Theta = nn.Theta();
-	  solution.m_Phi   = nn.Phi();
+	  // Yes, as of 2023/03/02 subtract the changed particle phi angle;
+	  solution.m_Phi   = nn.Phi() - nfrom.Phi();
 	  //printf(" -> %7.2f [mrad], %7.2f [degree]\n", 1000*solution.m_Theta, (180/M_PI)*solution.m_Phi);
 	}
 
@@ -166,23 +173,6 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	    if (s0.Converged() && s1.Converged())
 	      solution.m_DtDz = (s1.m_Theta - s0.m_Theta)/(2*_IRT_DERIVATIVE_XYZ_STEP_);
 	  }
-#if _WRONG_
-	  {
-	    // Assume that I'm mostly interested in the refractive index variation in the
-	    // media where the photon was created;
-	    auto radiator = derivatives;
-	    double nref = radiator->n(), step = (nref - 1.0)*_IRT_DERIVATIVE_NNN_STEP_;
-	    radiator->SetReferenceRefractiveIndex(nref - step);
-	    auto s0 = Solve(xfrom, nfrom, m0, beam, 0, &solution);
-	    radiator->SetReferenceRefractiveIndex(nref + step);
-	    auto s1 = Solve(xfrom, nfrom, m0, beam, 0, &solution);
-	    if (s0.Converged() && s1.Converged())
-	      solution.m_DtDn = (s1.m_Theta - s0.m_Theta)/(2*step);
-
-	    // Restore the original value;
-	    radiator->SetReferenceRefractiveIndex(nref);
-	  }
-#endif
 
 	  // And eventually calculate a quadratic error estimate; 
 	  //solution.CalculateSigmaThetaEstimate();

@@ -26,6 +26,12 @@ class ParametricSurface: public TObject {
     m_Umin = umin; m_Umax = umax; m_Vmin = vmin; m_Vmax = vmax;
   };
 
+  virtual double GetU(const TVector3 &xx) const = 0;
+  virtual double GetV(const TVector3 &xx) const = 0;
+  virtual bool IsInside(const TVector3 &xx) const {
+    return IsInside(GetU(xx), GetV(xx));
+  };
+
   virtual TVector3 GetSpacePoint(double u, double v) const = 0;
   // There is no check that the point actually belongs to the surface;
   // it is assumed that GEANT stepping was done correctly, so the point 
@@ -49,6 +55,8 @@ class ParametricSurface: public TObject {
   // Crossing with the straight line defined by {x0,n0}; 
   virtual bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
 			   bool check_normal = true) const = 0;
+  bool GetQuadraticEquationCaseCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
+					bool check_normal, double a, double b, double c) const;
 
   // Introduce only the transformations needed for the current task;
   virtual ParametricSurface *_Clone(double angle, const TVector3 &axis) const = 0;
@@ -68,46 +76,6 @@ class ParametricSurface: public TObject {
 #endif
 };
 
-class SphericalSurface: public ParametricSurface {
- public:
- SphericalSurface(): m_Concave(true), m_Radius(0.0) {};
- SphericalSurface(const TVector3 &x0, double r0, double umin = 0.0, double umax = M_PI, 
-		  double vmin = 0.0, double vmax = 2*M_PI): 
-  ParametricSurface(x0, umin, umax, vmin, vmax), m_Concave(true), m_Radius(r0) {};
-  ~SphericalSurface() {};
-
-  // FIXME: no range check?; 
-  TVector3 GetSpacePoint(double theta, double phi) const {
-    TVector3 nn(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta));
-    return GetCenter() + m_Radius*nn;
-  };
-
-  TVector3 GetNormal(const TVector3 &xx) const {
-    return (m_Concave ? -1.0 : 1.0)*(xx - GetCenter()).Unit();
-  };
-  double GetRadius( void ) const { return m_Radius; };
-
-  bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, bool check_normal = true) const;
-  double GetDistance(const TVector3 &xx) const;
-
-  void SetConvex( void ) { m_Concave = false; };
-  ParametricSurface *_Clone(double angle, const TVector3 &axis) const {
-    auto copy = new SphericalSurface(*this);
-
-    copy->m_Center.Rotate(angle, axis);
-
-    return copy;
-  };
-
- private:
-  bool m_Concave;
-  double m_Radius;
-
-#ifndef DISABLE_ROOT_IO
-  ClassDef(SphericalSurface, 2);
-#endif
-};
-
 class LocalCoordinatesXY: public TObject {
  public:
   LocalCoordinatesXY() {};
@@ -120,56 +88,5 @@ class LocalCoordinatesXY: public TObject {
   ClassDef(LocalCoordinatesXY, 1);
 #endif
 }; 
-
-// In fact a rectangle in space;
-class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
- public:
-  FlatSurface() {};
- FlatSurface(const TVector3 &x0, const TVector3 &nx, const TVector3 &ny, double sx = 0.0, double sy = 0.0):
-  // FIXME: no orthogonality and / or normalization check?;
-  ParametricSurface(x0, -sx/2, sx/2, -sy/2, sy/2), m_Nx(nx.Unit()), m_Ny(ny.Unit()) {
-    m_Nz = nx.Cross(ny).Unit();
-  };
-  ~FlatSurface() {};
-
-  TVector3 GetSpacePoint(double x, double y) const {
-    return GetCenter() + x*m_Nx + y*m_Ny;
-  };
-  TVector3 GetNormal(const TVector3 &xx) const {
-    // Make compiler happy, use 'xx' variable;
-    return m_Nz + 0.0*xx;
-  };
-  TVector3 GetNormal( void ) const {
-    return m_Nz;
-  };
-  // FIXME: well, this calculation assumes orthogonal X&Y vectors were provided;
-  inline double GetLocalX(const TVector3 &xx) const {
-    return (xx - GetCenter()).Dot(m_Nx);
-  };
-  inline double GetLocalY(const TVector3 &xx) const {
-    return (xx - GetCenter()).Dot(m_Ny);
-  };
-
-  bool GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, bool check_normal = true) const;
-  double GetDistance(const TVector3 &xx) const;
-  ParametricSurface *_Clone(double angle, const TVector3 &axis) const {
-    auto copy = new FlatSurface(*this);
-
-    copy->m_Center.Rotate(angle, axis);
-
-    copy->m_Nx.Rotate(angle, axis);
-    copy->m_Ny.Rotate(angle, axis);
-    copy->m_Nz.Rotate(angle, axis);
-
-    return copy;
-  };
-
- private:
-  TVector3 m_Nx, m_Ny, m_Nz;
-
-#ifndef DISABLE_ROOT_IO
-  ClassDef(FlatSurface, 1);
-#endif
-};
 
 #endif

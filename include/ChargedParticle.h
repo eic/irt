@@ -10,10 +10,13 @@
 #include "RadiatorHistory.h"
 #include "TransientParticle.h"
 #include "CherenkovPID.h"
+#include "DigitizedHit.h"
 
 class ChargedParticle: public TransientParticle {
  public:
- ChargedParticle(int pdg = 0): TransientParticle(pdg), m_StopTracing(false) {};
+ ChargedParticle(int pdg = 0, bool primary = true): 
+  TransientParticle(pdg, primary), m_StopTracing(false), 
+  m_HadronicInteractionOccured(false), m_GoodForReconstruction(true), m_EICreconParticleID(0) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
       delete radiator.second;
@@ -63,9 +66,20 @@ class ChargedParticle: public TransientParticle {
     return entry.second;
   };
 
-  // Single particle case for now;
-  void PIDReconstruction(CherenkovPID &pid);
-
+  void SetRecoPdgCode(int pdg)                    { m_RecoPdgCode = pdg; };
+  int GetRecoPdgCode( void )                const { return m_RecoPdgCode; };
+  unsigned GetRecoCherenkovHitCount( void ) const { return m_Hits.size(); };
+  DigitizedHit *GetRecoCherenkovHit(unsigned id) const { 
+    return (id < m_Hits.size() ? m_Hits[id] : 0); 
+  };
+  double GetRecoCherenkovPhotonTheta(unsigned id);
+  double GetRecoCherenkovPhotonPhi(unsigned id);
+  double GetRecoCherenkovAverageTheta(CherenkovRadiator *radiator = 0);
+  double GetMocaCherenkovAverageTheta(CherenkovRadiator *radiator = 0);
+  unsigned GetRecoCherenkovPhotonCount(CherenkovRadiator *radiator = 0);
+  
+  void AddHit(DigitizedHit *hit) { m_Hits.push_back(hit); };
+  
  private:
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
@@ -73,10 +87,23 @@ class ChargedParticle: public TransientParticle {
   // Group steps by radiator of course; in the easiest case an entry and exit points;
   std::vector<std::pair<TRef, RadiatorHistory*> > m_RadiatorHistory;
 
-  bool m_StopTracing; //!
+  bool m_StopTracing;                //!
+
+  int m_RecoPdgCode;                 //!
+  std::vector<DigitizedHit*> m_Hits; //!
+
+ public:
+  bool m_HadronicInteractionOccured;
+
+  bool IsGoodForReconstruction( void ) { return m_GoodForReconstruction; };
+  bool m_GoodForReconstruction;      //!
+
+  // Interface to ePIC tracking; 
+  void SetEICreconParticleID(unsigned id) { m_EICreconParticleID = id;};
+  unsigned m_EICreconParticleID;     //!
 
 #ifndef DISABLE_ROOT_IO
-  ClassDef(ChargedParticle, 1);
+  ClassDef(ChargedParticle, 6);
 #endif
 };
 

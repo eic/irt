@@ -26,7 +26,7 @@
 
 class IRT: public TObject {
  public:
- IRT(unsigned sector = 0): m_Sector(sector), m_IterationLimit(_IRT_ITERATION_LIMIT_), 
+  IRT(/*unsigned sector = 0*/): /*m_Sector(sector),*/ m_IterationLimit(_IRT_ITERATION_LIMIT_), 
     m_Precision(_IRT_PRECISION_DEFAULT_), m_JacobianStep(_IRT_JACOBIAN_STEP_DEFAULT_) {};
   ~IRT() {};
 
@@ -39,36 +39,34 @@ class IRT: public TObject {
   void SetJacobianStep(double value) { m_JacobianStep = value; };
 
   IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, const TVector3 &beam, 
-		    //CherenkovRadiator *derivatives = 0, const IRTSolution *seed = 0);
-		    bool derivatives = false, const IRTSolution *seed = 0);
-  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
-  unsigned GetSector( void ) const { return m_Sector; };
+  //unsigned GetSector( void ) const { return m_Sector; };
 
   inline OpticalBoundary *tail( void ) const { 
     return _m_OpticalBoundaries.size() ? GetOpticalBoundary(_m_OpticalBoundaries.size()-1) : 0;
   };
 
  private:
-  bool Transport(const TVector3 &xfrom, const TVector3 &nfrom); 
+  bool Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length = 0); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
-    //return (id < _m_OpticalBoundaries.size() ? _m_OpticalBoundaries[id] : 0);
   };
 
+  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
+		    bool derivatives = false, const IRTSolution *seed = 0);
+
   // FIXME: this is not the right place for this variable;
-  unsigned m_Sector;
+  //unsigned m_Sector;
 
   unsigned m_IterationLimit;
   double m_Precision, m_JacobianStep; 
 
   std::vector<TRef> _m_OpticalBoundaries;
-  //std::vector<OpticalBoundary *> _m_OpticalBoundaries;
 
 #ifndef DISABLE_ROOT_IO
-  ClassDef(IRT, 3);
+  ClassDef(IRT, 4);
 #endif
 };
 

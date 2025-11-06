@@ -41,7 +41,7 @@ public:
   void DefineIntersectionCut(G4VSolid *cut, G4RotationMatrix *rotation, const G4ThreeVector &translation, bool flip);
   void DefineSubtractionCut (G4VSolid *cut, G4RotationMatrix *rotation, const G4ThreeVector &translation, bool flip);
   void DefineUnion(G4VSolid *solid);
-  //G4VSolid *GetSolid( void ) { return m_Solid; };
+  G4VSolid *GetSolid( void ) { return m_Solid; };
 
   void SetColor(const G4Colour &color);
 
@@ -51,11 +51,14 @@ public:
   G4LogicalVolume *GetLogicalVolume( void ) const { return m_LogicalVolume; };
   
   virtual G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new G4ObjectCopy(phys); };
+  void AddCopy(G4ObjectCopy *copy) { m_Copies.push_back(copy); };
   G4ObjectCopy *GetCopy(unsigned id) const {
     return (id < m_Copies.size() ? m_Copies[id] : 0);
   }; 
 
   virtual G4OpticalSurface *GetMirrorSurface( void ) const { return 0; };
+
+  G4Material *GetMaterial( void ) const { return m_Material; };
 
  protected:
   G4VSolid *m_Solid;                   //!
