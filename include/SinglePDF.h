@@ -81,7 +81,11 @@ class UniformPDF: public SinglePDF {
 class VectorPDF: public TObject {
  public:
   VectorPDF() {};
-  ~VectorPDF() {};
+  ~VectorPDF() {
+    for(auto pdf : m_Members) {
+      delete pdf;
+    }
+  };
   
   void Reset( void ) {
     for(auto member: m_Members)
