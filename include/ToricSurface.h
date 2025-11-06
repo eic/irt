@@ -99,7 +99,9 @@ class ToricSurface: public ParametricSurface {
   TVector3 m_Nz, m_Nr;
   double m_R, m_r, m_Alfa;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ToricSurface, 1);
+#endif
 };
 
 #endif

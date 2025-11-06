@@ -102,7 +102,9 @@ class ChargedParticle: public TransientParticle {
   void SetEICreconParticleID(unsigned id) { m_EICreconParticleID = id;};
   unsigned m_EICreconParticleID;     //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ChargedParticle, 6);
+#endif
 };
 
 #endif

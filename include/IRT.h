@@ -65,7 +65,9 @@ class IRT: public TObject {
 
   std::vector<TRef> _m_OpticalBoundaries;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(IRT, 4);
+#endif
 };
 
 #endif

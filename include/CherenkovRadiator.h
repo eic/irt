@@ -31,8 +31,10 @@ struct CherenkovRadiatorCalibration: public TObject {
   
   TH1D *m_hcalib;
   double m_Coffset, m_Csigma;
-  
+
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovRadiatorCalibration, 1);
+#endif
 };
 
 struct CherenkovRadiatorPlots {
@@ -185,8 +187,10 @@ class CherenkovRadiator: public TObject {
   CherenkovRadiatorPlots  *m_Plots;                         //!
 
   G4DataInterpolation *m_RefractiveIndex;                   //!
-  
+
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovRadiator, 9);
+#endif
 };
 
 #endif

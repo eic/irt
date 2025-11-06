@@ -77,7 +77,9 @@ class ConicalSurface: public ParametricSurface {
   TVector3 m_Nz, m_Nr;
   double m_R0, m_R1, m_Dz, m_Alfa, m_Rc, m_Slope;
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(ConicalSurface, 1);
+#endif
 };
 
 #endif

@@ -158,7 +158,9 @@ class CherenkovDetectorCollection: public BitMask {
   
   //std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovDetectorCollection, 3);
+#endif
 };
 
 #endif

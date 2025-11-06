@@ -37,7 +37,9 @@ class OpticalBoundary: public TObject {
   // Working variables; FIXME: not multithreading friendly;
   static thread_local TVector3 m_ImpactPoint, m_IncomingDirection, m_OutgoingDirection; //!
 
+#ifndef DISABLE_ROOT_IO
   ClassDef(OpticalBoundary, 1);
+#endif
 };
 
 #endif

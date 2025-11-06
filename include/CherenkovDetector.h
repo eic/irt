@@ -158,8 +158,10 @@ class CherenkovDetector: public TObject {
   double m_SectorPhase;
   
   std::map<TString, CherenkovRadiator*> _m_Radiators;
-  
+
+#ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovDetector, 7);
+#endif
 };
 
 #endif

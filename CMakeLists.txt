@@ -9,8 +9,9 @@ cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 
 #----------------------------------------------------------------------------
 # options
-option(EVALUATION "Build evaluation programs" OFF)
-option(DELPHES    "Delphes card production"   ON)
+option(EVALUATION  "Build evaluation programs"                          OFF)
+option(DELPHES     "Delphes card production"                            ON)
+option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects" ON)
 
 #----------------------------------------------------------------------------
 # dependencies
@@ -45,6 +46,7 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-cxx-extension")
 #----------------------------------------------------------------------------
 # IRT library
 
+# headers
 include_directories(
   ${PROJECT_SOURCE_DIR}/include 
   ${ROOT_INCLUDE_DIRS}
@@ -57,11 +59,13 @@ include_directories(
   #/opt/local/include
 )
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
+list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
 #if(DEFINED EICRECON)
 #   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEICRECON")
 #endif()
 
+# sources
 set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
@@ -79,23 +83,36 @@ set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/Calibration.cc
   ${PROJECT_SOURCE_DIR}/source/Digitization.cc
   ${PROJECT_SOURCE_DIR}/source/ReconstructionFactory.cc
-
-  G__IRT.cxx
 )
+if(IRT_ROOT_IO)
+  set(IRT_DICT G__${CMAKE_PROJECT_NAME})
+  list(APPEND IRT_SRC ${IRT_DICT}.cxx)
+endif()
 
-set(IRT_ROOTMAP
-  ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
-  ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
-)
-root_generate_dictionary(G__IRT ${HEADERS} LINKDEF irtLinkDef.h)
-
+# library target
 add_library(${CMAKE_PROJECT_NAME} SHARED ${IRT_SRC} )
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wno-misleading-indentation)
+if(NOT IRT_ROOT_IO)
+  # disable calling of `ClassDef` etc. if not generating ROOT dictionary
+  message(STATUS "NOTE: disabling ROOT dictionary generation")
+  target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC DISABLE_ROOT_IO)
+endif()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>
 )
+
+# ROOT I/O dictionary generation
+if(IRT_ROOT_IO)
+  set(IRT_ROOTMAP
+    ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
+    ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
+  )
+  root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h)
+endif()
+
+# linking
+target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
 
 #----------------------------------------------------------------------------
 # optional targets
@@ -122,10 +139,12 @@ install(TARGETS ${CMAKE_PROJECT_NAME}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${CMAKE_PROJECT_NAME}
 )
-install(FILES
-  ${IRT_ROOTMAP}
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+if(IRT_ROOT_IO)
+  install(FILES
+    ${IRT_ROOTMAP}
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+endif()
 
 #----------------------------------------------------------------------------
 # package config
