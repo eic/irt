@@ -18,6 +18,8 @@ class CherenkovPhotonDetector;
 #define _STORE_REFLECTION_POINTS_ (0x00000002)
 #define _STORE_REFRACTION_POINTS_ (0x00000003)
 
+namespace IRT2 {
+
 class CherenkovDetectorCollection: public BitMask {
  public:
   CherenkovDetectorCollection() {};
@@ -162,5 +164,7 @@ class CherenkovDetectorCollection: public BitMask {
   ClassDef(CherenkovDetectorCollection, 3);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

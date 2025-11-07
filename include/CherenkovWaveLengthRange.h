@@ -2,6 +2,8 @@
 #ifndef _CHERENKOV_WAVELENGTH_RANGE_
 #define _CHERENKOV_WAVELENGTH_RANGE_
 
+namespace IRT2 {
+
 class CherenkovWaveLengthRange {
 public:
  CherenkovWaveLengthRange(unsigned wldim, double numin, double nustep): 
@@ -23,5 +25,7 @@ private:
   unsigned m_WLDim;
   double *m_PhotonEnergies;
 };
+
+} // namespace IRT2
 
 #endif

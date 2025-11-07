@@ -8,6 +8,8 @@
 
 #include "CherenkovRadiator.h"
 
+namespace IRT2 {
+
 class RefractionPoint: public TObject {
  public:
   RefractionPoint()/*: m_Mirror(0), m_VolumeCopy(0)*/ { m_Radiators[0] = 0; m_Radiators[1] = 0; };
@@ -29,5 +31,7 @@ class RefractionPoint: public TObject {
   ClassDef(RefractionPoint, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

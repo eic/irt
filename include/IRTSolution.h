@@ -4,6 +4,8 @@
 #ifndef _IRT_SOLUTION_
 #define _IRT_SOLUTION_
 
+namespace IRT2 {
+
 class IRTSolution {
   friend class IRT;
 
@@ -64,5 +66,7 @@ class IRTSolution {
   // Qaudratic error estimates as provided by the user; assume tracking errors diagonal;
   double m_SigmaDx, m_SigmaDy, m_SigmaDz, m_SigmaDt, m_SigmaDf;
 };
+
+} // namespace IRT2
 
 #endif

@@ -8,6 +8,8 @@
 #ifndef _IRT_CYLINDRICAL_SURFACE_
 #define _IRT_CYLINDRICAL_SURFACE_
 
+namespace IRT2 {
+
 class CylindricalSurface: public ParametricSurface {
  public:
  CylindricalSurface(): m_Concave(true), m_Radius(0.0), m_Alfa(0.0) {};
@@ -77,5 +79,7 @@ class CylindricalSurface: public ParametricSurface {
   ClassDef(CylindricalSurface, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

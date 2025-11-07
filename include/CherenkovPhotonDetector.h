@@ -11,6 +11,8 @@ class G4DataInterpolation;
 
 #include "IRT.h"
 
+namespace IRT2 {
+
 class CherenkovPhotonDetector: public G4Object {
  public:
  CherenkovPhotonDetector(G4VSolid *solid = 0, G4Material *material = 0):
@@ -95,5 +97,7 @@ class CherenkovPhotonDetector: public G4Object {
   ClassDef(CherenkovPhotonDetector, 7);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

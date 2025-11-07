@@ -15,6 +15,8 @@ class CherenkovMirrorGroup;
 class OpticalBoundary;
 class G4LogicalVolume;
 
+namespace IRT2 {
+
 class CherenkovDetector: public TObject {
  public:
  CherenkovDetector(const char *name = 0): /*m_ContainerVolume(0),*/ m_Name(name ? name : ""), 
@@ -163,5 +165,7 @@ class CherenkovDetector: public TObject {
   ClassDef(CherenkovDetector, 7);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

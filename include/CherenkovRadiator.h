@@ -17,6 +17,8 @@ class G4RadiatorMaterial;
 
 class G4DataInterpolation;
 
+namespace IRT2 {
+
 struct CherenkovRadiatorCalibration: public TObject {
   CherenkovRadiatorCalibration(): m_Stat(0), 
     m_AverageZvtx(0.0), m_hcalib(0), m_Coffset(0.0), m_Csigma(0.0) {};
@@ -192,5 +194,7 @@ class CherenkovRadiator: public TObject {
   ClassDef(CherenkovRadiator, 9);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

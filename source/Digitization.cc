@@ -6,6 +6,8 @@
 #include "GeantImport.h"
 #include "Digitization.h"
 
+namespace IRT2 {
+
 // Kind of digitization; may want to comment out (or set very fine) for debugging;
 #define _SENSOR_ACTIVE_AREA_PIXELLATION_DEFAULT_      (32)
 
@@ -156,3 +158,5 @@ void Digitization::ProduceDigitizedHits(bool calibration)
 } // Digitization::ProduceDigitizedHits()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

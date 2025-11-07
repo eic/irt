@@ -6,6 +6,8 @@
 #ifndef _CHERENKOV_PID_
 #define _CHERENKOV_PID_
 
+namespace IRT2 {
+
 class CherenkovRadiator;
 
 class RadiatorMassHypothesis {
@@ -72,5 +74,7 @@ class CherenkovPID {
   // suffice for now;
   std::vector<MassHypothesis*> m_Hypotheses;
 };
+
+} // namespace IRT2
 
 #endif

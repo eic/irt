@@ -7,6 +7,8 @@ class TParticlePDG;
 #ifndef _RECONSTRUCTION_FACTORY_
 #define _RECONSTRUCTION_FACTORY_
 
+namespace IRT2 {
+
 struct ReconstructionFactoryPlots {
   ReconstructionFactoryPlots();
   ~ReconstructionFactoryPlots() {};
@@ -95,5 +97,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
 };
+
+} // namespace IRT2
 
 #endif

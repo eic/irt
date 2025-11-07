@@ -13,6 +13,8 @@ class TDatabasePDG;
 #define _THETA_BIN_COUNT_ (180/5)
 #define _THETA_BIN_WIDTH_ (M_PI / _THETA_BIN_COUNT_)
 
+namespace IRT2 {
+
 class Calibration : public virtual GeantImport {
  public:
   Calibration ();
@@ -69,5 +71,6 @@ class Calibration : public virtual GeantImport {
   double m_DefaultSinglePhotonThetaResolution;
 };
 
+} // namespace IRT2
 
 #endif

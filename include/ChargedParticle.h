@@ -12,6 +12,8 @@
 #include "CherenkovPID.h"
 #include "DigitizedHit.h"
 
+namespace IRT2 {
+
 class ChargedParticle: public TransientParticle {
  public:
  ChargedParticle(int pdg = 0, bool primary = true): 
@@ -106,5 +108,7 @@ class ChargedParticle: public TransientParticle {
   ClassDef(ChargedParticle, 6);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

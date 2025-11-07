@@ -4,6 +4,8 @@
 #ifndef _IRT_SPHERICAL_SURFACE_
 #define _IRT_SPHERICAL_SURFACE_
 
+namespace IRT2 {
+
 class SphericalSurface: public ParametricSurface {
  public:
  SphericalSurface(): m_Concave(true), m_Radius(0.0) {};
@@ -47,5 +49,7 @@ class SphericalSurface: public ParametricSurface {
   ClassDef(SphericalSurface, 2);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

@@ -5,6 +5,8 @@
 #ifndef _CHARGED_PARTICLE_STEP_
 #define _CHARGED_PARTICLE_STEP_
 
+namespace IRT2 {
+
 class ChargedParticleStep: public TObject {
  public:
   ChargedParticleStep()/*: m_Length(0.0)*/ {};
@@ -27,5 +29,7 @@ class ChargedParticleStep: public TObject {
   ClassDef(ChargedParticleStep, 2);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

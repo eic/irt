@@ -10,10 +10,13 @@
 
 #include "TransientParticle.h"
 #include "CherenkovPhotonDetector.h"
-class ReflectionPoint;
-class ChargedParticle;
 #include "RefractionPoint.h"
 #include "SinglePDF.h"
+
+namespace IRT2 {
+
+class ReflectionPoint;
+class ChargedParticle;
 
 class OpticalPhoton: public TransientParticle {
  public:
@@ -110,5 +113,7 @@ class OpticalPhoton: public TransientParticle {
   ClassDef(OpticalPhoton, 12);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

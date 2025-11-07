@@ -11,6 +11,8 @@
 
 class CherenkovWaveLengthRange;
 
+namespace IRT2 {
+
 class SurfaceCopy: public G4ObjectCopy {
  public:
  SurfaceCopy(G4VPhysicalVolume *phys = 0): G4ObjectCopy(phys), m_Surface(0) {};
@@ -100,5 +102,7 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
   ClassDef(ConicalMirror, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

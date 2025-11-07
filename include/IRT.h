@@ -24,6 +24,8 @@
 #include "ParametricSurface.h"
 #include "IRTSolution.h"
 
+namespace IRT2 {
+
 class IRT: public TObject {
  public:
   IRT(/*unsigned sector = 0*/): /*m_Sector(sector),*/ m_IterationLimit(_IRT_ITERATION_LIMIT_), 
@@ -69,5 +71,7 @@ class IRT: public TObject {
   ClassDef(IRT, 4);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

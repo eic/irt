@@ -8,6 +8,8 @@
 
 class OpticalPhoton;
 
+namespace IRT2 {
+
 class CherenkovEvent: public TObject {
  public:
   CherenkovEvent() {};
@@ -38,5 +40,7 @@ class CherenkovEvent: public TObject {
   ClassDef(CherenkovEvent, 2);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

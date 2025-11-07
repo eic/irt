@@ -6,6 +6,9 @@
 #define _OPTICAL_BOUNDARY_
 
 #include "CherenkovRadiator.h"
+
+namespace IRT2 {
+
 class ParametricSurface;
 
 class OpticalBoundary: public TObject {
@@ -41,5 +44,7 @@ class OpticalBoundary: public TObject {
   ClassDef(OpticalBoundary, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

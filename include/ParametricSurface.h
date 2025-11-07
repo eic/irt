@@ -7,6 +7,8 @@
 #ifndef _IRT_PARAMETRIC_SURFACE_
 #define _IRT_PARAMETRIC_SURFACE_
 
+namespace IRT2 {
+
 class ParametricSurface: public TObject {
  public:
  ParametricSurface(): m_Umin(0.0), m_Umax(0.0), m_Vmin(0.0), m_Vmax(0.0) {};
@@ -87,6 +89,8 @@ class LocalCoordinatesXY: public TObject {
 #ifndef DISABLE_ROOT_IO
   ClassDef(LocalCoordinatesXY, 1);
 #endif
-}; 
+};
+
+} // namespace IRT2
 
 #endif

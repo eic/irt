@@ -5,6 +5,8 @@
 #ifndef _TRANSIENT_PARTICLE_
 #define _TRANSIENT_PARTICLE_
 
+namespace IRT2 {
+
 // Need a separate class because do not want to deal with G4VUserTrackInformation serialization;
 class TransientParticle: public TObject {
  public:
@@ -37,5 +39,7 @@ class TransientParticle: public TObject {
   ClassDef(TransientParticle, 4);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

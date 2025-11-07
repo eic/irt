@@ -5,10 +5,13 @@
 #define _GEANT_IMPORT_
 
 #include "CherenkovEvent.h"
-class CherenkovDetectorCollection;
-class CherenkovDetector;
 
 #define _MOMENTUM_CUTOFF_DEFAULT_ (0.010)
+
+namespace IRT2 {
+
+class CherenkovDetectorCollection;
+class CherenkovDetector;
 
 class GeantImport {
  public:
@@ -46,8 +49,10 @@ protected:
   // Input (GEANT) / output(Reco) event structure;
   CherenkovEvent *m_Event;
 
-  bool m_PurgeSecondaries; 
+  bool m_PurgeSecondaries;
   double m_MomentumCutoff;
 };
+
+} // namespace IRT2
 
 #endif

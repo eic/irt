@@ -11,6 +11,8 @@
 #ifndef _IRT_TORIC_SURFACE_
 #define _IRT_TORIC_SURFACE_
 
+namespace IRT2 {
+
 class ToricSurface: public ParametricSurface {
  public:
  ToricSurface(): m_Concave(true), m_R(0.0), m_r(0.0), m_Alfa(0.0) {};
@@ -103,5 +105,7 @@ class ToricSurface: public ParametricSurface {
   ClassDef(ToricSurface, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

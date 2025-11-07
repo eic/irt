@@ -11,6 +11,9 @@
 
 #include "CherenkovPhotonDetector.h"
 #include "SinglePDF.h"
+
+namespace IRT2 {
+
 class ChargedParticle;
 class IRT;
 
@@ -87,4 +90,7 @@ class DigitizedHit {
   //TVector3 m_PhotonVertexPosition;                                //!
   //TVector3 m_PhotonVertexMomentum;                                //!
 };
+
+} // namespace IRT2
+
 #endif

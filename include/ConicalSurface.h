@@ -4,6 +4,8 @@
 #ifndef _IRT_CONICAL_SURFACE_
 #define _IRT_CONICAL_SURFACE_
 
+namespace IRT2 {
+
 class ConicalSurface: public ParametricSurface {
  public:
  ConicalSurface(): m_Concave(true), m_R0(0.0), m_R1(0.0), m_Dz(0.0), m_Alfa(0.0), m_Rc(0.0), m_Slope(0.0) {};
@@ -81,5 +83,7 @@ class ConicalSurface: public ParametricSurface {
   ClassDef(ConicalSurface, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

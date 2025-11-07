@@ -4,6 +4,8 @@
 #ifndef _IRT_FLAT_SURFACE_
 #define _IRT_FLAT_SURFACE_
 
+namespace IRT2 {
+
 // In fact a rectangle in space;
 class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
  public:
@@ -57,5 +59,7 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
   ClassDef(FlatSurface, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

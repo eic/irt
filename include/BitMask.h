@@ -4,6 +4,8 @@
 #ifndef _BIT_MASK_
 #define _BIT_MASK_
 
+namespace IRT2 {
+
 class BitMask: public TObject {
  public:
  BitMask(ULong64_t mask = 0): m_Mask(mask) {};
@@ -23,5 +25,7 @@ class BitMask: public TObject {
   ClassDef(BitMask,1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

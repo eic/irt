@@ -8,6 +8,8 @@
 
 #include "CherenkovMirror.h"
 
+namespace IRT2 {
+
 class ReflectionPoint: public TObject {
  public:
  ReflectionPoint(): m_Mirror(0)/*, m_VolumeCopy(0)*/ {};
@@ -24,5 +26,7 @@ class ReflectionPoint: public TObject {
   ClassDef(ReflectionPoint, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

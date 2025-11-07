@@ -10,6 +10,8 @@
 #include "OpticalPhoton.h"
 #include "ChargedParticleStep.h"
 
+namespace IRT2 {
+
 class RadiatorHistory: public TObject {
  public:
  RadiatorHistory(): m_EstimatedPath(0.0)/*, m_AverageTime(0.0)*/ {};
@@ -82,5 +84,7 @@ class RadiatorHistory: public TObject {
   ClassDef(RadiatorHistory, 1);
 #endif
 };
+
+} // namespace IRT2
 
 #endif

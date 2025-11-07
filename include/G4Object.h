@@ -20,6 +20,8 @@ class G4RotationMatrix;
 class G4ThreeVector;
 #endif
 
+namespace IRT2 {
+
 class G4ObjectCopy: public TObject {
  public:
  G4ObjectCopy(G4VPhysicalVolume *phys = 0): m_PhysicalVolume(phys) {};
@@ -78,5 +80,7 @@ public:
   ClassDef(G4Object, 2)
 #endif
 };
+
+} // namespace IRT2
 
 #endif

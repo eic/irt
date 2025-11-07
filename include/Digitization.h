@@ -6,6 +6,9 @@
 
 #include "DigitizedHit.h"
 #include "GeantImport.h"
+
+namespace IRT2 {
+
 class CherenkovPhotonDetector;
 
 struct BlackoutCell {
@@ -65,5 +68,7 @@ class Digitization : public virtual GeantImport {
   double m_SinglePhotonTimingResolution;
   unsigned m_SensorActiveAreaPixellation;
 };
+
+} // namespace IRT2
 
 #endif

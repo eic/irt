@@ -7,6 +7,8 @@
 #ifndef _SINGLE_PDF_
 #define _SINGLE_PDF_
 
+namespace IRT2 {
+
 class SinglePDF: public TObject {
  public:
   SinglePDF() {};
@@ -166,5 +168,6 @@ class VectorPDF: public TObject {
 #endif
 };
 
+} // namespace IRT2
 
 #endif
