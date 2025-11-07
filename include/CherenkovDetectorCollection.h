@@ -1,8 +1,6 @@
+#pragma once
 
 #include <map>
-
-#ifndef _CHERENKOV_DETECTOR_COLLECTION_
-#define _CHERENKOV_DETECTOR_COLLECTION_
 
 class G4LogicalVolume;
 class G4RadiatorMaterial;
@@ -17,6 +15,8 @@ class CherenkovPhotonDetector;
 #define _STORE_ORPHAN_PHOTONS_    (0x00000001)
 #define _STORE_REFLECTION_POINTS_ (0x00000002)
 #define _STORE_REFRACTION_POINTS_ (0x00000003)
+
+namespace IRT2 {
 
 class CherenkovDetectorCollection: public BitMask {
  public:
@@ -163,4 +163,4 @@ class CherenkovDetectorCollection: public BitMask {
 #endif
 };
 
-#endif
+} // namespace IRT2

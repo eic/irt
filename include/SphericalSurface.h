@@ -1,8 +1,8 @@
+#pragma once
 
 #include "ParametricSurface.h"
 
-#ifndef _IRT_SPHERICAL_SURFACE_
-#define _IRT_SPHERICAL_SURFACE_
+namespace IRT2 {
 
 class SphericalSurface: public ParametricSurface {
  public:
@@ -48,4 +48,4 @@ class SphericalSurface: public ParametricSurface {
 #endif
 };
 
-#endif
+} // namespace IRT2

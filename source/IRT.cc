@@ -1,6 +1,8 @@
 
 #include "IRT.h"
 
+namespace IRT2 {
+
 thread_local TVector3 OpticalBoundary::m_ImpactPoint, OpticalBoundary::m_IncomingDirection;
 thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
@@ -224,3 +226,5 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 } // IRT::Solve()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

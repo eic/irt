@@ -3,6 +3,8 @@
 
 #include "CylindricalSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool CylindricalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
@@ -27,3 +29,5 @@ double CylindricalSurface::GetDistance(const TVector3 &xx) const
 } // CylindricalSurface::GetDistance()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

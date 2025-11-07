@@ -1,14 +1,14 @@
+#pragma once
 
 #include <map>
 #include <vector>
 
 #include <TObject.h>
 
-#ifndef _RADIATOR_HISTORY_
-#define _RADIATOR_HISTORY_
-
 #include "OpticalPhoton.h"
 #include "ChargedParticleStep.h"
+
+namespace IRT2 {
 
 class RadiatorHistory: public TObject {
  public:
@@ -83,4 +83,4 @@ class RadiatorHistory: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

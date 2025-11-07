@@ -1,6 +1,8 @@
 
 #include "SphericalSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool SphericalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
@@ -20,3 +22,5 @@ double SphericalSurface::GetDistance(const TVector3 &xx) const
 } // SphericalSurface::GetDistance()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

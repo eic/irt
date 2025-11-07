@@ -1,6 +1,4 @@
-
-#ifndef _CHERENKOV_MIRROR_
-#define _CHERENKOV_MIRROR_
+#pragma once
 
 #include "G4Object.h"
 #include "FlatSurface.h"
@@ -10,6 +8,8 @@
 #include "ParametricSurface.h"
 
 class CherenkovWaveLengthRange;
+
+namespace IRT2 {
 
 class SurfaceCopy: public G4ObjectCopy {
  public:
@@ -101,4 +101,4 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
 #endif
 };
 
-#endif
+} // namespace IRT2

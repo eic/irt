@@ -1,6 +1,8 @@
 
 #include "FlatSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool FlatSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
@@ -35,3 +37,5 @@ double FlatSurface::GetDistance(const TVector3 &xx) const
 } // FlatSurface::GetDistance()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

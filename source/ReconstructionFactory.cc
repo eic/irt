@@ -18,6 +18,8 @@
 #include "CherenkovEvent.h"
 #include "ReconstructionFactory.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
@@ -617,3 +619,5 @@ void ReconstructionFactory::DisplayStandardPlots(const char *cname, int wtopx,
 } // ReconstructionFactory::DisplayStandardPlots()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

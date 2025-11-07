@@ -1,14 +1,15 @@
+#pragma once
 
 #include <TTree.h>
 
-#ifndef _GEANT_IMPORT_
-#define _GEANT_IMPORT_
-
 #include "CherenkovEvent.h"
-class CherenkovDetectorCollection;
-class CherenkovDetector;
 
 #define _MOMENTUM_CUTOFF_DEFAULT_ (0.010)
+
+namespace IRT2 {
+
+class CherenkovDetectorCollection;
+class CherenkovDetector;
 
 class GeantImport {
  public:
@@ -46,8 +47,8 @@ protected:
   // Input (GEANT) / output(Reco) event structure;
   CherenkovEvent *m_Event;
 
-  bool m_PurgeSecondaries; 
+  bool m_PurgeSecondaries;
   double m_MomentumCutoff;
 };
 
-#endif
+} // namespace IRT2

@@ -5,6 +5,8 @@
 #include "CherenkovEvent.h"
 #include "GeantImport.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dname):
@@ -50,3 +52,5 @@ void GeantImport::GetInputTreeEntry(unsigned ev) const
 } // GeantImport::GetInputTreeEntry()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2
