@@ -1,10 +1,8 @@
+#pragma once
 
 #include <TObject.h>
 #include <TVector3.h>
 #include <TRef.h>
-
-#ifndef _REFLECTION_POINT_
-#define _REFLECTION_POINT_
 
 #include "CherenkovMirror.h"
 
@@ -28,5 +26,3 @@ class ReflectionPoint: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

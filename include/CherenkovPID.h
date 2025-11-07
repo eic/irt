@@ -1,10 +1,8 @@
+#pragma once
 
 #include <algorithm>
 #include <map>
 #include <vector>
-
-#ifndef _CHERENKOV_PID_
-#define _CHERENKOV_PID_
 
 namespace IRT2 {
 
@@ -76,5 +74,3 @@ class CherenkovPID {
 };
 
 } // namespace IRT2
-
-#endif

@@ -1,8 +1,6 @@
+#pragma once
 
 #include <TVector3.h>
-
-#ifndef _IRT_SOLUTION_
-#define _IRT_SOLUTION_
 
 namespace IRT2 {
 
@@ -68,5 +66,3 @@ class IRTSolution {
 };
 
 } // namespace IRT2
-
-#endif

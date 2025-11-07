@@ -1,3 +1,4 @@
+#pragma once
 
 #include <map>
 #include <vector>
@@ -7,9 +8,6 @@
 #include <TVector3.h>
 #include <TString.h>
 class TH1D;
-
-#ifndef _CHERENKOV_RADIATOR_
-#define _CHERENKOV_RADIATOR_
 
 #include "ParametricSurface.h"
 class G4LogicalVolume;
@@ -196,5 +194,3 @@ class CherenkovRadiator: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

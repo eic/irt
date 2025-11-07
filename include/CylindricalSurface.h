@@ -1,12 +1,10 @@
+#pragma once
 
 //
 // Yes, prefer to keep it separately even that it is a subset of a ConicalSurface;
 //
 
 #include "ParametricSurface.h"
-
-#ifndef _IRT_CYLINDRICAL_SURFACE_
-#define _IRT_CYLINDRICAL_SURFACE_
 
 namespace IRT2 {
 
@@ -81,5 +79,3 @@ class CylindricalSurface: public ParametricSurface {
 };
 
 } // namespace IRT2
-
-#endif

@@ -1,8 +1,6 @@
+#pragma once
 
 #include "ParametricSurface.h"
-
-#ifndef _IRT_FLAT_SURFACE_
-#define _IRT_FLAT_SURFACE_
 
 namespace IRT2 {
 
@@ -61,5 +59,3 @@ class FlatSurface: public ParametricSurface, public LocalCoordinatesXY {
 };
 
 } // namespace IRT2
-
-#endif

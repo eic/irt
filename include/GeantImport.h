@@ -1,8 +1,6 @@
+#pragma once
 
 #include <TTree.h>
-
-#ifndef _GEANT_IMPORT_
-#define _GEANT_IMPORT_
 
 #include "CherenkovEvent.h"
 
@@ -54,5 +52,3 @@ protected:
 };
 
 } // namespace IRT2
-
-#endif

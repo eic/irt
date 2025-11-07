@@ -1,11 +1,9 @@
+#pragma once
 
 #include <map>
 
 class TDatabasePDG;
 #include <TRandom.h>
-
-#ifndef _CALIBRATION_
-#define _CALIBRATION_
 
 #include "GeantImport.h"
 
@@ -72,5 +70,3 @@ class Calibration : public virtual GeantImport {
 };
 
 } // namespace IRT2
-
-#endif

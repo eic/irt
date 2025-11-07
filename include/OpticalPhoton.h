@@ -1,12 +1,10 @@
+#pragma once
 
 #include <set>
 #include <map>
 #include <vector>
 
 #include <TVector3.h>
-
-#ifndef _OPTICAL_PHOTON_
-#define _OPTICAL_PHOTON_
 
 #include "TransientParticle.h"
 #include "CherenkovPhotonDetector.h"
@@ -115,5 +113,3 @@ class OpticalPhoton: public TransientParticle {
 };
 
 } // namespace IRT2
-
-#endif

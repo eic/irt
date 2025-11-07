@@ -1,12 +1,10 @@
+#pragma once
 
 #include <vector>
 
 #include <TVector3.h>
 #include <TObject.h>
 #include <TRef.h>
-
-#ifndef _IRT_FACTORY_
-#define _IRT_FACTORY_
 
 // Don't even care about the units here; [mm] in fact; just make it practically small;
 #define _IRT_PRECISION_DEFAULT_     (1E-7)
@@ -73,5 +71,3 @@ class IRT: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

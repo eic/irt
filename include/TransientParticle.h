@@ -1,9 +1,7 @@
+#pragma once
 
 #include <TObject.h>
 #include <TVector3.h>
-
-#ifndef _TRANSIENT_PARTICLE_
-#define _TRANSIENT_PARTICLE_
 
 namespace IRT2 {
 
@@ -41,5 +39,3 @@ class TransientParticle: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

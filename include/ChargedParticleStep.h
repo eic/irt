@@ -1,9 +1,7 @@
+#pragma once
 
 #include <TObject.h>
 #include <TVector3.h>
-
-#ifndef _CHARGED_PARTICLE_STEP_
-#define _CHARGED_PARTICLE_STEP_
 
 namespace IRT2 {
 
@@ -31,5 +29,3 @@ class ChargedParticleStep: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

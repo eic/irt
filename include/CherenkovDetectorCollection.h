@@ -1,8 +1,6 @@
+#pragma once
 
 #include <map>
-
-#ifndef _CHERENKOV_DETECTOR_COLLECTION_
-#define _CHERENKOV_DETECTOR_COLLECTION_
 
 class G4LogicalVolume;
 class G4RadiatorMaterial;
@@ -166,5 +164,3 @@ class CherenkovDetectorCollection: public BitMask {
 };
 
 } // namespace IRT2
-
-#endif

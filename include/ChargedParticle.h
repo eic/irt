@@ -1,10 +1,8 @@
+#pragma once
 
 #include <vector>
 
 #include <TRef.h>
-
-#ifndef _CHARGED_PARTICLE_
-#define _CHARGED_PARTICLE_
 
 #include "CherenkovRadiator.h"
 #include "RadiatorHistory.h"
@@ -110,5 +108,3 @@ class ChargedParticle: public TransientParticle {
 };
 
 } // namespace IRT2
-
-#endif

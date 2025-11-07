@@ -1,6 +1,4 @@
-
-#ifndef _CHERENKOV_WAVELENGTH_RANGE_
-#define _CHERENKOV_WAVELENGTH_RANGE_
+#pragma once
 
 namespace IRT2 {
 
@@ -27,5 +25,3 @@ private:
 };
 
 } // namespace IRT2
-
-#endif

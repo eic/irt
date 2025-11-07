@@ -1,6 +1,4 @@
-
-#ifndef _CHERENKOV_MIRROR_
-#define _CHERENKOV_MIRROR_
+#pragma once
 
 #include "G4Object.h"
 #include "FlatSurface.h"
@@ -104,5 +102,3 @@ class ConicalMirror: public CherenkovMirror, public ConicalSurface {
 };
 
 } // namespace IRT2
-
-#endif

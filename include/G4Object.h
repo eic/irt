@@ -1,8 +1,6 @@
+#pragma once
 
 #include <TObject.h>
-
-#ifndef _G4_OBJECT_
-#define _G4_OBJECT_
 
 class G4Material;
 class G4VPhysicalVolume;
@@ -82,5 +80,3 @@ public:
 };
 
 } // namespace IRT2
-
-#endif

@@ -1,3 +1,4 @@
+#pragma once
 
 #include <set>
 #include <map>
@@ -5,9 +6,6 @@
 
 #include <TObject.h>
 #include <TVector3.h>
-
-#ifndef _DIGITIZED_HIT_
-#define _DIGITIZED_HIT_
 
 #include "CherenkovPhotonDetector.h"
 #include "SinglePDF.h"
@@ -92,5 +90,3 @@ class DigitizedHit {
 };
 
 } // namespace IRT2
-
-#endif

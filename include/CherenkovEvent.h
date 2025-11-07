@@ -1,8 +1,6 @@
+#pragma once
 
 #include <set>
-
-#ifndef _CHERENKOV_EVENT_
-#define _CHERENKOV_EVENT_
 
 #include "ChargedParticle.h"
 
@@ -42,5 +40,3 @@ class CherenkovEvent: public TObject {
 };
 
 } // namespace IRT2
-
-#endif

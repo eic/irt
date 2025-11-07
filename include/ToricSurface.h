@@ -1,3 +1,4 @@
+#pragma once
 
 #include "ParametricSurface.h"
 
@@ -7,9 +8,6 @@
 // NB: this class is actually disfunctional (a crossing point with a straight line
 // in 3D ends up with a quartic equation);
 //
-
-#ifndef _IRT_TORIC_SURFACE_
-#define _IRT_TORIC_SURFACE_
 
 namespace IRT2 {
 
@@ -107,5 +105,3 @@ class ToricSurface: public ParametricSurface {
 };
 
 } // namespace IRT2
-
-#endif

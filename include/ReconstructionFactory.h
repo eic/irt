@@ -1,11 +1,9 @@
+#pragma once
 
 class TParticlePDG;
 
 #include "Calibration.h"
 #include "Digitization.h"
-
-#ifndef _RECONSTRUCTION_FACTORY_
-#define _RECONSTRUCTION_FACTORY_
 
 namespace IRT2 {
 
@@ -99,5 +97,3 @@ class ReconstructionFactory : public Digitization, public Calibration {
 };
 
 } // namespace IRT2
-
-#endif

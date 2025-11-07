@@ -1,8 +1,6 @@
+#pragma once
 
 #include <TRandom.h>
-
-#ifndef _DIGITIZATION_
-#define _DIGITIZATION_
 
 #include "DigitizedHit.h"
 #include "GeantImport.h"
@@ -70,5 +68,3 @@ class Digitization : public virtual GeantImport {
 };
 
 } // namespace IRT2
-
-#endif
