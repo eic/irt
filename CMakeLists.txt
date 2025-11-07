@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
-project(IRT
+project(IRT2
   VERSION 2.1.0
   LANGUAGES CXX
 )
