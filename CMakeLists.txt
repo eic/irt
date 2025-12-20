@@ -97,6 +97,8 @@ list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
 # sources
 set(IRT_SRC
+  ${PROJECT_SOURCE_DIR}/source/CherenkovDetectorCollection.cc
+  
   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc
   ${PROJECT_SOURCE_DIR}/source/SphericalSurface.cc
   ${PROJECT_SOURCE_DIR}/source/ToricSurface.cc

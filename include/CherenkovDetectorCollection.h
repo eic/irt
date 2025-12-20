@@ -20,10 +20,15 @@ namespace IRT2 {
 
 class CherenkovDetectorCollection: public BitMask {
  public:
-  CherenkovDetectorCollection() {};
+  CherenkovDetectorCollection();
   // FIXME: populate the dtor, for completeness;
   ~CherenkovDetectorCollection() {};
 
+  static CherenkovDetectorCollection *m_Instance;              //!
+  static CherenkovDetectorCollection *Instance() {
+    return m_Instance ? m_Instance : new CherenkovDetectorCollection();
+  };
+  
   CherenkovDetector *AddNewDetector(const char *name) {
     auto det = new CherenkovDetector(name);
     m_Detectors[det->GetName()] = det;
