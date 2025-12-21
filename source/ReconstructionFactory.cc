@@ -345,9 +345,11 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       
       // And eventually calculate the overall event chi^2;
       {
+#ifdef _EXPECTED_BG_PHOTON_COUNT_
 	unsigned nbg = 0;
 	for(auto &hit: Hits()) 
 	  if (hit.m_BackgroundCandidate) nbg++;
+#endif
 	
 	unsigned ndfev = 0, idx = 0;
 	double chi2ev = 0;
