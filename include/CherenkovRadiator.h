@@ -8,6 +8,7 @@
 #include <TVector3.h>
 #include <TString.h>
 class TH1D;
+class TCanvas;
 
 #include "ParametricSurface.h"
 class G4LogicalVolume;
@@ -73,8 +74,9 @@ class CherenkovRadiator: public TObject {
    m_ID(0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), m_YieldStat(0), 
    m_YieldCff(0.0), m_DetectedToCalibrationPhotonRatio(0.0), 
-   m_UsedInRingImaging(false), m_Plots(0) {
-    m_LogicalVolumes.push_back(volume);
+   m_UsedInRingImaging(false), m_Plots(0),
+   m_OutputPlotVisualizationEnabled(false), m_wtopx(0), m_wtopy(0), m_wx(0), m_wy(0) {
+   m_LogicalVolumes.push_back(volume);
   };
   ~CherenkovRadiator() {};
 
@@ -182,12 +184,20 @@ class CherenkovRadiator: public TObject {
     return this;
   };
   CherenkovRadiatorPlots *Plots( void ) const { return m_Plots; };
-  void DisplayStandardPlots(const char *cname, int wtopx, unsigned wtopy, unsigned wx, unsigned wy) const;
+  TCanvas *DisplayStandardPlots(const char *cname, const char *wname,
+				int wtopx, unsigned wtopy, unsigned wx, unsigned wy) const;
   
   CherenkovRadiatorPlots  *m_Plots;                         //!
 
   G4DataInterpolation *m_RefractiveIndex;                   //!
 
+  bool m_OutputPlotVisualizationEnabled;                    //!
+  int m_wtopx;                                              //!
+  unsigned m_wtopy;                                         //!
+  unsigned m_wx;                                            //!
+  unsigned m_wy;                                            //!
+  //TCanvas *m_cv;                                            //!
+  
 #ifndef DISABLE_ROOT_IO
   ClassDef(CherenkovRadiator, 9);
 #endif

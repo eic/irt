@@ -1,6 +1,8 @@
 #pragma once
 
+#include <TH1D.h>
 class TParticlePDG;
+class TCanvas;
 
 #include "Calibration.h"
 #include "Digitization.h"
@@ -9,7 +11,14 @@ namespace IRT2 {
 
 struct ReconstructionFactoryPlots {
   ReconstructionFactoryPlots();
-  ~ReconstructionFactoryPlots() {};
+  ~ReconstructionFactoryPlots() {
+    delete m_hnpe;
+    delete m_hnhits;
+    delete m_hccdftr;
+    delete m_hccdfev;
+    delete m_hdtph;
+    delete m_hmatch;
+  };
   
   // Monte-Carlo plot(s);
   TH1D *hnpe()              const { return m_hnpe;  };
@@ -29,7 +38,9 @@ class ReconstructionFactory : public Digitization, public Calibration {
  public:
   ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, const char *dname = 0);
   ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event);
-  virtual ~ReconstructionFactory() {};
+  virtual ~ReconstructionFactory() {
+    if (m_Plots) delete m_Plots;
+  };
 
   void IgnoreTimingInChiSquare( void )               { m_UseTimingInChiSquare = false; };
   void IgnorePoissonTermInChiSquare( void )          { m_UsePoissonTermInChiSquare = false; };
@@ -63,9 +74,11 @@ class ReconstructionFactory : public Digitization, public Calibration {
   
   void InitializePlots( void ) { m_Plots = new ReconstructionFactoryPlots(); };
   ReconstructionFactoryPlots *Plots( void ) const { return m_Plots; };
-  void DisplayStandardPlots(const char *cname, int wtopx, unsigned wtopy, unsigned wx, unsigned wy) const;
+  TCanvas *DisplayStandardPlots(const char *cname, int wtopx, unsigned wtopy, unsigned wx, unsigned wy) const;
   
   void SetHitCountCutoff(unsigned value) { m_HitCountCutoff = value; };
+
+  unsigned GetProcessedEventCount() const { return m_ProcessedEventCount; };
   
  private:
   bool m_VerboseMode;
@@ -91,6 +104,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   ReconstructionFactoryPlots  *m_Plots;      
 
   unsigned m_HitCountCutoff;
+  unsigned m_ProcessedEventCount;
   
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);

@@ -23,7 +23,8 @@ Calibration::Calibration():
   m_UseActsTracking(true),//false),
   m_DefaultSinglePhotonThetaResolution(_SPE_THETA_RESOLUTION_DEFAULT_)
 {
-  m_DatabasePDG = new TDatabasePDG();
+  //m_DatabasePDG = new TDatabasePDG();
+  m_DatabasePDG = TDatabasePDG::Instance();
 
   memset(m_CalibrationBinStat, 0x00, sizeof(m_CalibrationBinStat));
 } // Calibration::Calibration()
