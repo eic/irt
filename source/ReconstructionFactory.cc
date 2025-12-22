@@ -33,7 +33,8 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_UseMcTruthPhotonDirectionSeed(true),
   m_Plots(0),
   // Require at least one associated hit per default;
-  m_HitCountCutoff(1)
+  m_HitCountCutoff(1),
+  m_ProcessedEventCount(0)
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 // -------------------------------------------------------------------------------------
@@ -52,7 +53,8 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_UseMcTruthPhotonDirectionSeed(true),
   m_Plots(0),
   // Require at least one associated hit per default;
-  m_HitCountCutoff(1)
+  m_HitCountCutoff(1),
+  m_ProcessedEventCount(0)
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 
@@ -580,6 +582,8 @@ CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
     } //for mcparticle
   
   if (BeVerbose() && !(ev%100)) printf("Event %5d ...\n", ev);
+
+  m_ProcessedEventCount++;
   
   return Event();
 } // ReconstructionFactory::GetEvent()
@@ -602,13 +606,13 @@ ReconstructionFactoryPlots::ReconstructionFactoryPlots( void )
 
 // -------------------------------------------------------------------------------------
 
-void ReconstructionFactory::DisplayStandardPlots(const char *cname, int wtopx,
-					     unsigned wtopy, unsigned wx, unsigned wy) const
+TCanvas *ReconstructionFactory::DisplayStandardPlots(const char *cname, int wtopx,
+						     unsigned wtopy, unsigned wx, unsigned wy) const
 {
-  if (!Plots()) return;
-  
-  auto cv = new TCanvas("", cname, wtopx, wtopy, wx, wy);
-  cv->Divide(2, 4);
+  if (!Plots()) return 0;
+	  
+  auto cv = new TCanvas("cx", cname, wtopx, wtopy, wx, wy);
+  cv->Divide(2, 3);
   
   cv->cd(1);                      Plots()->hnpe()   ->Draw();
   cv->cd(2);                      Plots()->hnhits() ->Draw();
@@ -616,6 +620,8 @@ void ReconstructionFactory::DisplayStandardPlots(const char *cname, int wtopx,
   cv->cd(4);                      Plots()->hccdfev()->Draw();
   cv->cd(5);                      Plots()->hdtph()  ->Fit("gaus");
   cv->cd(6);                      Plots()->hmatch() ->Draw();
+
+  return cv;
 } // ReconstructionFactory::DisplayStandardPlots()
 
 // -------------------------------------------------------------------------------------

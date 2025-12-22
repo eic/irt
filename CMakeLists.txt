@@ -12,6 +12,7 @@ cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 option(EVALUATION  "Build evaluation programs"                          OFF)
 option(DELPHES     "Delphes card production"                            ON)
 option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects" ON)
+option(JSON_EXPORT "Be able to export calibrations in JSON format"      OFF)
 
 #----------------------------------------------------------------------------
 # dependencies
@@ -58,6 +59,16 @@ include_directories(
   # Help ePIC installation find json.hpp if needed;
   #/opt/local/include
 )
+# FIXME: looks like a hack for now, though no one in his/her clear mind would consider using
+# this interface anywhere outside of the ePIC container environment where nlohmann include
+# files location is kind of known;
+IF(JSON_EXPORT)
+  message(STATUS "NOTE: JSON_EXPORT enabled")
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_EXPORT")
+  include_directories(
+	/opt/local/include
+  )
+ENDIF()
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
 list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
@@ -67,6 +78,7 @@ list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
 # sources
 set(IRT_SRC
+  ${PROJECT_SOURCE_DIR}/source/CherenkovDetector.cc
   ${PROJECT_SOURCE_DIR}/source/CherenkovDetectorCollection.cc
   
   ${PROJECT_SOURCE_DIR}/source/ParametricSurface.cc

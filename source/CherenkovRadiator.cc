@@ -66,12 +66,12 @@ void CherenkovRadiatorPlots::SetCherenkovAngleRange(double min, double max)
 
 // -------------------------------------------------------------------------------------
 
-void CherenkovRadiator::DisplayStandardPlots(const char *cname, int wtopx,
-					     unsigned wtopy, unsigned wx, unsigned wy) const
+TCanvas *CherenkovRadiator::DisplayStandardPlots(const char *cname, const char *wname, int wtopx,
+						 unsigned wtopy, unsigned wx, unsigned wy) const
 {
-  if (!Plots()) return;
-  
-  auto cv = new TCanvas("", cname, wtopx, wtopy, wx, wy);
+  if (!Plots()) return 0;
+
+  auto cv = new TCanvas(cname, wname, wtopx, wtopy, wx, wy);
   cv->Divide(4, 2);
   
   cv->cd(1); if (Plots()->hvtx()) Plots()->hvtx()   ->Draw();
@@ -82,6 +82,8 @@ void CherenkovRadiator::DisplayStandardPlots(const char *cname, int wtopx,
   cv->cd(6);                      Plots()->hnhits() ->Draw();
   cv->cd(7);                      Plots()->hccdfph()->Draw();
   cv->cd(8);                      Plots()->hthtr()  ->Fit("gaus");
+
+  return cv;
 } // CherenkovRadiator::DisplayStandardPlots()
 
 // -------------------------------------------------------------------------------------
