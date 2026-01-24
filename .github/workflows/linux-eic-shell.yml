@@ -98,5 +98,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           clang_tidy_fixes: clang_tidy_fixes.yaml
-          request_changes: true
+          request_changes: false
           suggestions_per_comment: 10
