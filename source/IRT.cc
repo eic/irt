@@ -103,7 +103,10 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
   // to shoot; since the refraction on aerogel/C2F6 boundary kicks propagation out of 2D, 
   // and there can be an additional flat mirror installed, there is no good reason to 
   // try solving the initial approximation analytically;
-  if (!seed) solution.m_Theta = nfrom.Theta(); solution.m_Phi = nfrom.Phi();
+  if (!seed) {
+    solution.m_Theta = nfrom.Theta();
+    solution.m_Phi = nfrom.Phi();
+  }
 
   //printf("Here-3!\n");
   for(unsigned itr=0; ; itr++ ) {
