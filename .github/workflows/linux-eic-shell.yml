@@ -24,7 +24,7 @@ jobs:
           - { cc: clang, cxx: clang++ }
     steps:
       - uses: actions/checkout@v3
-      - uses: cvmfs-contrib/github-action-cvmfs@v3
+      - uses: cvmfs-contrib/github-action-cvmfs@v5
       - uses: eic/run-cvmfs-osg-eic-shell@main
         with:
           platform-release: "eic_xl:nightly"
