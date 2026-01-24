@@ -13,7 +13,7 @@ option(EVALUATION  "Build evaluation programs"                          OFF)
 option(DELPHES     "Delphes card production"                            ON)
 option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects" ON)
 
-# Sanitizer options (mutually exclusive)
+# Sanitizer options (TSAN is mutually exclusive with ASAN/UBSAN)
 include(CMakeDependentOption)
 option(USE_TSAN "Enable Thread Sanitizer" OFF)
 cmake_dependent_option(USE_ASAN "Enable Address Sanitizer" OFF "NOT USE_TSAN" OFF)
