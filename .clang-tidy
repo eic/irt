@@ -22,4 +22,4 @@ Checks: '
   -cppcoreguidelines-narrowing-conversions,
   -cppcoreguidelines-owning-memory
 '
-FormatStyle: file
+FormatStyle: none
