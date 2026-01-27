@@ -12,7 +12,7 @@
 
 class RadiatorHistory: public TObject {
  public:
-  RadiatorHistory() {};
+  RadiatorHistory(): m_TrajectoryBinCount(1) {};
   ~RadiatorHistory() {
     for(auto photon: m_Photons)
       delete photon;
@@ -31,7 +31,16 @@ class RadiatorHistory: public TObject {
   inline const ChargedParticleStep *GetStep(unsigned id) const { 
     return (id < m_Steps.size() ? m_Steps[id] : 0); 
   };
-  inline unsigned StepCount( void ) { return m_Steps.size(); }; 
+  inline unsigned StepCount( void ) { return m_Steps.size(); };
+
+  // Trajectory location management (moved from CherenkovRadiator for thread safety)
+  void SetTrajectoryBinCount(unsigned bins) { m_TrajectoryBinCount = bins; };
+  unsigned GetTrajectoryBinCount( void ) const { return m_TrajectoryBinCount; };
+  void ResetLocations( void ) { m_Locations.clear(); }
+  void AddLocation(const TVector3 &x, const TVector3 &n) { 
+    m_Locations.push_back(std::make_pair(x, n)); 
+  };
+  const std::vector<std::pair<TVector3, TVector3>>& GetLocations( void ) const { return m_Locations; }; 
 
   void AddStepBufferPoint(double time, const TVector3 &x) {
     // Will be in ascending order of time;
@@ -72,8 +81,12 @@ class RadiatorHistory: public TObject {
 
   std::map<double, TVector3> m_StepBuffer; //!
 
+  // Per-event trajectory data (moved from CherenkovRadiator for thread safety)
+  unsigned m_TrajectoryBinCount; //!
+  std::vector<std::pair<TVector3, TVector3>> m_Locations; //!
+
 #ifndef DISABLE_ROOT_IO
-  ClassDef(RadiatorHistory, 1);
+  ClassDef(RadiatorHistory, 2);
 #endif
 };
 
