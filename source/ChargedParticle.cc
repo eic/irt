@@ -11,6 +11,28 @@
 
 // -------------------------------------------------------------------------------------
 
+ChargedParticle::TrajectoryData ChargedParticle::GetTrajectoryData(CherenkovRadiator* radiator, RadiatorHistory* history) const {
+  bool history_has_data = !history->GetLocations().empty();
+  bool radiator_has_data = !radiator->GetLocations().empty();
+  
+  // Both APIs populated indicates accidental misuse
+  if (history_has_data && radiator_has_data) {
+    throw std::runtime_error("Both RadiatorHistory and CherenkovRadiator have trajectory data");
+  }
+  
+  // Prefer new thread-safe API, fall back to deprecated API for backwards compatibility
+  if (history_has_data) {
+    return {history->GetTrajectoryBinCount(), history->GetLocations()};
+  } else if (radiator_has_data) {
+    return {radiator->GetTrajectoryBinCount(), radiator->GetLocations()};
+  } else {
+    static const std::vector<std::pair<TVector3, TVector3>> empty_locations;
+    return {0, empty_locations};
+  }
+}
+
+// -------------------------------------------------------------------------------------
+
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 {
   std::vector<OpticalPhoton*> photons;
@@ -42,8 +64,10 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
-      unsigned zdim = radiator->GetTrajectoryBinCount();
-      if (radiator->m_Locations.size() != zdim+1) continue;
+      auto history = GetHistory(rhistory);
+      
+      auto [zdim, locations] = GetTrajectoryData(radiator, history);
+      if (locations.size() != zdim+1) continue;
       
       TVector3 phx = photon->GetDetectionPosition();
       
@@ -63,9 +87,9 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	photon->m_Phi[radiator] = 0.0;
 
 	for(unsigned iq=0; iq<zdim+1; iq++) {
-	  auto &solution = solutions[iq] = irt->Solve(radiator->m_Locations[iq].first,
+	  auto &solution = solutions[iq] = irt->Solve(locations[iq].first,
 		       // FIXME: give beam line as a parameter;
-		       radiator->m_Locations[iq].second.Unit(), phx, TVector3(0,0,1), false);
+		       locations[iq].second.Unit(), phx, TVector3(0,0,1), false);
 	  if (!solution.Converged()) {
 	    all_converged = false;
 	    break;
@@ -74,11 +98,11 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 	  photon->m_Phi[radiator] += solution.GetPhi();
 
 	  if (attenuation) {
-	    TVector3 from = radiator->m_Locations[iq].first, to;
+	    TVector3 from = locations[iq].first, to;
 	    bool ok = rear->GetCrossing(from, solution.m_Direction, &to);
 	    if (ok) {
 	      double length = (to - from).Mag();
-	      //printf("%02d -> %7.2f\n", iq, radiator->m_Locations[iq].first.z());
+	      //printf("%02d -> %7.2f\n", iq, locations[iq].first.z());
 	      //weights[iq] = 1.0;
 	      weights[iq] = exp(-length / attenuation);
 	    } //if
@@ -117,11 +141,13 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
     
     for(auto rhistory: GetRadiatorHistory()) {
       auto radiator = GetRadiator(rhistory);
-      unsigned zdim = radiator->GetTrajectoryBinCount();
-      if (radiator->m_Locations.size() != zdim+1) continue;
+      auto history = GetHistory(rhistory);
+      
+      auto [zdim, locations] = GetTrajectoryData(radiator, history);
+      if (locations.size() != zdim+1) continue;
 	
       // Asume this estimate is good enough;
-      double pp = radiator->m_Locations[0].second.Mag();
+      double pp = locations[0].second.Mag();
       double arg = sqrt(pp*pp + m*m)/(radiator->m_AverageRefractiveIndex*pp);
       // Threshold check; FIXME: do it better?;
       if (fabs(arg) > 1.0) continue;

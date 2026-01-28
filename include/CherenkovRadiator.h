@@ -21,8 +21,8 @@ class CherenkovRadiator: public TObject {
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
   m_LogicalVolume(volume), m_Material(material), 
     m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
-    m_ID(0), m_Stat(0), m_AverageTheta(0.0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
-    m_GaussianSmearing(false) {};
+    m_ID(0), m_Stat(0), m_AverageTheta(0.0), m_Smearing(0.0), 
+    m_GaussianSmearing(false), m_TrajectoryBinCount_deprecated(1) {};
   ~CherenkovRadiator() {};
 
   double n( void )                               const { return m_ReferenceRefractiveIndex; };
@@ -66,19 +66,21 @@ class CherenkovRadiator: public TObject {
   TString m_AlternativeMaterialName;
 
  public:
-  void SetTrajectoryBinCount(unsigned bins) { m_TrajectoryBinCount = bins; };
-  double GetTrajectoryBinCount( void) const { return m_TrajectoryBinCount; };
-
   inline double GetSmearing( void ) const { return m_Smearing; };
   void SetGaussianSmearing(double sigma) { m_GaussianSmearing = true;  m_Smearing = sigma; }
   void SetUniformSmearing (double range) { m_GaussianSmearing = false; m_Smearing = range; }
   bool UseGaussianSmearing( void )  const { return m_GaussianSmearing; };
 
-  // FIXME: memory leak;
-  void ResetLocations( void ) { m_Locations.clear(); }
-  void AddLocation(/*unsigned sector,*/ const TVector3 &x, const TVector3 &n) { 
-    m_Locations/*[sector]*/.push_back(std::make_pair(x, n)); 
-  };
+  // Backwards compatibility: deprecated methods for old non-thread-safe API
+  // WARNING: These are NOT thread-safe and should only be used with mutex protection
+  // For thread-safe code, use RadiatorHistory methods directly
+  void SetTrajectoryBinCount(unsigned bins) { m_TrajectoryBinCount_deprecated = bins; }
+  unsigned GetTrajectoryBinCount() const { return m_TrajectoryBinCount_deprecated; }
+  void ResetLocations() { m_Locations_deprecated.clear(); }
+  void AddLocation(const TVector3 &x, const TVector3 &n) { 
+    m_Locations_deprecated.push_back(std::make_pair(x, n)); 
+  }
+  const std::vector<std::pair<TVector3, TVector3>>& GetLocations( void ) const { return m_Locations_deprecated; };
 
   // Transient variables for the analysis script convenience;
   unsigned m_ID;                                   //!
@@ -87,17 +89,18 @@ class CherenkovRadiator: public TObject {
   TVector3 m_AverageVertexPosition;                //!
   double m_AverageRefractiveIndex;                 //!
 
-  unsigned m_TrajectoryBinCount;                   //!
   // This is a hack for now;
   double m_Smearing;                               //!
   bool m_GaussianSmearing;                         //!
-  //std::map<unsigned, std::vector<std::pair<TVector3, TVector3>>> _m_Locations; //!
-  std::vector<std::pair<TVector3, TVector3>> m_Locations; //!
 
   std::vector<std::pair<double, double>> m_ri_lookup_table; //!
 
+  // Deprecated members for backwards compatibility (NOT thread-safe)
+  unsigned m_TrajectoryBinCount_deprecated;        //!
+  std::vector<std::pair<TVector3, TVector3>> m_Locations_deprecated; //!
+
 #ifndef DISABLE_ROOT_IO
-  ClassDef(CherenkovRadiator, 5);
+  ClassDef(CherenkovRadiator, 6);
 #endif
 };
 
