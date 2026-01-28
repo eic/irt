@@ -11,6 +11,19 @@
 
 // -------------------------------------------------------------------------------------
 
+ChargedParticle::TrajectoryData ChargedParticle::GetTrajectoryData(CherenkovRadiator* radiator, RadiatorHistory* history) const {
+  // Try new API first, fall back to deprecated API for backwards compatibility
+  if (history->GetLocations().empty() && !radiator->GetLocations().empty()) {
+    // Using deprecated API (backwards compatibility mode)
+    return {radiator->GetTrajectoryBinCount(), radiator->GetLocations()};
+  } else {
+    // Using new thread-safe API
+    return {history->GetTrajectoryBinCount(), history->GetLocations()};
+  }
+}
+
+// -------------------------------------------------------------------------------------
+
 void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
 {
   std::vector<OpticalPhoton*> photons;
@@ -44,21 +57,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       auto radiator = GetRadiator(rhistory);
       auto history = GetHistory(rhistory);
       
-      // Try new API first, fall back to deprecated API for backwards compatibility
-      unsigned zdim;
-      const std::vector<std::pair<TVector3, TVector3>>* locations_ptr;
-      
-      if (history->GetLocations().empty() && !radiator->GetLocations().empty()) {
-        // Using deprecated API (backwards compatibility mode)
-        zdim = radiator->GetTrajectoryBinCount();
-        locations_ptr = &radiator->GetLocations();
-      } else {
-        // Using new thread-safe API
-        zdim = history->GetTrajectoryBinCount();
-        locations_ptr = &history->GetLocations();
-      }
-      
-      const auto& locations = *locations_ptr;
+      auto [zdim, locations] = GetTrajectoryData(radiator, history);
       if (locations.size() != zdim+1) continue;
       
       TVector3 phx = photon->GetDetectionPosition();
@@ -135,21 +134,7 @@ void ChargedParticle::PIDReconstruction(CherenkovPID &pid)
       auto radiator = GetRadiator(rhistory);
       auto history = GetHistory(rhistory);
       
-      // Try new API first, fall back to deprecated API for backwards compatibility
-      unsigned zdim;
-      const std::vector<std::pair<TVector3, TVector3>>* locations_ptr;
-      
-      if (history->GetLocations().empty() && !radiator->GetLocations().empty()) {
-        // Using deprecated API (backwards compatibility mode)
-        zdim = radiator->GetTrajectoryBinCount();
-        locations_ptr = &radiator->GetLocations();
-      } else {
-        // Using new thread-safe API
-        zdim = history->GetTrajectoryBinCount();
-        locations_ptr = &history->GetLocations();
-      }
-      
-      const auto& locations = *locations_ptr;
+      auto [zdim, locations] = GetTrajectoryData(radiator, history);
       if (locations.size() != zdim+1) continue;
 	
       // Asume this estimate is good enough;

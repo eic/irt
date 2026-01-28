@@ -67,6 +67,12 @@ class ChargedParticle: public TransientParticle {
   void PIDReconstruction(CherenkovPID &pid);
 
  private:
+  struct TrajectoryData {
+    unsigned zdim;
+    const std::vector<std::pair<TVector3, TVector3>>& locations;
+  };
+  
+  TrajectoryData GetTrajectoryData(CherenkovRadiator* radiator, RadiatorHistory* history) const;
   // Optical photons produced elsewhere;
   std::vector<OpticalPhoton*> m_OrphanPhotons; 
 
