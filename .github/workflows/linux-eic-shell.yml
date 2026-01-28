@@ -27,7 +27,7 @@ jobs:
       - uses: cvmfs-contrib/github-action-cvmfs@v5
       - uses: eic/run-cvmfs-osg-eic-shell@main
         with:
-          platform-release: "jug_xl:nightly"
+          platform-release: "eic_xl:nightly"
           run: |
             CC=${{matrix.cc}} CXX=${{matrix.cxx}} cmake -S . -B build -DDELPHES=ON -DEVALUATION=OFF -DCMAKE_INSTALL_PREFIX=install
             cmake --build build
