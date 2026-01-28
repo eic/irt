@@ -12,13 +12,22 @@
 // -------------------------------------------------------------------------------------
 
 ChargedParticle::TrajectoryData ChargedParticle::GetTrajectoryData(CherenkovRadiator* radiator, RadiatorHistory* history) const {
-  // Try new API first, fall back to deprecated API for backwards compatibility
-  if (history->GetLocations().empty() && !radiator->GetLocations().empty()) {
-    // Using deprecated API (backwards compatibility mode)
+  bool history_has_data = !history->GetLocations().empty();
+  bool radiator_has_data = !radiator->GetLocations().empty();
+  
+  // Both APIs populated indicates accidental misuse
+  if (history_has_data && radiator_has_data) {
+    throw std::runtime_error("Both RadiatorHistory and CherenkovRadiator have trajectory data");
+  }
+  
+  // Prefer new thread-safe API, fall back to deprecated API for backwards compatibility
+  if (history_has_data) {
+    return {history->GetTrajectoryBinCount(), history->GetLocations()};
+  } else if (radiator_has_data) {
     return {radiator->GetTrajectoryBinCount(), radiator->GetLocations()};
   } else {
-    // Using new thread-safe API
-    return {history->GetTrajectoryBinCount(), history->GetLocations()};
+    static const std::vector<std::pair<TVector3, TVector3>> empty_locations;
+    return {0, empty_locations};
   }
 }
 
