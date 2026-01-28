@@ -23,8 +23,8 @@ jobs:
           - { cc: gcc,   cxx: g++     }
           - { cc: clang, cxx: clang++ }
     steps:
-      - uses: actions/checkout@v3
-      - uses: cvmfs-contrib/github-action-cvmfs@v3
+      - uses: actions/checkout@v6
+      - uses: cvmfs-contrib/github-action-cvmfs@v5
       - uses: eic/run-cvmfs-osg-eic-shell@main
         with:
           platform-release: "jug_xl:nightly"
@@ -32,7 +32,7 @@ jobs:
             CC=${{matrix.cc}} CXX=${{matrix.cxx}} cmake -S . -B build -DDELPHES=ON -DEVALUATION=OFF -DCMAKE_INSTALL_PREFIX=install
             cmake --build build
             cmake --install build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v6
         with:
           name: install_${{matrix.cc}}
           path: install
