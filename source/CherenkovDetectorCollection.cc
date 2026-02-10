@@ -1,6 +1,8 @@
 
 #include <CherenkovDetectorCollection.h>
 
+namespace IRT2 {
+
 CherenkovDetectorCollection *CherenkovDetectorCollection::m_Instance = 0;
 
 // -------------------------------------------------------------------------------------
@@ -14,5 +16,7 @@ CherenkovDetectorCollection::CherenkovDetectorCollection()
   
   m_Instance = this;
 } // CherenkovDetectorCollection::CherenkovDetectorCollection()
+
+} // namespace IRT2
 
 // -------------------------------------------------------------------------------------
