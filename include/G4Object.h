@@ -1,8 +1,6 @@
+#pragma once
 
 #include <TObject.h>
-
-#ifndef _G4_OBJECT_
-#define _G4_OBJECT_
 
 class G4Material;
 class G4VPhysicalVolume;
@@ -19,6 +17,8 @@ class G4OpticalSurface;
 class G4RotationMatrix;
 class G4ThreeVector;
 #endif
+
+namespace IRT2 {
 
 class G4ObjectCopy: public TObject {
  public:
@@ -79,4 +79,4 @@ public:
 #endif
 };
 
-#endif
+} // namespace IRT2

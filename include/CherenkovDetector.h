@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <vector>
@@ -7,13 +6,12 @@
 #include <TRef.h>
 #include <TString.h>
 
-#ifndef _CHERENKOV_DETECTOR_
-#define _CHERENKOV_DETECTOR_
-
 #include "CherenkovPhotonDetector.h"
 class CherenkovMirrorGroup;
 class OpticalBoundary;
 class G4LogicalVolume;
+
+namespace IRT2 {
 
 class CherenkovDetector: public TObject {
  public:
@@ -166,4 +164,4 @@ class CherenkovDetector: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

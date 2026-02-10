@@ -1,11 +1,11 @@
+#pragma once
 
 #include <vector>
 #include <math.h>
 
 #include <TObject.h>
 
-#ifndef _SINGLE_PDF_
-#define _SINGLE_PDF_
+namespace IRT2 {
 
 class SinglePDF: public TObject {
  public:
@@ -166,5 +166,4 @@ class VectorPDF: public TObject {
 #endif
 };
 
-
-#endif
+} // namespace IRT2

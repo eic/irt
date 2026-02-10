@@ -1,3 +1,4 @@
+#pragma once
 
 #include <map>
 #include <vector>
@@ -9,14 +10,13 @@
 class TH1D;
 class TCanvas;
 
-#ifndef _CHERENKOV_RADIATOR_
-#define _CHERENKOV_RADIATOR_
-
 #include "ParametricSurface.h"
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
 class G4DataInterpolation;
+
+namespace IRT2 {
 
 struct CherenkovRadiatorCalibration: public TObject {
   CherenkovRadiatorCalibration(): m_Stat(0), 
@@ -203,4 +203,4 @@ class CherenkovRadiator: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

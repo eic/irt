@@ -1,12 +1,12 @@
+#pragma once
 
 #include <TObject.h>
 #include <TVector3.h>
 #include <TRef.h>
 
-#ifndef _REFRACTION_POINT_
-#define _REFRACTION_POINT_
-
 #include "CherenkovRadiator.h"
+
+namespace IRT2 {
 
 class RefractionPoint: public TObject {
  public:
@@ -30,4 +30,4 @@ class RefractionPoint: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

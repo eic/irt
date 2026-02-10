@@ -1,10 +1,10 @@
+#pragma once
 
 #include <algorithm>
 #include <map>
 #include <vector>
 
-#ifndef _CHERENKOV_PID_
-#define _CHERENKOV_PID_
+namespace IRT2 {
 
 class CherenkovRadiator;
 
@@ -73,4 +73,4 @@ class CherenkovPID {
   std::vector<MassHypothesis*> m_Hypotheses;
 };
 
-#endif
+} // namespace IRT2

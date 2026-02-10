@@ -5,6 +5,8 @@
 
 #include "CherenkovRadiator.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 CherenkovRadiatorPlots::CherenkovRadiatorPlots(const char *tag):
@@ -87,3 +89,5 @@ TCanvas *CherenkovRadiator::DisplayStandardPlots(const char *cname, const char *
 } // CherenkovRadiator::DisplayStandardPlots()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

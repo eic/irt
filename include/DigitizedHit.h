@@ -1,3 +1,4 @@
+#pragma once
 
 #include <set>
 #include <map>
@@ -6,11 +7,11 @@
 #include <TObject.h>
 #include <TVector3.h>
 
-#ifndef _DIGITIZED_HIT_
-#define _DIGITIZED_HIT_
-
 #include "CherenkovPhotonDetector.h"
 #include "SinglePDF.h"
+
+namespace IRT2 {
+
 class ChargedParticle;
 class IRT;
 
@@ -87,4 +88,5 @@ class DigitizedHit {
   //TVector3 m_PhotonVertexPosition;                                //!
   //TVector3 m_PhotonVertexMomentum;                                //!
 };
-#endif
+
+} // namespace IRT2

@@ -1,11 +1,12 @@
+#pragma once
 
 #include <TRef.h>
 #include <TObject.h>
 
-#ifndef _OPTICAL_BOUNDARY_
-#define _OPTICAL_BOUNDARY_
-
 #include "CherenkovRadiator.h"
+
+namespace IRT2 {
+
 class ParametricSurface;
 
 class OpticalBoundary: public TObject {
@@ -42,4 +43,4 @@ class OpticalBoundary: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

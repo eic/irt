@@ -1,8 +1,8 @@
+#pragma once
 
 #include <TVector3.h>
 
-#ifndef _IRT_SOLUTION_
-#define _IRT_SOLUTION_
+namespace IRT2 {
 
 class IRTSolution {
   friend class IRT;
@@ -65,4 +65,4 @@ class IRTSolution {
   double m_SigmaDx, m_SigmaDy, m_SigmaDz, m_SigmaDt, m_SigmaDf;
 };
 
-#endif
+} // namespace IRT2

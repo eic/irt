@@ -1,6 +1,6 @@
+#pragma once
 
-#ifndef _CHERENKOV_WAVELENGTH_RANGE_
-#define _CHERENKOV_WAVELENGTH_RANGE_
+namespace IRT2 {
 
 class CherenkovWaveLengthRange {
 public:
@@ -24,4 +24,4 @@ private:
   double *m_PhotonEnergies;
 };
 
-#endif
+} // namespace IRT2

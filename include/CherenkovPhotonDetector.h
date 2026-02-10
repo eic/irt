@@ -1,8 +1,6 @@
+#pragma once
 
 #include <map>
-
-#ifndef _CHERENKOV_PHOTON_DETECTOR_
-#define _CHERENKOV_PHOTON_DETECTOR_
 
 #include "G4Object.h"
 #include "FlatSurface.h"
@@ -10,6 +8,8 @@
 class G4DataInterpolation;
 
 #include "IRT.h"
+
+namespace IRT2 {
 
 class CherenkovPhotonDetector: public G4Object {
  public:
@@ -96,4 +96,4 @@ class CherenkovPhotonDetector: public G4Object {
 #endif
 };
 
-#endif
+} // namespace IRT2

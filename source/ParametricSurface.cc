@@ -1,6 +1,8 @@
 
 #include "ParametricSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool ParametricSurface::GetQuadraticEquationCaseCrossing(const TVector3 &x0, const TVector3 &n0, 
@@ -34,3 +36,5 @@ bool ParametricSurface::GetQuadraticEquationCaseCrossing(const TVector3 &x0, con
 } // ParametricSurface::GetQuadraticEquationCaseCrossing()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

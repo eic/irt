@@ -1,11 +1,12 @@
+#pragma once
 
 #include <TRandom.h>
 
-#ifndef _DIGITIZATION_
-#define _DIGITIZATION_
-
 #include "DigitizedHit.h"
 #include "GeantImport.h"
+
+namespace IRT2 {
+
 class CherenkovPhotonDetector;
 
 struct BlackoutCell {
@@ -66,4 +67,4 @@ class Digitization : public virtual GeantImport {
   unsigned m_SensorActiveAreaPixellation;
 };
 
-#endif
+} // namespace IRT2

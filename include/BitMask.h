@@ -1,8 +1,8 @@
+#pragma once
 
 #include <TObject.h>
 
-#ifndef _BIT_MASK_
-#define _BIT_MASK_
+namespace IRT2 {
 
 class BitMask: public TObject {
  public:
@@ -24,4 +24,4 @@ class BitMask: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

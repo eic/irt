@@ -3,6 +3,8 @@
 
 #include "ConicalSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool ConicalSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
@@ -30,3 +32,5 @@ double ConicalSurface::GetDistance(const TVector3 &xx) const
 } // ConicalSurface::GetDistance()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

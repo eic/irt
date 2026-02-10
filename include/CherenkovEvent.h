@@ -1,12 +1,12 @@
+#pragma once
 
 #include <set>
-
-#ifndef _CHERENKOV_EVENT_
-#define _CHERENKOV_EVENT_
 
 #include "ChargedParticle.h"
 
 class OpticalPhoton;
+
+namespace IRT2 {
 
 class CherenkovEvent: public TObject {
  public:
@@ -39,4 +39,4 @@ class CherenkovEvent: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

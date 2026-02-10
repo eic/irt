@@ -1,9 +1,9 @@
+#pragma once
 
 #include <TObject.h>
 #include <TVector3.h>
 
-#ifndef _TRANSIENT_PARTICLE_
-#define _TRANSIENT_PARTICLE_
+namespace IRT2 {
 
 // Need a separate class because do not want to deal with G4VUserTrackInformation serialization;
 class TransientParticle: public TObject {
@@ -38,4 +38,4 @@ class TransientParticle: public TObject {
 #endif
 };
 
-#endif
+} // namespace IRT2

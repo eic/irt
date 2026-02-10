@@ -1,16 +1,16 @@
+#pragma once
 
 #include <vector>
 
 #include <TRef.h>
-
-#ifndef _CHARGED_PARTICLE_
-#define _CHARGED_PARTICLE_
 
 #include "CherenkovRadiator.h"
 #include "RadiatorHistory.h"
 #include "TransientParticle.h"
 #include "CherenkovPID.h"
 #include "DigitizedHit.h"
+
+namespace IRT2 {
 
 class ChargedParticle: public TransientParticle {
  public:
@@ -107,4 +107,4 @@ class ChargedParticle: public TransientParticle {
 #endif
 };
 
-#endif
+} // namespace IRT2

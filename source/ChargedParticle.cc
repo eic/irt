@@ -11,6 +11,8 @@
 
 #include "ChargedParticle.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 double ChargedParticle::GetRecoCherenkovPhotonTheta(unsigned id)
@@ -92,3 +94,5 @@ unsigned ChargedParticle::GetRecoCherenkovPhotonCount(CherenkovRadiator *radiato
 } // ChargedParticle::GetRecoCherenkovPhotonCount()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

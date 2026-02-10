@@ -1,6 +1,8 @@
 
 #include "ToricSurface.h"
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 
 bool ToricSurface::GetCrossing(const TVector3 &x0, const TVector3 &n0, TVector3 *crs, 
@@ -30,3 +32,5 @@ double ToricSurface::GetDistance(const TVector3 &xx) const
 } // ToricSurface::GetDistance()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2

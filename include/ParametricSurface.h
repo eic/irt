@@ -1,11 +1,11 @@
+#pragma once
 
 #include <math.h>
 
 #include <TObject.h>
 #include <TVector3.h>
 
-#ifndef _IRT_PARAMETRIC_SURFACE_
-#define _IRT_PARAMETRIC_SURFACE_
+namespace IRT2 {
 
 class ParametricSurface: public TObject {
  public:
@@ -87,6 +87,6 @@ class LocalCoordinatesXY: public TObject {
 #ifndef DISABLE_ROOT_IO
   ClassDef(LocalCoordinatesXY, 1);
 #endif
-}; 
+};
 
-#endif
+} // namespace IRT2

@@ -7,6 +7,8 @@
 #include "Calibration.h"
 #include "CherenkovDetectorCollection.h"
 
+namespace IRT2 {
+
 // FIXME: yes, fix it please;
 static unsigned hdim = 100;
 static double hmin = -30.0, hmax = 30.0, hbin = (hmax - hmin)/hdim, hwnd = 15.0; 
@@ -379,3 +381,5 @@ void Calibration::ExportModifiedOpticsFile(const char *fname)
 } // Calibration::ExportModifiedOpticsFile()
 
 // -------------------------------------------------------------------------------------
+
+} // namespace IRT2
