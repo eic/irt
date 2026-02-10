@@ -9,6 +9,8 @@ using json = nlohmann::json;
 
 #include <CherenkovDetector.h>
 
+namespace IRT2 {
+
 // -------------------------------------------------------------------------------------
 //
 // Cut'n'paste from https://stackoverflow.com/questions/40029100/c-how-to-write-back-json-into-file;
@@ -152,5 +154,7 @@ void CherenkovDetector::ExportJsonFormatCalibrations(const char *fname)
   } //if
 #endif
 } // CherenkovDetector::ExportJsonFormatCalibrations()
+
+} // namespace IRT2
 
 // -------------------------------------------------------------------------------------
