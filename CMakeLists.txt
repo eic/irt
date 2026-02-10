@@ -55,20 +55,7 @@ include_directories(
   # For now assume that newly installed edm4eic::(CherenkovPID, ...) event structures are available 
   # in the same place where IRT is supposed to be installed;
   ${CMAKE_INSTALL_PREFIX}/include
-
-  # Help ePIC installation find json.hpp if needed;
-  #/opt/local/include
 )
-# FIXME: looks like a hack for now, though no one in his/her clear mind would consider using
-# this interface anywhere outside of the ePIC container environment where nlohmann include
-# files location is kind of known;
-IF(JSON_EXPORT)
-  message(STATUS "NOTE: JSON_EXPORT enabled")
-  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_EXPORT")
-  include_directories(
-	/opt/local/include
-  )
-ENDIF()
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
 list(FILTER HEADERS EXCLUDE REGEX "LinkDef\\.h$")
 
@@ -111,6 +98,12 @@ if(NOT IRT_ROOT_IO)
   message(STATUS "NOTE: disabling ROOT dictionary generation")
   target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC DISABLE_ROOT_IO)
 endif()
+IF(JSON_EXPORT)
+  message(STATUS "NOTE: JSON_EXPORT enabled")
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_EXPORT")
+  find_package(nlohmann_json 3.12.0 REQUIRED)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
+ENDIF()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>
