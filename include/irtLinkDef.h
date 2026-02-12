@@ -5,55 +5,55 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
-#pragma link C++ class SinglePDF+;
-#pragma link C++ class UniformPDF+;
-#pragma link C++ class VectorPDF+;
+#pragma link C++ class IRT2::SinglePDF+;
+#pragma link C++ class IRT2::UniformPDF+;
+#pragma link C++ class IRT2::VectorPDF+;
 
-#pragma link C++ class TransientParticle+;
-#pragma link C++ class ChargedParticle+;
-#pragma link C++ class ChargedParticleStep+;
-#pragma link C++ class OpticalPhoton+;
+#pragma link C++ class IRT2::TransientParticle+;
+#pragma link C++ class IRT2::ChargedParticle+;
+#pragma link C++ class IRT2::ChargedParticleStep+;
+#pragma link C++ class IRT2::OpticalPhoton+;
 
-#pragma link C++ class ReflectionPoint+;
-#pragma link C++ class RefractionPoint+;
+#pragma link C++ class IRT2::ReflectionPoint+;
+#pragma link C++ class IRT2::RefractionPoint+;
 
-#pragma link C++ class OpticalBoundary+;
-#pragma link C++ class IRT+;
+#pragma link C++ class IRT2::OpticalBoundary+;
+#pragma link C++ class IRT2::IRT+;
 
-#pragma link C++ class CherenkovRadiator+;
-#pragma link C++ class CherenkovRadiatorCalibration+;
-#pragma link C++ class CherenkovDetector+;
-#pragma link C++ class CherenkovDetectorCollection+;
-#pragma link C++ class CherenkovEvent+;
-#pragma link C++ class BitMask+;
+#pragma link C++ class IRT2::CherenkovRadiator+;
+#pragma link C++ class IRT2::CherenkovRadiatorCalibration+;
+#pragma link C++ class IRT2::CherenkovDetector+;
+#pragma link C++ class IRT2::CherenkovDetectorCollection+;
+#pragma link C++ class IRT2::CherenkovEvent+;
+#pragma link C++ class IRT2::BitMask+;
 
-#pragma link C++ class RadiatorHistory+;
+#pragma link C++ class IRT2::RadiatorHistory+;
 
-#pragma link C++ class ParametricSurface+;
-#pragma link C++ class SphericalSurface+;
-#pragma link C++ class ToricSurface+;
-#pragma link C++ class CylindricalSurface+;
-#pragma link C++ class ConicalSurface+;
-#pragma link C++ class LocalCoordinatesXY+;
-#pragma link C++ class FlatSurface+;
+#pragma link C++ class IRT2::ParametricSurface+;
+#pragma link C++ class IRT2::SphericalSurface+;
+#pragma link C++ class IRT2::ToricSurface+;
+#pragma link C++ class IRT2::CylindricalSurface+;
+#pragma link C++ class IRT2::ConicalSurface+;
+#pragma link C++ class IRT2::LocalCoordinatesXY+;
+#pragma link C++ class IRT2::FlatSurface+;
 
-#pragma link C++ class G4Object+;
-#pragma link C++ class G4ObjectCopy+;
+#pragma link C++ class IRT2::G4Object+;
+#pragma link C++ class IRT2::G4ObjectCopy+;
 
-#pragma link C++ class SurfaceCopy+;
-#pragma link C++ class CherenkovMirror+;
+#pragma link C++ class IRT2::SurfaceCopy+;
+#pragma link C++ class IRT2::CherenkovMirror+;
 //#pragma link C++ class CherenkovMirrorGroup+;
-#pragma link C++ class FlatMirror+;
-#pragma link C++ class ConicalMirror+;
-#pragma link C++ class CylindricalMirror+;
-#pragma link C++ class SphericalMirror+;
+#pragma link C++ class IRT2::FlatMirror+;
+#pragma link C++ class IRT2::ConicalMirror+;
+#pragma link C++ class IRT2::CylindricalMirror+;
+#pragma link C++ class IRT2::SphericalMirror+;
 
-#pragma link C++ class CherenkovPhotonDetector+;
+#pragma link C++ class IRT2::CherenkovPhotonDetector+;
 
 // Are these two really needed?;
 #pragma link C++ class std::pair<TRef, TRef>+;
 #pragma link C++ class std::vector<TRef>+;
 
-#pragma link C++ class ReconstructionFactory+;
+#pragma link C++ class IRT2::ReconstructionFactory+;
 
 #endif

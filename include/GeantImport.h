@@ -6,10 +6,12 @@
 
 #define _MOMENTUM_CUTOFF_DEFAULT_ (0.010)
 
+#include "CherenkovDetector.h"
+
 namespace IRT2 {
 
 class CherenkovDetectorCollection;
-class CherenkovDetector;
+  //class CherenkovDetector;
 
 class GeantImport {
  public:
