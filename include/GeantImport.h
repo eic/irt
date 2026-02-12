@@ -11,7 +11,6 @@
 namespace IRT2 {
 
 class CherenkovDetectorCollection;
-  //class CherenkovDetector;
 
 class GeantImport {
  public:
