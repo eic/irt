@@ -131,7 +131,7 @@ endif()
 IF(JSON_EXPORT)
   message(STATUS "NOTE: JSON_EXPORT enabled")
   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_EXPORT")
-  find_package(nlohmann_json 3.12.0 REQUIRED)
+  find_package(nlohmann_json 3.11.3 REQUIRED)
   target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 ENDIF()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
@@ -149,8 +149,7 @@ if(IRT_ROOT_IO)
 endif()
 
 # linking
-target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
-
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
 #----------------------------------------------------------------------------
 # optional targets
 
