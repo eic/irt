@@ -27,7 +27,7 @@ class GeantImport {
 
   CherenkovDetector *GetMyRICH( void )    const { return m_RICH; }
   CherenkovEvent *Event( void )           const { return m_Event; };
-  void GetInputTreeEntry(unsigned ev)     const;// { if (m_Tree) m_Tree->GetEntry(ev); };
+  void GetInputTreeEntry(unsigned ev)     const;
   unsigned GetInputTreeEntryCount( void ) const { return m_Tree ? m_Tree->GetEntries() : 0; };
  
   void AccountSecondaries( void )               { m_PurgeSecondaries = false; };
