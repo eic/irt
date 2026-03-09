@@ -16,7 +16,7 @@ class ChargedParticle: public TransientParticle {
  public:
  ChargedParticle(int pdg = 0, bool primary = true): 
   TransientParticle(pdg, primary), m_StopTracing(false), 
-  m_HadronicInteractionOccured(false), m_GoodForReconstruction(true), m_EICreconParticleID(0) {};
+  m_HadronicInteractionOccured(false), m_GoodForReconstruction(true), m_EICreconTrackID(0) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
       delete radiator.second;
@@ -99,8 +99,9 @@ class ChargedParticle: public TransientParticle {
   bool m_GoodForReconstruction;      //!
 
   // Interface to ePIC tracking; 
-  void SetEICreconParticleID(unsigned id) { m_EICreconParticleID = id;};
-  unsigned m_EICreconParticleID;     //!
+  void SetEICreconTrackID(unsigned id) { m_EICreconTrackID = id;};
+  unsigned GetEICreconTrackID( void ) const { return m_EICreconTrackID; };
+  unsigned m_EICreconTrackID;     //!
 
 #ifndef DISABLE_ROOT_IO
   ClassDef(ChargedParticle, 6);
