@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
 project(IRT2
   VERSION 2.1.3
@@ -149,9 +149,9 @@ endif()
 
 # linking
 if(JSON_EXPORT)
-  target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree nlohmann_json::nlohmann_json)
-elseif()
-  target_link_libraries(${CMAKE_PROJECT_NAME} ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree PRIVATE nlohmann_json::nlohmann_json)
+else()
+  target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
 endif()
 #----------------------------------------------------------------------------
 # optional targets
