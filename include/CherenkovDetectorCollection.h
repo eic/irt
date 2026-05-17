@@ -6,7 +6,7 @@ class G4LogicalVolume;
 class G4RadiatorMaterial;
 class G4OpticalSurface;
 
-class CherenkovMirror;
+#include "CherenkovMirror.h"
 class CherenkovPhotonDetector;
 
 #include "BitMask.h"

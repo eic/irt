@@ -7,7 +7,7 @@
 #include "ConicalSurface.h"
 #include "ParametricSurface.h"
 
-class CherenkovWaveLengthRange;
+#include "CherenkovWaveLengthRange.h"
 
 namespace IRT2 {
 
