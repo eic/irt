@@ -199,8 +199,6 @@ void Calibration::PerformCalibration(unsigned stat)
   // Well, this loop is also across ALL radiators (not just selected ones?);
   for(auto rptr: GetMyRICH()->Radiators()) {
     auto radiator = rptr.second;
-
-    //printf("--> %s -> %d %d\n", rptr.first.Data(), radiator->m_CalibrationPhotonCount, radiator->m_DetectedPhotonCount);
         
     radiator->m_DetectedToCalibrationPhotonRatio = radiator->m_CalibrationPhotonCount ?
       1.0*radiator->m_DetectedPhotonCount/radiator->m_CalibrationPhotonCount : 0.0;

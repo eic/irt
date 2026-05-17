@@ -22,7 +22,7 @@ GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dna
 
   auto fcfg = new TFile(cfname ? cfname : dfname);
   if (!fcfg) return;
-  m_IrtGeometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("CherenkovDetectorCollection"));
+  m_IrtGeometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("IRT2::CherenkovDetectorCollection"));
   auto fdata = new TFile(dfname);
   m_Tree = dynamic_cast<TTree*>(fdata->Get("t")); 
   m_Tree->SetBranchAddress("e", &m_Event);

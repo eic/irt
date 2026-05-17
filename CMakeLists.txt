@@ -9,10 +9,10 @@ cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 
 #----------------------------------------------------------------------------
 # options
-option(EVALUATION  "Build evaluation programs"                          OFF)
-option(DELPHES     "Delphes card production"                            ON)
-option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects" ON)
-option(JSON_EXPORT "Be able to export calibrations in JSON format"      OFF)
+option(EVALUATION  "Build evaluation programs"                                   OFF)
+option(DELPHES     "Delphes card production"                                     ON)
+option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects"          ON)
+option(JSON_IMPORT_EXPORT "Be able to import/export calibrations in JSON format" OFF)
 
 # Sanitizer options (TSAN is mutually exclusive with ASAN/UBSAN)
 include(CMakeDependentOption)
@@ -128,10 +128,10 @@ if(NOT IRT_ROOT_IO)
   message(STATUS "NOTE: disabling ROOT dictionary generation")
   target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC DISABLE_ROOT_IO)
 endif()
-IF(JSON_EXPORT)
-  message(STATUS "NOTE: JSON_EXPORT enabled")
-  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_EXPORT")
-  find_package(nlohmann_json 3.11.3 REQUIRED)
+IF(JSON_IMPORT_EXPORT)
+  message(STATUS "NOTE: JSON_IMPORT_EXPORT enabled")
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DJSON_IMPORT_EXPORT")
+  find_package(nlohmann_json 3.11.2 REQUIRED)
 ENDIF()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -144,11 +144,15 @@ if(IRT_ROOT_IO)
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
   )
+if(JSON_IMPORT_EXPORT)
+  root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h OPTIONS -DJSON_IMPORT_EXPORT)
+else()
   root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h)
+endif()
 endif()
 
 # linking
-if(JSON_EXPORT)
+if(JSON_IMPORT_EXPORT)
   target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree PRIVATE nlohmann_json::nlohmann_json)
 else()
   target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ROOT::Core ROOT::EG ROOT::Hist ROOT::RIO ROOT::MathCore ROOT::Tree)
