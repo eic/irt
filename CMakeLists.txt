@@ -20,7 +20,7 @@ option(USE_TSAN "Enable Thread Sanitizer" OFF)
 cmake_dependent_option(USE_ASAN "Enable Address Sanitizer" OFF "NOT USE_TSAN" OFF)
 cmake_dependent_option(USE_UBSAN "Enable Undefined Behavior Sanitizer" OFF "NOT USE_TSAN" OFF)
 
-# Export compile commands as json for run-clang-tidy
+# Export compile commands as JSON (compile_commands.json) for run-clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #----------------------------------------------------------------------------
