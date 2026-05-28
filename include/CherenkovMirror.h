@@ -27,7 +27,8 @@ class CherenkovMirror: public G4Object {
   ~CherenkovMirror() {};
 
   void SetReflectivity(double reflectivity, CherenkovWaveLengthRange *wlrange);// void );
-
+  void SetReflectivity();
+  
   G4ObjectCopy *CreateCopy(G4VPhysicalVolume *phys) { return new SurfaceCopy(phys); };
   
   void AdjustWedgeCopies(G4VPhysicalVolume *mother) {
