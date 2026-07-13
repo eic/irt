@@ -36,7 +36,12 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
-  m_ProcessedEventCount(0)
+  m_ProcessedEventCount(0),
+  m_CombinedPlotVisualizationEnabled(false),
+  m_wtopx(0),
+  m_wtopy(0),
+  m_wx(0),
+  m_wy(0) 
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 // -------------------------------------------------------------------------------------
@@ -56,7 +61,12 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
-  m_ProcessedEventCount(0)
+  m_ProcessedEventCount(0),
+  m_CombinedPlotVisualizationEnabled(false),
+  m_wtopx(0),
+  m_wtopy(0),
+  m_wx(0),
+  m_wy(0) 
 {
 } // ReconstructionFactory::ReconstructionFactory() 
 

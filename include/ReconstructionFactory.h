@@ -105,7 +105,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
 
   unsigned m_HitCountCutoff;
   unsigned m_ProcessedEventCount;
-  
+
+public:
+  bool m_CombinedPlotVisualizationEnabled;
+  int m_wtopx;
+  unsigned m_wtopy, m_wx, m_wy;
+
+private:
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
 };
