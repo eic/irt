@@ -14,6 +14,9 @@
 #include <TDatabasePDG.h>
 #include <Math/ProbFunc.h>
 
+#include <TApplication.h>
+#include <TCanvas.h>
+
 #include "CherenkovDetectorCollection.h"
 #include "CherenkovEvent.h"
 #include "ReconstructionFactory.h"
@@ -23,8 +26,9 @@ namespace IRT2 {
 // -------------------------------------------------------------------------------------
 
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
-					     const char *dname):
+					     const char *dname, TFile *fout):
   GeantImport(dfname, cfname, dname),
+  m_OutputFile(fout),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -43,13 +47,16 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_wx(0),
   m_wy(0) 
 {
-} // ReconstructionFactory::ReconstructionFactory() 
+} // ReconstructionFactory::ReconstructionFactory()
+  
 // -------------------------------------------------------------------------------------
 
 // FIXME: do it better later;
 ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geometry,
-					     CherenkovDetector *cdet, CherenkovEvent *event):
+					     CherenkovDetector *cdet, CherenkovEvent *event,
+					     TFile *fout):
   GeantImport(geometry, cdet, event),
+  m_OutputFile(fout),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -68,7 +75,58 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_wx(0),
   m_wy(0) 
 {
-} // ReconstructionFactory::ReconstructionFactory() 
+} // ReconstructionFactory::ReconstructionFactory()
+  
+// -------------------------------------------------------------------------------------
+
+ReconstructionFactory::~ReconstructionFactory()
+{
+  // Avoid calling this stuff from a dummy IrtInterface instantiation upon eicrecon startup;
+  if (GetProcessedEventCount()) {
+    int argc      = 1;
+    char* argv[1] = {(char*)""};
+    bool display  = m_CombinedPlotVisualizationEnabled;
+    for (auto [name, rad] : GetMyRICH()->Radiators())
+      if (rad->UsedInRingImaging() && rad->m_OutputPlotVisualizationEnabled)
+	display = true;
+    
+    // FIXME: well, if at least one is "display", all "store" will be shown as well;
+    auto* app = display ? new TApplication("", &argc, argv) : 0;
+    
+    std::vector<TCanvas*> canvases;
+    auto cv = DisplayStandardPlots("Track / event level plots", m_wtopx, m_wtopy, m_wx, m_wy);
+    if (cv)
+      canvases.push_back(cv);
+    
+    for (auto [name, rad] : GetMyRICH()->Radiators())
+      if (rad->UsedInRingImaging()) {
+	TString cname, wname;
+	// FIXME: won't work for Acrylic and Aerogel together;
+	cname.Form("c%c", std::tolower(name.Data()[0]));
+	wname.Form("%s radiator", name.Data());
+	
+	auto cv = rad->DisplayStandardPlots(cname.Data(), wname.Data(),
+					    // FIXME: may want to improve the API here;
+					    rad->m_wtopx, rad->m_wtopy, rad->m_wx, rad->m_wy);
+	if (cv)
+	  canvases.push_back(cv);
+      } //for rad..if
+    
+    // 'true': do not call exit() in the end;
+    if (app && canvases.size()) {
+      printf("@A@\n");
+      app->Run(true);
+    }
+    // FIXME: crashes;
+    //if (app) delete app;
+    
+    if (m_OutputFile)
+      for (auto cv : canvases)
+	cv->Write();
+  } //if
+  
+  if (m_Plots) delete m_Plots;
+} // ReconstructionFactory::~ReconstructionFactory()
 
 // -------------------------------------------------------------------------------------
 
