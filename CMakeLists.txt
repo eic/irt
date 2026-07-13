@@ -110,6 +110,7 @@ set(IRT_SRC
   ${PROJECT_SOURCE_DIR}/source/IRT.cc
   ${PROJECT_SOURCE_DIR}/source/ChargedParticle.cc
   ${PROJECT_SOURCE_DIR}/source/CherenkovRadiator.cc
+  ${PROJECT_SOURCE_DIR}/source/DataInterpolation.cc
 
   ${PROJECT_SOURCE_DIR}/source/DigitizedHit.cc
   ${PROJECT_SOURCE_DIR}/source/GeantImport.cc

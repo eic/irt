@@ -14,7 +14,8 @@ class TCanvas;
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
-class G4DataInterpolation;
+//class G4DataInterpolation;
+#include "DataInterpolation.h"
 
 namespace IRT2 {
 
@@ -189,7 +190,7 @@ class CherenkovRadiator: public TObject {
   
   CherenkovRadiatorPlots  *m_Plots;                         //!
 
-  G4DataInterpolation *m_RefractiveIndex;                   //!
+  DataInterpolation *m_RefractiveIndex;                     //!
 
   bool m_OutputPlotVisualizationEnabled;                    //!
   int m_wtopx;                                              //!
