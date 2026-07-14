@@ -35,9 +35,9 @@ namespace IRT2 {
 // -------------------------------------------------------------------------------------
 
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
-					     const char *dname, TFile *fout):
+					     const char *dname):
   GeantImport(dfname, cfname, dname),
-  m_OutputFile(fout),
+  m_OutputFile(0),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -54,7 +54,9 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_wtopx(0),
   m_wtopy(0),
   m_wx(0),
-  m_wy(0) 
+  m_wy(0), 
+  m_OutputEventTree(0),
+  m_OutputEventBranch(0)
 {
 } // ReconstructionFactory::ReconstructionFactory()
   
@@ -63,9 +65,9 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
 // FIXME: do it better later;
 ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geometry,
 					     CherenkovDetector *cdet, CherenkovEvent *event,
-					     TFile *fout):
+					     const char *json_config_file_name):
   GeantImport(geometry, cdet, event),
-  m_OutputFile(fout),
+  m_OutputFile(0),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -82,14 +84,25 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_wtopx(0),
   m_wtopy(0),
   m_wx(0),
-  m_wy(0) 
+  m_wy(0), 
+  m_OutputEventTree(0),
+  m_OutputEventBranch(0)
 {
+  if (json_config_file_name) JsonParser(json_config_file_name);
 } // ReconstructionFactory::ReconstructionFactory()
   
 // -------------------------------------------------------------------------------------
 
 ReconstructionFactory::~ReconstructionFactory()
 {
+  if (m_OutputFile) {
+    m_OutputFile->cd();
+    
+    if (m_OutputEventTree) m_OutputEventTree->Write();
+    
+    GetIrtGeometry()->Write();
+  } //if
+  
   // Avoid calling this stuff from a dummy IrtInterface instantiation upon eicrecon startup;
   if (GetProcessedEventCount()) {
     int argc      = 1;
@@ -122,10 +135,8 @@ ReconstructionFactory::~ReconstructionFactory()
       } //for rad..if
     
     // 'true': do not call exit() in the end;
-    if (app && canvases.size()) {
-      printf("@A@\n");
+    if (app && canvases.size()) 
       app->Run(true);
-    }
     // FIXME: crashes;
     //if (app) delete app;
     
@@ -135,6 +146,9 @@ ReconstructionFactory::~ReconstructionFactory()
   } //if
   
   if (m_Plots) delete m_Plots;
+  
+  if (m_OutputFile)
+    m_OutputFile->Close();
 } // ReconstructionFactory::~ReconstructionFactory()
 
 // -------------------------------------------------------------------------------------
@@ -168,6 +182,22 @@ int ReconstructionFactory::AddHypothesis(const char *pdg)
 #ifdef JSON_IMPORT_EXPORT
 void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
 {
+  if (jconfig.find("OutputRootFile") != jconfig.end()) {
+    std::string fname = jconfig["OutputRootFile"].template get<std::string>().c_str();
+
+    m_OutputFile = new TFile(fname.c_str(), "RECREATE");
+  } //if
+    
+  if (jconfig.find("WriteOutputTree") != jconfig.end() &&
+      strcmp(jconfig["WriteOutputTree"].template get<std::string>().c_str(), "no")) {
+    m_OutputEventTree   = new TTree("t", "IRT2 output tree");
+    
+    // This does not work after IRT2 namespace was introduced;
+    //m_OutputEventBranch = m_OutputEventTree->Branch("e", "IRT2::CherenkovEvent", &m_Event);//, 16000, 2);
+    //m_OutputEventBranch = m_EventTree->Branch("e", "IRT2::CherenkovEvent", m_EventPtr, 16000, 2);
+    //m_OutputEventBranch = m_EventTree->Branch("e", "IRT2::CherenkovEvent", m_EventPtr, 16000, 2);
+  } //if
+  
   // Timing information usage in a chi^2 ansatz;
   if (jconfig.find("UseTimingInChiSquare") != jconfig.end() &&
       !strcmp(jconfig["UseTimingInChiSquare"].template get<std::string>().c_str(), "no"))
@@ -351,13 +381,10 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   } //if
   
   {
-    //json* jptr = &jconfig;
-
     // FIXME: for now assume a single photo detector type; cannot easily store this pointer;
-    auto pd = /*m_irt_detector*/GetMyRICH()->m_PhotonDetectors[0];
+    auto pd = GetMyRICH()->m_PhotonDetectors[0];
 
     if (jconfig.find("Photosensor") != jconfig.end()) {
-      //auto& jpref = (*jptr)["Photosensor"];
       auto& jpref = jconfig["Photosensor"];
 
       double qe_rescaling_factor = 1.0;
@@ -838,21 +865,21 @@ int ReconstructionFactory::VerifyEventStructure( void )
 
 CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
 {
+  if (m_OutputEventTree) m_OutputEventTree->Fill();
+  
   // Prepair for next event;
   ClearBlackoutCells();
   ClearDigitizedHits();
 
   // Get it from the ROOT tree; otherwise assume it is an EICrecon mode where event structure
   // has been populated by the IrtInterface already;
-  if (m_Tree) GetInputTreeEntry(ev);
-
+  if (m_InputEventTree) GetInputTreeEntry(ev);
+  
   if (VerifyEventStructure()) return Event();
-  //return 0;
   
   // Use undetected photons (HERE DO THIS ON TRACK PER TRACK BASIS) to extract the 
   // expected average emission point 3D location, time and parent particle 3D momentum;  
   /*if (!m_ExperimentalMode)*/ CalibratePhotonEmissionPoints();
-  //return 0;
 
   // Loop through all photons (both calibration and detected ones) of all tracks and 
   // produce event-level hit array; "calibration" (undetected) photons will be passed through 

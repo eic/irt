@@ -41,9 +41,9 @@ private:
 
 class ReconstructionFactory : public Digitization, public Calibration {
  public:
-  ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, const char *dname = 0, TFile *fout = 0);
+  ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, const char *dname = 0);
   ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event,
-			TFile *fout = 0);
+			const char *json_config_file_name = 0);
   virtual ~ReconstructionFactory();
   
   // Will be empty calls if JSON_IMPORT_EXPORT is not defined;
@@ -118,12 +118,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
   unsigned m_HitCountCutoff;
   unsigned m_ProcessedEventCount;
 
-public:
   bool m_CombinedPlotVisualizationEnabled;
   int m_wtopx;
   unsigned m_wtopy, m_wx, m_wy;
 
-private:
+  TTree* m_OutputEventTree;
+  TBranch* m_OutputEventBranch;
+  
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
 };

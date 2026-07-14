@@ -17,7 +17,7 @@ class GeantImport {
   GeantImport(const char *dfname = 0, const char *cfname = 0, const char *dname = 0);
   // FIXME: do it all better later;
   GeantImport(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event):
-    m_Tree(0),
+    m_InputEventTree(0),
     m_IrtGeometry(geometry),
     m_RICH(cdet),
     m_Event(event),
@@ -28,7 +28,9 @@ class GeantImport {
   CherenkovDetector *GetMyRICH( void )    const { return m_RICH; }
   CherenkovEvent *Event( void )           const { return m_Event; };
   void GetInputTreeEntry(unsigned ev)     const;
-  unsigned GetInputTreeEntryCount( void ) const { return m_Tree ? m_Tree->GetEntries() : 0; };
+  unsigned GetInputTreeEntryCount( void ) const {
+    return m_InputEventTree ? m_InputEventTree->GetEntries() : 0;
+  };
  
   void AccountSecondaries( void )               { m_PurgeSecondaries = false; };
   void SetMomentumCutoff(double value)          { m_MomentumCutoff = value; };
@@ -37,7 +39,7 @@ class GeantImport {
 
 protected:
   // Input TTree with GEANT simulated data;
-  TTree *m_Tree;
+  TTree *m_InputEventTree;
   
  private:
   CherenkovDetectorCollection *m_IrtGeometry;

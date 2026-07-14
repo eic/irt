@@ -10,7 +10,7 @@ namespace IRT2 {
 // -------------------------------------------------------------------------------------
 
 GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dname):
-  m_Tree(0),
+  m_InputEventTree(0),
   m_IrtGeometry(0),
   m_RICH(0),
   m_Event(0),
@@ -24,8 +24,8 @@ GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dna
   if (!fcfg) return;
   m_IrtGeometry = dynamic_cast<CherenkovDetectorCollection*>(fcfg->Get("CherenkovDetectorCollection"));
   auto fdata = new TFile(dfname);
-  m_Tree = dynamic_cast<TTree*>(fdata->Get("t")); 
-  m_Tree->SetBranchAddress("e", &m_Event);
+  m_InputEventTree = dynamic_cast<TTree*>(fdata->Get("t")); 
+  m_InputEventTree->SetBranchAddress("e", &m_Event);
 
   m_RICH = m_IrtGeometry->GetDetector(dname);
 
@@ -36,9 +36,9 @@ GeantImport::GeantImport(const char *dfname, const char *cfname, const char *dna
 
 void GeantImport::GetInputTreeEntry(unsigned ev) const 
 { 
-  if (!m_Tree) return;
+  if (!m_InputEventTree) return;
 
-  m_Tree->GetEntry(ev); 
+  m_InputEventTree->GetEntry(ev); 
 
   if (m_PurgeSecondaries) {
     auto &particles = m_Event->ChargedParticles();
