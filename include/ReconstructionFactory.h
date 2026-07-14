@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef JSON_IMPORT_EXPORT
+#include <nlohmann/json.hpp>
+#endif
+
 #include <TH1D.h>
 class TParticlePDG;
 class TCanvas;
@@ -41,6 +45,12 @@ class ReconstructionFactory : public Digitization, public Calibration {
   ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event,
 			TFile *fout = 0);
   virtual ~ReconstructionFactory();
+  
+  // Will be empty calls if JSON_IMPORT_EXPORT is not defined;
+  void JsonParser(const char *fname);
+#ifdef JSON_IMPORT_EXPORT
+  void JsonParser(nlohmann::json jconfig);
+#endif
   
   void IgnoreTimingInChiSquare( void )               { m_UseTimingInChiSquare = false; };
   void IgnorePoissonTermInChiSquare( void )          { m_UsePoissonTermInChiSquare = false; };
