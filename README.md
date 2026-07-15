@@ -1,3 +1,8 @@
+
+```
+!!! THIS README is OBSOLETE !!!
+```
+
 Indirect Ray Tracing code for ATHENA event reconstruction
 =========================================================
 
