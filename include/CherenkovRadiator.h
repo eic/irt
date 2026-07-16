@@ -14,7 +14,6 @@ class TCanvas;
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
-//class G4DataInterpolation;
 #include "DataInterpolation.h"
 
 namespace IRT2 {
