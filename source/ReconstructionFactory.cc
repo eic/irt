@@ -6,6 +6,8 @@
 // Especially this one is problematic since it should account for the size of radial bands;
 //#define _EXPECTED_BG_PHOTON_COUNT_         ( 0.5)
 
+#include <fstream>
+
 #include <TFile.h>
 #include <TTree.h>
 #include <TH1D.h>
@@ -14,9 +16,19 @@
 #include <TDatabasePDG.h>
 #include <Math/ProbFunc.h>
 
+#include <TApplication.h>
+#include <TCanvas.h>
+
 #include "CherenkovDetectorCollection.h"
 #include "CherenkovEvent.h"
 #include "ReconstructionFactory.h"
+
+#ifdef JSON_IMPORT_EXPORT
+using json = nlohmann::json;
+#endif
+
+// FIXME: move to a different place;
+#define _MAGIC_CFF_ (1239.8)
 
 namespace IRT2 {
 
@@ -25,6 +37,7 @@ namespace IRT2 {
 ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfname, 
 					     const char *dname):
   GeantImport(dfname, cfname, dname),
+  m_OutputFile(0),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -36,15 +49,25 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
-  m_ProcessedEventCount(0)
+  m_ProcessedEventCount(0),
+  m_CombinedPlotVisualizationEnabled(false),
+  m_wtopx(0),
+  m_wtopy(0),
+  m_wx(0),
+  m_wy(0), 
+  m_OutputEventTree(0),
+  m_OutputEventBranch(0)
 {
-} // ReconstructionFactory::ReconstructionFactory() 
+} // ReconstructionFactory::ReconstructionFactory()
+  
 // -------------------------------------------------------------------------------------
 
 // FIXME: do it better later;
 ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geometry,
-					     CherenkovDetector *cdet, CherenkovEvent *event):
+					     CherenkovDetector *cdet, CherenkovEvent *event,
+					     const char *json_config_file_name):
   GeantImport(geometry, cdet, event),
+  m_OutputFile(0),
   m_VerboseMode(true), 
   m_UseTimingInChiSquare(true),
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
@@ -56,9 +79,81 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
-  m_ProcessedEventCount(0)
+  m_ProcessedEventCount(0),
+  m_CombinedPlotVisualizationEnabled(false),
+  m_wtopx(0),
+  m_wtopy(0),
+  m_wx(0),
+  m_wy(0), 
+  m_OutputEventTree(0),
+  m_OutputEventBranch(0)
 {
-} // ReconstructionFactory::ReconstructionFactory() 
+  if (json_config_file_name) JsonParser(json_config_file_name);
+} // ReconstructionFactory::ReconstructionFactory()
+  
+// -------------------------------------------------------------------------------------
+
+ReconstructionFactory::~ReconstructionFactory()
+{
+  if (m_OutputFile) {
+    m_OutputFile->cd();
+    
+    if (m_OutputEventTree) m_OutputEventTree->Write();
+    
+    GetIrtGeometry()->Write();
+  } //if
+  
+  // Avoid calling this stuff from a dummy IrtInterface instantiation upon eicrecon startup;
+  if (GetProcessedEventCount()) {
+    int argc      = 1;
+    char* argv[1] = {(char*)""};
+    // FIXME: the way this stuff is presently coded, if at least one panel was requested in a "display"
+    // mode, all panels requested as a "store" will also be displayed;
+    bool display  = m_CombinedPlotVisualizationEnabled;
+    for (auto [name, rad] : GetMyRICH()->Radiators())
+      if (rad->UsedInRingImaging() && rad->m_OutputPlotVisualizationEnabled)
+	display = true;
+    
+    // FIXME: well, if at least one is "display", all "store" will be shown as well;
+    auto* app = display ? new TApplication("", &argc, argv) : 0;
+    
+    std::vector<TCanvas*> canvases;
+
+    //if (m_CombinedPlotVisualizationEnabled
+    auto cv = DisplayStandardPlots("Track / event level plots", m_wtopx, m_wtopy, m_wx, m_wy);
+    if (cv)
+      canvases.push_back(cv);
+    
+    for (auto [name, rad] : GetMyRICH()->Radiators())
+      if (rad->UsedInRingImaging() && rad->Plots()) {
+	TString cname, wname;
+	// FIXME: won't work for Acrylic and Aerogel together;
+	cname.Form("c%c", std::tolower(name.Data()[0]));
+	wname.Form("%s radiator", name.Data());
+
+	auto cv = rad->DisplayStandardPlots(cname.Data(), wname.Data(),
+					    // FIXME: may want to improve the API here;
+					    rad->m_wtopx, rad->m_wtopy, rad->m_wx, rad->m_wy);
+	if (cv)
+	  canvases.push_back(cv);
+      } //for rad..if
+    
+    // 'true': do not call exit() in the end;
+    if (app && canvases.size()) 
+      app->Run(true);
+    // FIXME: crashes;
+    //if (app) delete app;
+    
+    if (m_OutputFile)
+      for (auto cv : canvases)
+	cv->Write();
+  } //if
+  
+  if (m_Plots) delete m_Plots;
+  
+  if (m_OutputFile)
+    m_OutputFile->Close();
+} // ReconstructionFactory::~ReconstructionFactory()
 
 // -------------------------------------------------------------------------------------
 
@@ -85,6 +180,281 @@ int ReconstructionFactory::AddHypothesis(const char *pdg)
   // Avoid code duplication;
   return (ptr ? AddHypothesis(ptr->PdgCode()) : -1);
 } // ReconstructionFactory::AddHypothesis()
+
+// -------------------------------------------------------------------------------------
+
+#ifdef JSON_IMPORT_EXPORT
+void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
+{
+  if (jconfig.find("OutputRootFile") != jconfig.end()) {
+    std::string fname = jconfig["OutputRootFile"].template get<std::string>().c_str();
+
+    auto len = strlen(fname.c_str());
+    if (len > 5 && !strcmp(fname.c_str() + len - 5, ".root"))
+      //if (strcmp(fname.c_str(), "none"))
+      m_OutputFile = new TFile(fname.c_str(), "RECREATE");
+  } //if
+    
+  if (jconfig.find("WriteOutputTree") != jconfig.end() &&
+      strcmp(jconfig["WriteOutputTree"].template get<std::string>().c_str(), "no")) {
+    m_OutputEventTree   = new TTree("t", "IRT2 output tree");
+    
+    // This does not work after IRT2 namespace was introduced;
+    //m_OutputEventBranch = m_OutputEventTree->Branch("e", "IRT2::CherenkovEvent", &m_Event);//, 16000, 2);
+    //m_OutputEventBranch = m_EventTree->Branch("e", "IRT2::CherenkovEvent", m_EventPtr, 16000, 2);
+    //m_OutputEventBranch = m_EventTree->Branch("e", "IRT2::CherenkovEvent", m_EventPtr, 16000, 2);
+  } //if
+  
+  // Timing information usage in a chi^2 ansatz;
+  if (jconfig.find("UseTimingInChiSquare") != jconfig.end() &&
+      !strcmp(jconfig["UseTimingInChiSquare"].template get<std::string>().c_str(), "no"))
+    IgnoreTimingInChiSquare();
+
+  // Poisson term usage in a chi^2 ansatz;
+  if (jconfig.find("UsePoissonTermInChiSquare") != jconfig.end() &&
+      !strcmp(jconfig["UsePoissonTermInChiSquare"].template get<std::string>().c_str(), "no"))
+    IgnorePoissonTermInChiSquare();
+
+  // Outlier hit selection;
+  if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
+    SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
+
+  // Optional removal of hits which seem to be "shared" between >1 track;
+  if (jconfig.find("RemoveAmbiguousHits") != jconfig.end() &&
+      !strcmp(jconfig["RemoveAmbiguousHits"].template get<std::string>().c_str(), "yes"))
+    RemoveAmbiguousHits();
+
+  // Should be close enough to the real one; this only affects the calibration stage;
+  if (jconfig.find("DefaultSinglePhotonThetaResolution") != jconfig.end())
+    SetDefaultSinglePhotonThetaResolution(
+        jconfig["DefaultSinglePhotonThetaResolution"].template get<double>());
+
+  // Sensor active area will be pixellated NxN in digitization; '32': HRPPD-like "sensors";
+  if (jconfig.find("SensorActiveAreaPixellation") != jconfig.end())
+    SetSensorActiveAreaPixellation(
+        jconfig["SensorActiveAreaPixellation"].template get<int>());
+
+  // Single photon timing resolution; default: 0.050 (50ps);
+  if (jconfig.find("SinglePhotonTimingResolution") != jconfig.end())
+    SetSinglePhotonTimingResolution(
+        jconfig["SinglePhotonTimingResolution"].template get<double>());
+
+  // PID hypotheses to consider;
+  if (jconfig.find("IdentifiedParticles") != jconfig.end()) {
+    const auto& pconfig = jconfig["IdentifiedParticles"];
+
+    for (auto& pdg : pconfig)
+      AddHypothesis(pdg.template get<std::string>().c_str());
+  } //if
+
+  // May want to cheat a bit (feed IRT with true photon direction vectors);
+  if (jconfig.find("UseMcTruthPhotonDirectionSeed") != jconfig.end() &&
+      !strcmp(jconfig["UseMcTruthPhotonDirectionSeed"].template get<std::string>().c_str(), "no"))
+    IgnoreMcTruthPhotonDirectionSeed();
+
+  // Require at least that many associated hits; populate 0-th bin of a PID match
+  // histogram otherwise; default: 1;
+  if (jconfig.find("MinHitCountCutoff") != jconfig.end())
+    SetHitCountCutoff(jconfig["MinHitCountCutoff"].template get<int>());
+
+  // FIXME: this field should be mandatory (add a try-catch or such);
+  if (jconfig.find("Calibration") != jconfig.end()) {
+    std::ifstream fcalib(jconfig["Calibration"].template get<std::string>().c_str());
+    if (fcalib.is_open()) {
+      auto jcalib = json::parse(fcalib);
+
+      if (jcalib.find("Radiators") != jcalib.end()) {
+        const auto& rconfig = jcalib["Radiators"];
+
+        for (auto [name, radiator] : GetMyRICH()->Radiators()) {
+          // There should be an entry in JSON file; skip otherwise;
+          if (rconfig.find(name.Data()) == rconfig.end())
+            continue;
+          const auto& rrconfig = rconfig[name.Data()];
+
+          // Prefer to initialize in a separate loop; clear() is not really needed (?);
+          radiator->m_Calibrations.clear();
+          for (unsigned iq = 0; iq < _THETA_BIN_COUNT_; iq++)
+            radiator->m_Calibrations.push_back(CherenkovRadiatorCalibration());
+
+          if (rrconfig.find("theta-bins") != rrconfig.end()) {
+            const auto& tconfig = rrconfig["theta-bins"];
+            for (unsigned iq = 0; iq < _THETA_BIN_COUNT_; iq++) {
+              TString bin;
+              bin.Form("%02d", iq);
+
+              if (tconfig.find(bin.Data()) != tconfig.end()) {
+                const auto& tarray = tconfig[bin.Data()];
+
+                auto* calib = &radiator->m_Calibrations[iq];
+
+                unsigned rnum = tarray.size() - 4;
+
+                if (rnum == GetMyRICH()->Radiators().size()) {
+                  calib->m_Stat        = atoi(tarray[0].template get<std::string>().c_str());
+                  calib->m_AverageZvtx = atof(tarray[1].template get<std::string>().c_str());
+                  // Convert back to [rad];
+                  calib->m_Coffset = atof(tarray[2].template get<std::string>().c_str()) / 1000.;
+                  calib->m_Csigma  = atof(tarray[3].template get<std::string>().c_str()) / 1000.;
+                  for (unsigned ir = 0; ir < rnum; ir++)
+                    calib->m_AverageRefractiveIndices.push_back(
+                        atof(tarray[4 + ir].template get<std::string>().c_str()));
+                } //if
+              } //if
+            } //for iq
+          } //if
+        } //for radiator
+      } //if
+
+      fcalib.close();
+    } //if
+  } //if
+
+  if (jconfig.find("Radiators") != jconfig.end()) {
+    const auto& rconfig = jconfig["Radiators"];
+
+    for (auto [name, radiator] : GetMyRICH()->Radiators()) {
+      // There should be an entry in JSON file; skip otherwise;
+      if (rconfig.find(name.Data()) == rconfig.end())
+        continue;
+      const auto& rrconfig = rconfig[name.Data()];
+
+      if (rrconfig.find("imaging") != rrconfig.end() &&
+          !strcmp(rrconfig["imaging"].template get<std::string>().c_str(), "yes"))
+        radiator->UseInRingImaging();
+
+      if (rrconfig.find("evaluation-plots") != rrconfig.end()) {
+        const auto& tag = rrconfig["evaluation-plots"];
+
+        if (!strcmp(tag.template get<std::string>().c_str(), "store"))
+          radiator->InitializePlots(TString(name.Data()[0]).Data());
+        else if (!strcmp(tag.template get<std::string>().c_str(), "display")) {
+          radiator->InitializePlots(TString(name.Data()[0]).Data());
+          radiator->m_OutputPlotVisualizationEnabled = true;
+        } //if
+
+        if (rrconfig.find("evaluation-plots-geometry") != rrconfig.end()) {
+          const auto& gconfig = rrconfig["evaluation-plots-geometry"];
+
+          if (gconfig.size() == 4) {
+            radiator->m_wtopx = gconfig[0].template get<int>();
+            radiator->m_wtopy = gconfig[1].template get<int>();
+            radiator->m_wx    = gconfig[2].template get<int>();
+            radiator->m_wy    = gconfig[3].template get<int>();
+          } //if
+        } //if
+
+        //{
+	auto plots = radiator->Plots();
+
+	if (plots) {
+          if (rrconfig.find("refractive-index-range") != rrconfig.end())
+            plots->SetRefractiveIndexRange(
+                rrconfig["refractive-index-range"][0].template get<double>(),
+                rrconfig["refractive-index-range"][1].template get<double>());
+
+          if (rrconfig.find("photon-vertex-range") != rrconfig.end())
+            plots->SetPhotonVertexRange(rrconfig["photon-vertex-range"][0].template get<double>(),
+                                        rrconfig["photon-vertex-range"][1].template get<double>());
+
+          if (rrconfig.find("cherenkov-angle-range") != rrconfig.end())
+            plots->SetCherenkovAngleRange(
+                rrconfig["cherenkov-angle-range"][0].template get<double>(),
+                rrconfig["cherenkov-angle-range"][1].template get<double>());
+        } //if
+      } //if
+    } //for radiator
+  }
+
+  // Initialize combined PID QA plots;
+  if (jconfig.find("CombinedEvaluationPlots") != jconfig.end()) {
+    const auto& tag = jconfig["CombinedEvaluationPlots"];
+
+    if (!strcmp(tag.template get<std::string>().c_str(), "store"))
+      InitializePlots();
+    else if (!strcmp(tag.template get<std::string>().c_str(), "display")) {
+      InitializePlots();
+      m_CombinedPlotVisualizationEnabled = true;
+    } //if
+  } //if
+  if (jconfig.find("CombinedEvaluationPlotsGeometry") != jconfig.end()) {
+    const auto& gconfig = jconfig["CombinedEvaluationPlotsGeometry"];
+
+    if (gconfig.size() == 4) {
+      m_wtopx = gconfig[0].template get<int>();
+      m_wtopy = gconfig[1].template get<int>();
+      m_wx    = gconfig[2].template get<int>();
+      m_wy    = gconfig[3].template get<int>();
+    } //if
+  } //if
+  
+  {
+    // FIXME: for now assume a single photo detector type; cannot easily store this pointer;
+    auto pd = GetMyRICH()->m_PhotonDetectors[0];
+
+    if (jconfig.find("Photosensor") != jconfig.end()) {
+      auto& jpref = jconfig["Photosensor"];
+
+      double qe_rescaling_factor = 1.0;
+      // An artificial rescaling factor may be provided;
+      if (jpref.find("quantum-efficiency-rescaling-factor") != jpref.end())
+        qe_rescaling_factor = jpref["quantum-efficiency-rescaling-factor"].template get<double>();
+
+      if (jpref.find("quantum-efficiency") != jpref.end()) {
+        auto& qeref = jpref["quantum-efficiency"];
+
+        const int qeEntries = qeref.size();
+        std::unique_ptr<double[]> WL(new double[qeEntries]);
+        std::unique_ptr<double[]> QE(new double[qeEntries]);
+
+        unsigned counter = 0;
+        for (json::iterator it = qeref.begin(); it != qeref.end(); ++it) {
+          std::string wlstr(it.key().c_str());
+          // FIXME: assumes a 3-digit integer value; do it better later;
+          wlstr[3] = 0;
+
+          WL[counter]   = atoi(wlstr.c_str());
+          QE[counter++] = it.value().template get<double>();
+        } //it
+
+        double qemax = 0.0;
+        std::vector<double> qePhotonEnergy(qeEntries);
+        std::vector<double> qeData(qeEntries);
+        for (int iq = 0; iq < qeEntries; iq++) {
+          qePhotonEnergy[iq] = _MAGIC_CFF_ / (WL[qeEntries - iq - 1] + 0.0);
+          qeData[iq]         = QE[qeEntries - iq - 1] * qe_rescaling_factor;
+
+          if (qeData[iq] > qemax)
+            qemax = qeData[iq];
+        } //for iq
+
+        pd->SetQE(
+            _MAGIC_CFF_ / WL[qeEntries - 1], _MAGIC_CFF_ / WL[0],
+            // NB: last argument: want a built-in selection of unused photons, which follow the QE(lambda);
+            // see CherenkovSteppingAction::UserSteppingAction() for a usage case;
+            new DataInterpolation(qePhotonEnergy.data(), qeData.data(), qeEntries),
+            qemax ? 1.0 / qemax : 1.0);
+        // FIXME: 100 hardcoded;
+        pd->GetQE()->CreateLookupTable(100);
+      } //if
+    } //if
+  }
+} // ReconstructionFactory::JsonParser()
+#endif
+  
+// -------------------------------------------------------------------------------------
+  
+void ReconstructionFactory::JsonParser(const char *fname)
+{
+#ifdef JSON_IMPORT_EXPORT
+  printf("@Q@ ReconstructionFactory::JsonParser() ...\n");
+  
+  std::ifstream fcfg(fname);
+  if (!fcfg) return;
+  
+  JsonParser(json::parse(fcfg));
+#endif
+} // ReconstructionFactory::JsonParser()
 
 // -------------------------------------------------------------------------------------
 
@@ -503,21 +873,21 @@ int ReconstructionFactory::VerifyEventStructure( void )
 
 CherenkovEvent *ReconstructionFactory::GetEvent(unsigned ev, bool calibration)
 {
+  if (m_OutputEventTree) m_OutputEventTree->Fill();
+  
   // Prepair for next event;
   ClearBlackoutCells();
   ClearDigitizedHits();
 
   // Get it from the ROOT tree; otherwise assume it is an EICrecon mode where event structure
   // has been populated by the IrtInterface already;
-  if (m_Tree) GetInputTreeEntry(ev);
-
+  if (m_InputEventTree) GetInputTreeEntry(ev);
+  
   if (VerifyEventStructure()) return Event();
-  //return 0;
   
   // Use undetected photons (HERE DO THIS ON TRACK PER TRACK BASIS) to extract the 
   // expected average emission point 3D location, time and parent particle 3D momentum;  
   /*if (!m_ExperimentalMode)*/ CalibratePhotonEmissionPoints();
-  //return 0;
 
   // Loop through all photons (both calibration and detected ones) of all tracks and 
   // produce event-level hit array; "calibration" (undetected) photons will be passed through 

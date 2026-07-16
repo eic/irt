@@ -14,7 +14,7 @@ class TCanvas;
 class G4LogicalVolume;
 class G4RadiatorMaterial;
 
-class G4DataInterpolation;
+#include "DataInterpolation.h"
 
 namespace IRT2 {
 
@@ -78,7 +78,9 @@ class CherenkovRadiator: public TObject {
    m_OutputPlotVisualizationEnabled(false), m_wtopx(0), m_wtopy(0), m_wx(0), m_wy(0) {
    m_LogicalVolumes.push_back(volume);
   };
-  ~CherenkovRadiator() {};
+  ~CherenkovRadiator() {
+    if (m_Plots) delete m_Plots;
+  };
 
   double n( void )                               const { return m_ReferenceRefractiveIndex; };
   double GetReferenceAttenuationLength( void )   const { return m_ReferenceAttenuationLength; };
@@ -189,7 +191,7 @@ class CherenkovRadiator: public TObject {
   
   CherenkovRadiatorPlots  *m_Plots;                         //!
 
-  G4DataInterpolation *m_RefractiveIndex;                   //!
+  DataInterpolation *m_RefractiveIndex;                     //!
 
   bool m_OutputPlotVisualizationEnabled;                    //!
   int m_wtopx;                                              //!

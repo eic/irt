@@ -1,8 +1,13 @@
 #pragma once
 
+#ifdef JSON_IMPORT_EXPORT
+#include <nlohmann/json.hpp>
+#endif
+
 #include <TH1D.h>
 class TParticlePDG;
 class TCanvas;
+class TFile;
 
 #include "Calibration.h"
 #include "Digitization.h"
@@ -37,11 +42,16 @@ private:
 class ReconstructionFactory : public Digitization, public Calibration {
  public:
   ReconstructionFactory(const char *dfname = 0, const char *cfname = 0, const char *dname = 0);
-  ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event);
-  virtual ~ReconstructionFactory() {
-    if (m_Plots) delete m_Plots;
-  };
-
+  ReconstructionFactory(CherenkovDetectorCollection *geometry, CherenkovDetector *cdet, CherenkovEvent *event,
+			const char *json_config_file_name = 0);
+  virtual ~ReconstructionFactory();
+  
+  // Will be empty calls if JSON_IMPORT_EXPORT is not defined;
+  void JsonParser(const char *fname);
+#ifdef JSON_IMPORT_EXPORT
+  void JsonParser(nlohmann::json jconfig);
+#endif
+  
   void IgnoreTimingInChiSquare( void )               { m_UseTimingInChiSquare = false; };
   void IgnorePoissonTermInChiSquare( void )          { m_UsePoissonTermInChiSquare = false; };
   void SetSingleHitCCDFcut(double value)             { m_SingleHitCCDFcut = value; };
@@ -81,6 +91,8 @@ class ReconstructionFactory : public Digitization, public Calibration {
   unsigned GetProcessedEventCount() const { return m_ProcessedEventCount; };
   
  private:
+  TFile *m_OutputFile;
+  
   bool m_VerboseMode;
   
   // Whether use hit timing or not in the chi^2 logic, see below;
@@ -105,6 +117,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
 
   unsigned m_HitCountCutoff;
   unsigned m_ProcessedEventCount;
+
+  bool m_CombinedPlotVisualizationEnabled;
+  int m_wtopx;
+  unsigned m_wtopy, m_wx, m_wy;
+
+  TTree* m_OutputEventTree;
+  TBranch* m_OutputEventBranch;
   
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
