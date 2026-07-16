@@ -107,6 +107,8 @@ ReconstructionFactory::~ReconstructionFactory()
   if (GetProcessedEventCount()) {
     int argc      = 1;
     char* argv[1] = {(char*)""};
+    // FIXME: the way this stuff is presently coded, if at least one panel was requested in a "display"
+    // mode, all panels requested as a "store" will also be displayed;
     bool display  = m_CombinedPlotVisualizationEnabled;
     for (auto [name, rad] : GetMyRICH()->Radiators())
       if (rad->UsedInRingImaging() && rad->m_OutputPlotVisualizationEnabled)
@@ -116,17 +118,19 @@ ReconstructionFactory::~ReconstructionFactory()
     auto* app = display ? new TApplication("", &argc, argv) : 0;
     
     std::vector<TCanvas*> canvases;
+
+    //if (m_CombinedPlotVisualizationEnabled
     auto cv = DisplayStandardPlots("Track / event level plots", m_wtopx, m_wtopy, m_wx, m_wy);
     if (cv)
       canvases.push_back(cv);
     
     for (auto [name, rad] : GetMyRICH()->Radiators())
-      if (rad->UsedInRingImaging()) {
+      if (rad->UsedInRingImaging() && rad->Plots()) {
 	TString cname, wname;
 	// FIXME: won't work for Acrylic and Aerogel together;
 	cname.Form("c%c", std::tolower(name.Data()[0]));
 	wname.Form("%s radiator", name.Data());
-	
+
 	auto cv = rad->DisplayStandardPlots(cname.Data(), wname.Data(),
 					    // FIXME: may want to improve the API here;
 					    rad->m_wtopx, rad->m_wtopy, rad->m_wx, rad->m_wy);
@@ -185,7 +189,10 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   if (jconfig.find("OutputRootFile") != jconfig.end()) {
     std::string fname = jconfig["OutputRootFile"].template get<std::string>().c_str();
 
-    m_OutputFile = new TFile(fname.c_str(), "RECREATE");
+    auto len = strlen(fname.c_str());
+    if (len > 5 && !strcmp(fname.c_str() + len - 5, ".root"))
+      //if (strcmp(fname.c_str(), "none"))
+      m_OutputFile = new TFile(fname.c_str(), "RECREATE");
   } //if
     
   if (jconfig.find("WriteOutputTree") != jconfig.end() &&
@@ -337,9 +344,10 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
           } //if
         } //if
 
-        {
-          auto plots = radiator->Plots();
+        //{
+	auto plots = radiator->Plots();
 
+	if (plots) {
           if (rrconfig.find("refractive-index-range") != rrconfig.end())
             plots->SetRefractiveIndexRange(
                 rrconfig["refractive-index-range"][0].template get<double>(),
@@ -353,7 +361,7 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
             plots->SetCherenkovAngleRange(
                 rrconfig["cherenkov-angle-range"][0].template get<double>(),
                 rrconfig["cherenkov-angle-range"][1].template get<double>());
-        }
+        } //if
       } //if
     } //for radiator
   }
