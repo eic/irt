@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef JSON_EXPORT
+#ifdef JSON_IMPORT_EXPORT
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 #endif
@@ -18,7 +18,7 @@ namespace IRT2 {
 // Posted by Danie
 // Retrieved 2025-12-21, License - CC BY-SA 4.0
 
-#ifdef JSON_EXPORT
+#ifdef JSON_IMPORT_EXPORT
 template<typename ITERATOR_TYPE>
 void print_element(ITERATOR_TYPE it, unsigned int depth, std::ostream& output_stream);
 void print_array(nlohmann::json::array_t arr, unsigned int depth, std::ostream& output_stream);
@@ -107,7 +107,7 @@ void print_element(ITERATOR_TYPE iter, unsigned int depth, std::ostream& output_
 
 void CherenkovDetector::ExportJsonFormatCalibrations(const char *fname)
 {
-#ifdef JSON_EXPORT
+#ifdef JSON_IMPORT_EXPORT
   std::ofstream ofile(fname);
   
   if (!ofile.is_open())  {
