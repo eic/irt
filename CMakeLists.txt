@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
 project(IRT2
-  VERSION 2.1.3
+  VERSION 2.2.0
   LANGUAGES CXX
 )
 
