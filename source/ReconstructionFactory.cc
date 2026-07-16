@@ -115,11 +115,11 @@ ReconstructionFactory::~ReconstructionFactory()
 	display = true;
     
     // FIXME: well, if at least one is "display", all "store" will be shown as well;
-    auto* app = display ? new TApplication("", &argc, argv) : 0;
+    // NB: do not want to invoke it twice (and 'delete' crashes, for some reason);
+    auto app = display && !gApplication ? new TApplication("", &argc, argv) : 0;
     
     std::vector<TCanvas*> canvases;
 
-    //if (m_CombinedPlotVisualizationEnabled
     auto cv = DisplayStandardPlots("Track / event level plots", m_wtopx, m_wtopy, m_wx, m_wy);
     if (cv)
       canvases.push_back(cv);
@@ -141,16 +141,23 @@ ReconstructionFactory::~ReconstructionFactory()
     // 'true': do not call exit() in the end;
     if (app && canvases.size()) 
       app->Run(true);
-    // FIXME: crashes;
-    //if (app) delete app;
-    
-    if (m_OutputFile)
-      for (auto cv : canvases)
+
+    for (auto cv : canvases) {
+      if (m_OutputFile)
 	cv->Write();
+      
+      delete cv;
+    } //for cv
   } //if
   
   if (m_Plots) delete m_Plots;
   
+  // FIXME: crashes;
+  if (gApplication) {
+    //delete gApplication;
+    //gApplication = nullptr;
+  } //if
+    
   if (m_OutputFile)
     m_OutputFile->Close();
 } // ReconstructionFactory::~ReconstructionFactory()
