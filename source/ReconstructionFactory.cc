@@ -460,6 +460,11 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 { 
   double theta = mcparticle->GetVertexMomentum().Theta();
   unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
+  if (ibin >= _THETA_BIN_COUNT_) {
+    if (BeVerbose()) printf("ProcessHits: theta=%.4f -> ibin=%u out of range [0,%u); skipping particle\n",
+                            theta, ibin, _THETA_BIN_COUNT_);
+    return;
+  }
 	
   // Loop through all digitized hits of a given event; apply IRT on a pre-calculated 
   // [vertex,momentum] pair for each hit-to-radiator association; no sampling any 
@@ -478,9 +483,16 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	auto tag = std::make_pair(radiator, irt);
 
 	{
-	  unsigned ir = 0;
 	  auto *calib = &radiator->m_Calibrations[ibin];
-	  
+	  if (calib->m_AverageRefractiveIndices.size() < GetMyRICH()->Radiators().size()) {
+	    if (BeVerbose()) printf("ProcessHits: no calibration for radiator '%s' theta-bin %u "
+	                            "(have %zu refractive indices, need %zu); skipping hit\n",
+	                            radiator->GetAlternativeMaterialName(), ibin,
+	                            calib->m_AverageRefractiveIndices.size(),
+	                            GetMyRICH()->Radiators().size());
+	    continue;
+	  }
+	  unsigned ir = 0;
 	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
 	    rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
 	} 
