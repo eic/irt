@@ -489,9 +489,14 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	{
 	  unsigned ir = 0;
 	  auto *calib = &radiator->m_Calibrations[ibin];
-	  
+
+#if 1
+	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
+	    mcparticle->SetReferenceRefractiveIndex(rad, calib->m_AverageRefractiveIndices[ir++]);
+#else
 	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
 	    rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
+#endif
 	} 
 	
 	{
@@ -504,7 +509,7 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
 
 	    auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
-	      irt->Solve(history->m_EstimatedVertex,
+	      irt->Solve(mcparticle, history->m_EstimatedVertex,
 			 // FIXME: give beam line as a parameter;
 			 history->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
 			 TVector3(0,0,1), false, use_seed ? &seed : 0);
@@ -630,7 +635,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	      double beta = 1./sqrt(1. + pow(m/pp, 2)), tt = ll/(beta*300);
 
 	      // FIXME: exception;
-	      double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
+	      //double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
+	      double thp = acos(sqrt(pp*pp + m*m)/(mcparticle->n(radiator)*pp));
 	      double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
 	      double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
 	      
