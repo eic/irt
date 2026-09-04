@@ -17,8 +17,6 @@
 // Refractive index variation; in units of the (1-n); ~1% makes sense?;
 //#define _IRT_DERIVATIVE_NNN_STEP_    (0.01)
 
-//#include "ChargedParticle.h"
-//class ChargedParticle;//.h"
 #include "CherenkovRadiator.h"
 #include "OpticalBoundary.h"
 #include "ParametricSurface.h"
@@ -26,7 +24,7 @@
 
 namespace IRT2 {
 
-class ChargedParticle;//.h"
+class ChargedParticle;
   
 class IRT: public TObject {
  public:
