@@ -5,7 +5,6 @@
 #include "G4Object.h"
 #include "FlatSurface.h"
 
-//class G4DataInterpolation;
 #include "DataInterpolation.h"
 
 #include "IRT.h"

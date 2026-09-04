@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
 project(IRT2
-  VERSION 2.1.3
+  VERSION 2.2.0
   LANGUAGES CXX
 )
 
@@ -12,7 +12,6 @@ cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 option(EVALUATION  "Build evaluation programs"                                   OFF)
 option(DELPHES     "Delphes card production"                                      ON)
 option(IRT_ROOT_IO "Generate dictionary for ROOT I/O of libIRT objects"           ON)
-#option(JSON_EXPORT "Be able to export calibrations in JSON format"      OFF)
 option(JSON_IMPORT_EXPORT "Be able to import/export calibrations in JSON format" OFF)
 
 # Sanitizer options (TSAN is mutually exclusive with ASAN/UBSAN)
@@ -149,7 +148,6 @@ if(IRT_ROOT_IO)
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}_rdict.pcm
     ${CMAKE_CURRENT_BINARY_DIR}/lib${CMAKE_PROJECT_NAME}.rootmap
   )
-  #root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h)
   if(JSON_IMPORT_EXPORT)
     root_generate_dictionary(${IRT_DICT} ${HEADERS} LINKDEF include/irtLinkDef.h OPTIONS -DJSON_IMPORT_EXPORT)
   else()

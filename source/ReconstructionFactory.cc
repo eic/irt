@@ -454,8 +454,6 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
 void ReconstructionFactory::JsonParser(const char *fname)
 {
 #ifdef JSON_IMPORT_EXPORT
-  printf("@Q@ ReconstructionFactory::JsonParser() ...\n");
-  
   std::ifstream fcfg(fname);
   if (!fcfg) return;
   
