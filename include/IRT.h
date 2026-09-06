@@ -24,6 +24,8 @@
 
 namespace IRT2 {
 
+class ChargedParticle;
+  
 class IRT: public TObject {
  public:
   IRT(/*unsigned sector = 0*/): /*m_Sector(sector),*/ m_IterationLimit(_IRT_ITERATION_LIMIT_), 
@@ -38,7 +40,8 @@ class IRT: public TObject {
   //void SetPrecision   (double value) { m_Precision = value; };
   void SetJacobianStep(double value) { m_JacobianStep = value; };
 
-  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, const TVector3 &beam, 
+  IRTSolution Solve(ChargedParticle *mcparticle,
+		    const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
   //unsigned GetSector( void ) const { return m_Sector; };
@@ -48,13 +51,14 @@ class IRT: public TObject {
   };
 
  private:
-  bool Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length = 0); 
+  bool Transport(ChargedParticle *mcparticle, const TVector3 &xfrom, const TVector3 &nfrom, double *length = 0); 
   inline OpticalBoundary *GetOpticalBoundary(unsigned id) const { 
     return (id < _m_OpticalBoundaries.size() ? 
     	    dynamic_cast<OpticalBoundary*>(_m_OpticalBoundaries[id].GetObject()) : 0);
   };
 
-  IRTSolution Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double xy[2], const TVector3 &beam, 
+  IRTSolution Solve(ChargedParticle *mcparticle, const TVector3 &xfrom, const TVector3 &nfrom,
+		    const double xy[2], const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
   // FIXME: this is not the right place for this variable;

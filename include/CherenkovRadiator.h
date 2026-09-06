@@ -70,7 +70,7 @@ class CherenkovRadiator: public TObject {
  CherenkovRadiator(const G4LogicalVolume *volume = 0, const G4RadiatorMaterial *material = 0): 
    /*m_LogicalVolume(volume),*/
    m_Material(material), m_OpticalPhotonGenerationEnabled(true),
-   m_ReferenceRefractiveIndex(0.0), m_ReferenceAttenuationLength(0.0), 
+   //?m_ReferenceRefractiveIndex(0.0), //?m_ReferenceAttenuationLength(0.0), 
    m_ID(0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), m_YieldStat(0), 
    m_YieldCff(0.0), m_DetectedToCalibrationPhotonRatio(0.0), 
@@ -82,12 +82,12 @@ class CherenkovRadiator: public TObject {
     if (m_Plots) delete m_Plots;
   };
 
-  double n( void )                               const { return m_ReferenceRefractiveIndex; };
-  double GetReferenceAttenuationLength( void )   const { return m_ReferenceAttenuationLength; };
+  //?double n( void )                               const { return m_ReferenceRefractiveIndex; };
+  //?double GetReferenceAttenuationLength( void )   const { return m_ReferenceAttenuationLength; };
 
-  void SetReferenceRefractiveIndex(double n)   { m_ReferenceRefractiveIndex   = n; };
-  double GetReferenceRefractiveIndex(void)       const { return m_ReferenceRefractiveIndex; };
-  void SetReferenceAttenuationLength(double l) { m_ReferenceAttenuationLength = l; };
+  //?void SetReferenceRefractiveIndex(double n)   { m_ReferenceRefractiveIndex   = n; };
+  //?double GetReferenceRefractiveIndex(void)       const { return m_ReferenceRefractiveIndex; };
+  //?void SetReferenceAttenuationLength(double l) { m_ReferenceAttenuationLength = l; };
 
   void AddLogicalVolume(const G4LogicalVolume *volume) { m_LogicalVolumes.push_back(volume); };
 
@@ -132,8 +132,9 @@ class CherenkovRadiator: public TObject {
 
   // Refractive index calculated for some fixed reference wave length (supposedly the average 
   // one as seen on the detected photon wave length plot);
-  double m_ReferenceRefractiveIndex;
-  double m_ReferenceAttenuationLength;
+  //?double m_ReferenceRefractiveIndex;
+  // FIXME: is it actually used?;
+  //?double m_ReferenceAttenuationLength;
 
   TString m_AlternativeMaterialName;
 
@@ -201,7 +202,7 @@ class CherenkovRadiator: public TObject {
   //TCanvas *m_cv;                                            //!
   
 #ifndef DISABLE_ROOT_IO
-  ClassDef(CherenkovRadiator, 9);
+  ClassDef(CherenkovRadiator, 10);//9);
 #endif
 };
 
