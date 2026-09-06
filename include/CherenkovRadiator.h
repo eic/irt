@@ -74,7 +74,7 @@ class CherenkovRadiator: public TObject {
    m_ID(0), m_TrajectoryBinCount(1), m_Smearing(0.0), 
    m_GaussianSmearing(false), m_CalibrationPhotonCount(0), m_DetectedPhotonCount(0), m_YieldStat(0), 
    m_YieldCff(0.0), m_DetectedToCalibrationPhotonRatio(0.0), 
-   m_UsedInRingImaging(false), m_Plots(0),
+   m_UsedInRingImaging(false), m_Plots(0), m_RefractiveIndex(nullptr),
    m_OutputPlotVisualizationEnabled(false), m_wtopx(0), m_wtopy(0), m_wx(0), m_wy(0) {
    m_LogicalVolumes.push_back(volume);
   };
