@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include <TRef.h>
@@ -107,7 +108,9 @@ class ChargedParticle: public TransientParticle {
   void SetReferenceRefractiveIndex(CherenkovRadiator *radiator, double n) {
     m_ReferenceRefractiveIndices[radiator] = n;
   };
-  double n(CherenkovRadiator *radiator) { return m_ReferenceRefractiveIndices[radiator]; };
+  // NB: throws std::out_of_range if the reference refractive index for this
+  // radiator was never set (rather than silently inserting a 0.0);
+  double n(CherenkovRadiator *radiator) const { return m_ReferenceRefractiveIndices.at(radiator); };
   std::map<CherenkovRadiator*, double> m_ReferenceRefractiveIndices; //!
   
 #ifndef DISABLE_ROOT_IO
