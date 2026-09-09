@@ -1,5 +1,6 @@
 
 #include "IRT.h"
+#include "ChargedParticle.h"
 
 namespace IRT2 {
 
@@ -8,7 +9,7 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
 // -------------------------------------------------------------------------------------
 
-bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length)
+  bool IRT::Transport(ChargedParticle *mcparticle, const TVector3 &xfrom, const TVector3 &nfrom, double *length)
 {
   bool transport_in_progress = false;
   TVector3 x0 = xfrom, n0 = nfrom;
@@ -38,7 +39,8 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
     if (length) {
       auto *radiator = prev ? prev->GetRadiator() : 0;
 
-      *length += (boundary->m_ImpactPoint - x0).Mag()*(radiator ? radiator->n() : 1.0);
+      //*length += (boundary->m_ImpactPoint - x0).Mag()*(radiator ? radiator->n() : 1.0);
+      *length += (boundary->m_ImpactPoint - x0).Mag()*(radiator ? mcparticle->n(radiator) : 1.0);
     } //if
 
     boundary->m_IncomingDirection = (boundary->m_ImpactPoint - x0).Unit();
@@ -52,7 +54,8 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
     if (boundary->m_Refractive) {
       // Will not be able to determine the refractive index;
       if (!prev) return false;
-      double n1 = prev->GetRadiator()->n(), n2 = boundary->GetRadiator()->n();
+      //double n1 = prev->GetRadiator()->n(), n2 = boundary->GetRadiator()->n();
+      double n1 = mcparticle->n(prev->GetRadiator()), n2 =mcparticle->n(boundary->GetRadiator());
       
       // Refraction; check that the refractive indices are different;
       if (n1 != n2) {
@@ -78,8 +81,9 @@ bool IRT::Transport(const TVector3 &xfrom, const TVector3 &nfrom, double *length
 
 // -------------------------------------------------------------------------------------
 
-IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, 
-		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
+  IRTSolution IRT::Solve(ChargedParticle *mcparticle,
+			 const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, 
+			 const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 { 
   IRTSolution solution; 
   if (!_m_OpticalBoundaries.size()) return solution;
@@ -91,12 +95,13 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const TVect
   // XY in the local sensor coordinate system; 
   double m0[2] = {sensor->GetLocalX(xto), sensor->GetLocalY(xto)};
   
-  return Solve(xfrom, nfrom, m0, beam, derivatives, seed);
+  return Solve(mcparticle, xfrom, nfrom, m0, beam, derivatives, seed);
 } // IRT::Solve()
 
 // -------------------------------------------------------------------------------------
 
-IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const double m0[2], 
+  IRTSolution IRT::Solve(ChargedParticle *mcparticle,
+			 const TVector3 &xfrom, const TVector3 &nfrom, const double m0[2], 
 		       const TVector3 &beam, bool derivatives, const IRTSolution *seed)
 {
   IRTSolution solution; if (seed) solution.Set(seed);
@@ -122,7 +127,7 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
       auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
 			 sin(solution.m_Theta)*sin(solution.m_Phi), 
 			 cos(solution.m_Theta));
-      if (!Transport(xfrom, nn, &length)) return solution;
+      if (!Transport(mcparticle, xfrom, nn, &length)) return solution;
     }
     double mc[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
     
@@ -155,23 +160,23 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
 	  // to help the convergence -> provide a reasonable first approximation;
 	  {
 	    double mq0[2] = {m0[0] - _IRT_DERIVATIVE_XYZ_STEP_, m0[1]};
-	    auto s0 = Solve(xfrom, nfrom, mq0, beam, 0, &solution);
+	    auto s0 = Solve(mcparticle, xfrom, nfrom, mq0, beam, 0, &solution);
 	    double mq1[2] = {m0[0] + _IRT_DERIVATIVE_XYZ_STEP_, m0[1]};
-	    auto s1 = Solve(xfrom, nfrom, mq1, beam, 0, &solution);
+	    auto s1 = Solve(mcparticle, xfrom, nfrom, mq1, beam, 0, &solution);
 	    if (s0.Converged() && s1.Converged())
 	      solution.m_DtDx = (s1.m_Theta - s0.m_Theta)/(2*_IRT_DERIVATIVE_XYZ_STEP_);
 	  }
 	  {
 	    double mq0[2] = {m0[0], m0[1] - _IRT_DERIVATIVE_XYZ_STEP_};
-	    auto s0 = Solve(xfrom, nfrom, mq0, beam, 0, &solution);
+	    auto s0 = Solve(mcparticle, xfrom, nfrom, mq0, beam, 0, &solution);
 	    double mq1[2] = {m0[0], m0[1] + _IRT_DERIVATIVE_XYZ_STEP_};
-	    auto s1 = Solve(xfrom, nfrom, mq1, beam, 0, &solution);
+	    auto s1 = Solve(mcparticle, xfrom, nfrom, mq1, beam, 0, &solution);
 	    if (s0.Converged() && s1.Converged())
 	      solution.m_DtDy = (s1.m_Theta - s0.m_Theta)/(2*_IRT_DERIVATIVE_XYZ_STEP_);
 	  }
 	  {
-	    auto s0 = Solve(xfrom - _IRT_DERIVATIVE_XYZ_STEP_*nfrom, nfrom, m0, beam, 0, &solution);
-	    auto s1 = Solve(xfrom + _IRT_DERIVATIVE_XYZ_STEP_*nfrom, nfrom, m0, beam, 0, &solution);
+	    auto s0 = Solve(mcparticle, xfrom - _IRT_DERIVATIVE_XYZ_STEP_*nfrom, nfrom, m0, beam, 0, &solution);
+	    auto s1 = Solve(mcparticle, xfrom + _IRT_DERIVATIVE_XYZ_STEP_*nfrom, nfrom, m0, beam, 0, &solution);
 	    if (s0.Converged() && s1.Converged())
 	      solution.m_DtDz = (s1.m_Theta - s0.m_Theta)/(2*_IRT_DERIVATIVE_XYZ_STEP_);
 	  }
@@ -189,14 +194,14 @@ IRTSolution IRT::Solve(const TVector3 &xfrom, const TVector3 &nfrom, const doubl
       {
 	double theta = solution.m_Theta + m_JacobianStep;
 	auto nn = TVector3(sin(theta)*cos(solution.m_Phi), sin(theta)*sin(solution.m_Phi), cos(theta));
-	if (!Transport(xfrom, nn)) return solution;
+	if (!Transport(mcparticle, xfrom, nn)) return solution;
       }
       double mt[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
       
       {
 	double phi = solution.m_Phi + m_JacobianStep;
 	auto nn = TVector3(sin(solution.m_Theta)*cos(phi), sin(solution.m_Theta)*sin(phi), cos(solution.m_Theta));
-	if (!Transport(xfrom, nn)) return solution;
+	if (!Transport(mcparticle, xfrom, nn)) return solution;
       }
       double mf[2] = {sensor->GetLocalX(tail()->m_ImpactPoint), sensor->GetLocalY(tail()->m_ImpactPoint)};
       

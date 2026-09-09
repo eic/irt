@@ -115,11 +115,11 @@ ReconstructionFactory::~ReconstructionFactory()
 	display = true;
     
     // FIXME: well, if at least one is "display", all "store" will be shown as well;
-    auto* app = display ? new TApplication("", &argc, argv) : 0;
+    // NB: do not want to invoke it twice (and 'delete' crashes, for some reason);
+    auto app = display && !gApplication ? new TApplication("", &argc, argv) : 0;
     
     std::vector<TCanvas*> canvases;
 
-    //if (m_CombinedPlotVisualizationEnabled
     auto cv = DisplayStandardPlots("Track / event level plots", m_wtopx, m_wtopy, m_wx, m_wy);
     if (cv)
       canvases.push_back(cv);
@@ -141,16 +141,23 @@ ReconstructionFactory::~ReconstructionFactory()
     // 'true': do not call exit() in the end;
     if (app && canvases.size()) 
       app->Run(true);
-    // FIXME: crashes;
-    //if (app) delete app;
-    
-    if (m_OutputFile)
-      for (auto cv : canvases)
+
+    for (auto cv : canvases) {
+      if (m_OutputFile)
 	cv->Write();
+      
+      delete cv;
+    } //for cv
   } //if
   
   if (m_Plots) delete m_Plots;
   
+  // FIXME: crashes;
+  if (gApplication) {
+    //delete gApplication;
+    //gApplication = nullptr;
+  } //if
+    
   if (m_OutputFile)
     m_OutputFile->Close();
 } // ReconstructionFactory::~ReconstructionFactory()
@@ -483,6 +490,7 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	auto tag = std::make_pair(radiator, irt);
 
 	{
+	  unsigned ir = 0;
 	  auto *calib = &radiator->m_Calibrations[ibin];
 	  if (calib->m_AverageRefractiveIndices.size() < GetMyRICH()->Radiators().size()) {
 	    if (BeVerbose()) printf("ProcessHits: no calibration for radiator '%s' theta-bin %u "
@@ -492,9 +500,14 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	                            GetMyRICH()->Radiators().size());
 	    continue;
 	  }
-	  unsigned ir = 0;
+
+#if 1
+	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
+	    mcparticle->SetReferenceRefractiveIndex(rad, calib->m_AverageRefractiveIndices[ir++]);
+#else
 	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
 	    rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
+#endif
 	} 
 	
 	{
@@ -507,7 +520,7 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
 	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
 
 	    auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
-	      irt->Solve(history->m_EstimatedVertex,
+	      irt->Solve(mcparticle, history->m_EstimatedVertex,
 			 // FIXME: give beam line as a parameter;
 			 history->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
 			 TVector3(0,0,1), false, use_seed ? &seed : 0);
@@ -633,7 +646,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	      double beta = 1./sqrt(1. + pow(m/pp, 2)), tt = ll/(beta*300);
 
 	      // FIXME: exception;
-	      double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
+	      //double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
+	      double thp = acos(sqrt(pp*pp + m*m)/(mcparticle->n(radiator)*pp));
 	      double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
 	      double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
 	      
