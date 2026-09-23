@@ -16,12 +16,13 @@ class CherenkovPhotonDetector: public G4Object {
  CherenkovPhotonDetector(G4VSolid *solid = 0, G4Material *material = 0):
   G4Object(solid, material), m_QERangeMin(0.0), m_QERangeMax(0.0), m_QE(0), m_ScaleFactor(1.0),
     m_GeometricEfficiency(0.0), m_CopyIdentifierLevel(0) {};
-  ~CherenkovPhotonDetector() {};
+  ~CherenkovPhotonDetector() { delete m_QE; };
 
   void SetQE(double min, double max, /*const*/ DataInterpolation *qe, double scale = 1.0) { 
     m_QERangeMin = min; 
     m_QERangeMax = max; 
 
+    delete m_QE;
     m_QE = qe; 
     m_ScaleFactor = scale;
   };
