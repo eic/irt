@@ -16,7 +16,7 @@ namespace IRT2 {
 class ChargedParticle: public TransientParticle {
  public:
  ChargedParticle(int pdg = 0, bool primary = true): 
-  TransientParticle(pdg, primary), m_StopTracing(false), 
+  TransientParticle(pdg, primary), m_StopTracing(false), m_RecoPdgCode(0),
   m_HadronicInteractionOccured(false), m_GoodForReconstruction(true), m_EICreconParticleID(0) {};
   ~ChargedParticle() {  
     for(auto radiator: m_RadiatorHistory)
