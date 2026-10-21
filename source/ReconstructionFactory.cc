@@ -550,6 +550,20 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   double  ccdfevsave[cdim];       memset(ccdfevsave, 0x00, sizeof(ccdfevsave));
   double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
   unsigned npetrsave[cdim][pdim]; memset(npetrsave,  0x00, sizeof(npetrsave));
+
+  // Evaluate every detected hit with respect to every particle trajectory as originated
+  // from every radiator via every possible optical path; this does not depend on the PID
+  // hypothesis, so do it only once per particle rather than for every [particle,hypothesis]
+  // combination below;
+  for(auto mcparticle: Event()->ChargedParticles()) {
+    // FIXME: memory leak; looks like nothing else needs to be cleaned up here?;
+    for(auto &hit: Hits()) 
+      hit.m_Solutions[mcparticle].m_All.clear();
+    
+    // FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
+    // is problematic; do it better later;
+    ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
+  } //for mcparticle
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -602,14 +616,6 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  momenta[radiator] = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
 	  paths  [radiator] = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
 	} //for rhptr
-	
-	// FIXME: memory leak; looks like nothing else needs to be cleaned up here?;
-	for(auto &hit: Hits()) 
-	  hit.m_Solutions[mcparticle].m_All.clear();
-	
-	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
-	// is problematic; do it better later;
-	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
 	
 	//
 	// By this moment every detected hit is evaluated with respect to this particle 
