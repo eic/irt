@@ -550,6 +550,15 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   double  ccdfevsave[cdim];       memset(ccdfevsave, 0x00, sizeof(ccdfevsave));
   double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
   unsigned npetrsave[cdim][pdim]; memset(npetrsave,  0x00, sizeof(npetrsave));
+
+  // Per-hit outcome of evaluating a given [particle,hypothesis] pair; in the first pass
+  // (itr=0) it does not depend on the hypotheses assigned to the other particles, so it
+  // is cached and reused across all [particle,hypothesis] combinations;
+  struct HitEvaluation {
+    bool m_BackgroundCandidate = false, m_Selected = false;
+    double m_Chi2 = 0.0;
+  };
+  std::vector<std::vector<HitEvaluation>> evaluations(pdim*hdim);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -557,7 +566,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       if (itr && ic != icbest) continue;
 
       // A running variable, to simplify hypothesis calculation;
-      unsigned id = ic;  
+      unsigned id = ic, ip = 0;
 
       // FIXME: may want this check to be a bit more efficient; indeed for calibration pass
       // we better use MC truth as a PID hypothesis for all particles to calculate <theta>
@@ -585,6 +594,12 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       for(auto mcparticle: Event()->ChargedParticles()) {
 	unsigned hypo = id%hdim;
 	auto hyparticle = m_Hypotheses[hypo];
+
+	auto &evals = evaluations[ip*hdim + hypo];
+	// Second pass (itr=1) is done for the best combination only; evaluate from scratch, 
+	// so that the per-hit solution state and histograms are filled as before;
+	if (itr || evals.empty()) {
+	evals.assign(Hits().size(), HitEvaluation());
 	
 	// Re-tune average refractive indices, depending on the incident theta angle; 
 	// FIXME: in fact should also adjust them in ALL radiators, since it is not only the 
@@ -617,7 +632,9 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	//
 	
 	// Loop through all hits; 
-	for(auto &hit: Hits()) {
+	for(unsigned ihit=0; ihit<Hits().size(); ihit++) {
+	  auto &hit = Hits()[ihit];
+	  auto &eval = evals[ihit];
 	  auto sptr = &hit.m_Solutions[mcparticle];
 
 	  // Will never have means to know from which radiator a given photon originated, and 
@@ -668,7 +685,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 		// with respect to at least one hypothesis in at least one radiator
 		// for at least one optical path for every particle belong to the 
 		// club "which needs to be explained" in terms of Poisson statistics;
-		if (ccdf > m_SingleHitCCDFcut) hit.m_BackgroundCandidate = true;
+		if (ccdf > m_SingleHitCCDFcut) eval.m_BackgroundCandidate = true;
 	      } //if
 	    } //for ih
 	  } //for tag 
@@ -692,7 +709,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	      
 	      // FIXME: should be radiator-specific;
 	      if (ccdf > m_SingleHitCCDFcut) {
-		hit.m_Selected.insert(std::make_pair(mcparticle, chi2));
+		eval.m_Selected = true;
+		eval.m_Chi2     = chi2;
 		
 		// Sure of interest is only to see a distribution for the right hypothesis; 
 		if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
@@ -711,8 +729,19 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	    } //if
 	  }
 	} //for hits
+	} //if
+
+	// Apply this particle's per-hit evaluation to the hit attachment table;
+	for(unsigned ihit=0; ihit<Hits().size(); ihit++) {
+	  auto &hit = Hits()[ihit];
+	  auto &eval = evals[ihit];
+
+	  if (eval.m_BackgroundCandidate) hit.m_BackgroundCandidate = true;
+	  if (eval.m_Selected) hit.m_Selected.insert(std::make_pair(mcparticle, eval.m_Chi2));
+	} //for ihit
 	
 	id /= Event()->ChargedParticles().size();
+	ip++;
       } //for mcparticle
       
       // Clean up background candidate list; obviously if at least one particle selected this 
