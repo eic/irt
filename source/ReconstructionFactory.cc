@@ -546,10 +546,11 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   // FIXME: come on!;
   for(unsigned iq=0; iq<Event()->ChargedParticles().size(); iq++)
     cdim *= hdim;
-  // Save intermediate chi^2 estimates;
-  double  ccdfevsave[cdim];       memset(ccdfevsave, 0x00, sizeof(ccdfevsave));
-  double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
-  unsigned npetrsave[cdim][pdim]; memset(npetrsave,  0x00, sizeof(npetrsave));
+  // Save intermediate chi^2 estimates; only the ones for the best combination are 
+  // needed in the end, so do not keep all cdim of them (cdim grows exponentially with 
+  // the number of particles, and these arrays used to overflow the stack);
+  double ccdfevbest = 0.0;
+  std::vector<double> ccdftr(pdim, 0.0), ccdftrbest(pdim, 0.0);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -785,8 +786,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	      }
 	    }
 	  } //if
-	  ccdftrsave[ic][idx] = ROOT::Math::chisquared_cdf_c(chi2tr, ndftr);
-	  npetrsave [ic][idx] = npe;
+	  ccdftr[idx] = ROOT::Math::chisquared_cdf_c(chi2tr, ndftr);
 	  
 	  ndfev  += ndftr;
 	  chi2ev += chi2tr;
@@ -802,9 +802,13 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	} //if
 #endif
 	double ccdfev = ROOT::Math::chisquared_cdf_c(chi2ev, ndfev);
-	ccdfevsave[ic] = ccdfev;
 	
-	if (!ic || ccdfev > ccdfevsave[icbest]) icbest = ic;
+	// Second iteration re-evaluates the best combination only, so overwrite unconditionally;
+	if (itr || !ic || ccdfev > ccdfevbest) {
+	  icbest     = ic;
+	  ccdfevbest = ccdfev;
+	  ccdftrbest = ccdftr;
+	} //if
       }
 
     _next_combination:
@@ -819,10 +823,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     // Sure of interest is only to see a flat CCDF distribution for the right combination 
     // of event-level hypotheses; 
     if (Plots()) {
-      Plots()->hccdfev()->Fill(ccdfevsave[icbest]);
+      Plots()->hccdfev()->Fill(ccdfevbest);
     
       for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) 
-	Plots()->hccdftr()->Fill(ccdftrsave[icbest][ip]);
+	Plots()->hccdftr()->Fill(ccdftrbest[ip]);
     } //if
     
     {
