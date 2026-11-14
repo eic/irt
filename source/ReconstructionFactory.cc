@@ -591,6 +591,19 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
   unsigned npetrsave[cdim][pdim]; memset(npetrsave,  0x00, sizeof(npetrsave));
   std::vector<double> lnLsave(cdim, 0.0);
+
+  // Single-photon evaluation of every hit against every PID hypothesis of every 
+  // particle, indexed [(ip*nhits + ihit)*hdim + ih]; recomputed only when the IRT 
+  // solutions are (re)calculated, i.e. once per particle per iteration;
+  const unsigned nhits = Hits().size();
+  std::vector<HypoScore> scores(pdim*nhits*hdim);
+  // Same idea for the bookkeeping of the combination scan: the hits selected by each 
+  // particle in the current combination, and the [hit,particle] solution pointers, are 
+  // kept in flat tables instead of a per-hit std::set and std::map lookups, which used 
+  // to dominate the cost of the scan;
+  std::vector<std::pair<ChargedParticle*,double>> sel(pdim*nhits);
+  std::vector<unsigned> nsel(nhits, 0);
+  std::vector<DigitizedHitSolution*> solptr(pdim*nhits, 0);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -603,6 +616,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
       // A running variable, to simplify hypothesis calculation;
       unsigned id = ic;  
+
+      // Index of the particle in the loop below, used to index the cached hit 
+      // evaluation tables;
+      unsigned ip = 0;
 
       // FIXME: may want this check to be a bit more efficient; indeed for calibration pass
       // we better use MC truth as a PID hypothesis for all particles to calculate <theta>
@@ -622,10 +639,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       } //if    
 
       // Clear the hit attachment table;
-      for(auto &hit: Hits()) {
-	hit.m_BackgroundCandidate = false;
-	hit.m_Selected.clear();
-      } //for hit      
+      for(auto &hit: Hits()) hit.m_BackgroundCandidate = false;
+      for(unsigned ihit=0; ihit<nhits; ihit++) nsel[ihit] = 0;
 
       for(auto mcparticle: Event()->ChargedParticles()) {
 	unsigned hypo = id%hdim;
@@ -658,112 +673,73 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case
 	// is problematic; do it better later;
 	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
-} //if
+
+	// The IRT solutions are in place; evaluate every hit for every PID hypothesis 
+	// of this particle once, so the combination scan below is pure lookups;
+	if (!m_UseMixtureLikelihood) ScoreHits(mcparticle, ip, calibration, scores);
+
+	// Cache the [hit,particle] solution pointers of this particle, so the 
+	// combination scan does not repeat a std::map lookup per hit per combination;
+	for(unsigned ihit=0; ihit<nhits; ihit++)
+	  solptr[ip*nhits + ihit] = &Hits()[ihit].m_Solutions[mcparticle];
+  } //if
 	
 	if (!m_UseMixtureLikelihood) {
 	//
-	// By this moment every detected hit is evaluated with respect to this particle 
-	// trajectory as originated from every radiator via every possible optical path; 
+	// By this moment every detected hit has been evaluated with respect to this 
+	// particle trajectory as originated from every radiator via every possible optical 
+	// path, for every PID hypothesis, and the outcome cached in `scores` (see 
+	// ScoreHits()); the [particle,hypothesis] combination scan is thus reduced to 
+	// table lookups, with no ray-tracing post-processing left in it;
 	//
-	
-	// Loop through all hits; 
-	for(auto &hit: Hits()) {
-	  auto sptr = &hit.m_Solutions[mcparticle];
+	for(unsigned ihit=0; ihit<nhits; ihit++) {
+	  auto &hit = Hits()[ihit];
+	  auto sptr = solptr[ip*nhits + ihit];
+	  const HypoScore *tab = &scores[(ip*nhits + ihit)*hdim];
 
 	  // Will never have means to know from which radiator a given photon originated, and 
-	  // via which optical path it arrived to the sensor; just choose "the best" [radiator,irt] 
-	  // combination, which this particular particle PID hypothesis can find; the criterion 
-	  // is "closest in theta and closest in timing" as evaluated via a chi^2 estimate with ndf=2, 
-	  // or just "closest in theta" in case of ndf=1;
+	  // via which optical path it arrived to the sensor; the [radiator,irt] component 
+	  // which matches best for the hypothesis considered here, on the criterion of 
+	  // "closest in theta and closest in timing", has been picked when the hits were 
+	  // scored;
 	  sptr->m_Best = 0;
-	  
-	  for(auto &tag: hit.m_Solutions[mcparticle].m_All) {
-	    auto radiator = tag.first.first;
-	    auto &solution = tag.second;
 
-	    //if (!_IsSelected(radiator)) continue;
-	    if (!radiator->UsedInRingImaging()) continue;
-	    
-	    double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
-	      //radiator->GetSmearing() : radiator->m_Calibrations[ibin].m_Csigma;
-	      GetDefaultSinglePhotonThetaResolution() : radiator->m_Calibrations[ibin].m_Csigma;
-	    
-	    double pp = momenta[radiator], ll = paths[radiator];
-	    
-	    for(unsigned ih=0; ih<hdim; ih++) {
-	      double m = m_Hypotheses[ih]->Mass();
-	      
-	      double beta = 1./sqrt(1. + pow(m/pp, 2)), tt = ll/(beta*300);
+	  // The logic behind this is that all hits within +/-N*sigma window with respect to 
+	  // at least one hypothesis in at least one radiator for at least one optical path 
+	  // for every particle belong to the club "which needs to be explained" in terms of 
+	  // Poisson statistics;
+	  for(unsigned ih=0; ih<hdim; ih++)
+	    if (ih != hypo && tab[ih].m_Ccdf > m_SingleHitCCDFcut) hit.m_BackgroundCandidate = true;
 
-	      // FIXME: exception;
-	      //double thp = acos(sqrt(pp*pp + m*m)/(radiator->n()*pp));
-	      double thp = acos(sqrt(pp*pp + m*m)/(mcparticle->n(radiator)*pp));
-	      double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
-	      double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
-	      
-	      unsigned ndf = 1;
-	      double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
-	      if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
-		ndf++;
-		chi2 += pow(tmdiff, 2)/pow(GetSinglePhotonTimingResolution(), 2);
-	      } //if
-	      double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
-	      
-	      if (ih == hypo) {
-		if (!sptr->m_Best || ccdf > sptr->m_ccdf) {
-		  sptr->AssignVariables(&solution, thp, tt, radiator, ccdf);
-		} //if
-	      } else {
-		// The logic behind this is that all hits within +/-N*sigma window
-		// with respect to at least one hypothesis in at least one radiator
-		// for at least one optical path for every particle belong to the 
-		// club "which needs to be explained" in terms of Poisson statistics;
-		if (ccdf > m_SingleHitCCDFcut) hit.m_BackgroundCandidate = true;
-	      } //if
-	    } //for ih
-	  } //for tag 
-	  
-	  {
-	    auto *best = sptr->m_Best;
-	    
-	    if (best) {
-	      unsigned ndf = 1;
-	      double thdiff = best->GetTheta() - sptr->m_thp - sptr->m_rbest->m_Calibrations[ibin].m_Coffset;
-	      double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
-		//sptr->m_rbest->GetSmearing() : sptr->m_rbest->m_Calibrations[ibin].m_Csigma;
-		GetDefaultSinglePhotonThetaResolution() : sptr->m_rbest->m_Calibrations[ibin].m_Csigma;
-	      double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
-	      double tmdiff = (sptr->m_tt + best->m_Time) - hit.GetAverageDetectionTime();
-	      if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
-		ndf++;
-		chi2 += pow(tmdiff, 2)/pow(GetSinglePhotonTimingResolution(), 2);
-	      } //if
-	      double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
-	      
-	      // FIXME: should be radiator-specific;
-	      if (ccdf > m_SingleHitCCDFcut) {
-		hit.m_Selected.insert(std::make_pair(mcparticle, chi2));
-		
-		// Sure of interest is only to see a distribution for the right hypothesis; 
-		if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
-		  if (itr && !calibration && sptr->m_rbest->Plots())
-		    sptr->m_rbest->Plots()->hthph()->Fill(1000*thdiff);
-		  
-		  if (itr &&  calibration) 		    
-		    sptr->m_rbest->m_Calibrations[ibin].m_hcalib->Fill(1000*thdiff);
-		  
-		  if (itr && !calibration && Plots()) Plots()->hdtph()->Fill(1000*tmdiff);
-		  
-		  if (itr && !calibration && sptr->m_rbest->Plots())
-		    sptr->m_rbest->Plots()->hccdfph()->Fill(ccdf);
-		} //if
-	      } //if
+	  const HypoScore &sc = tab[hypo];
+
+	  if (!sc.m_Solution) continue;
+
+	  sptr->AssignVariables(sc.m_Solution, sc.m_Thp, sc.m_Tt, sc.m_Radiator, sc.m_Ccdf);
+
+	  // FIXME: should be radiator-specific;
+	  if (sc.m_Ccdf > m_SingleHitCCDFcut) {
+	    sel[ihit*pdim + nsel[ihit]++] = std::make_pair(mcparticle, sc.m_Chi2);
+
+	    // Sure of interest is only to see a distribution for the right hypothesis; 
+	    if (mcparticle->GetPDG() == hyparticle->PdgCode()) {
+	      if (itr && !calibration && sc.m_Radiator->Plots())
+		sc.m_Radiator->Plots()->hthph()->Fill(1000*sc.m_Thdiff);
+
+	      if (itr &&  calibration)
+		sc.m_Radiator->m_Calibrations[ibin].m_hcalib->Fill(1000*sc.m_Thdiff);
+
+	      if (itr && !calibration && Plots()) Plots()->hdtph()->Fill(1000*sc.m_Tmdiff);
+
+	      if (itr && !calibration && sc.m_Radiator->Plots())
+		sc.m_Radiator->Plots()->hccdfph()->Fill(sc.m_Ccdf);
 	    } //if
-	  }
+	  } //if
 	} //for hits
 
 	} //if (chi^2 estimator)
 	
+	ip++;
 	id /= Event()->ChargedParticles().size();
       } //for mcparticle
 
@@ -774,28 +750,29 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       if (!m_UseMixtureLikelihood) {
       // Clean up background candidate list; obviously if at least one particle selected this 
       // hit for a hypothesis considered in this iteration, the hit is useful;
-      for(auto &hit: Hits()) 
-	if (hit.m_Selected.size())
-	  hit.m_BackgroundCandidate = false;
+      for(unsigned ihit=0; ihit<nhits; ihit++)
+	if (nsel[ihit])
+	  Hits()[ihit].m_BackgroundCandidate = false;
       
       // Now either resolve ambiguous assignments, based on the hit-to-track chi^2 match for this 
       // PID hypothesis, or eliminate these hits everywhere; FIXME: any better idea?;
-      for(auto &hit: Hits()) 
-	if (hit.m_Selected.size() >= 1) {
+      for(unsigned ihit=0; ihit<nhits; ihit++) 
+	if (nsel[ihit] >= 1) {
 	  if (m_ResolveHitOwnership) {
-	    double chi2min = 0.0;
-	    // FIXME: perhaps order them at the creation time?;
-	    for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); it++)
-	      if (it == hit.m_Selected.begin() || it->second < chi2min)
-		chi2min = it->second;
-	    for(auto it = hit.m_Selected.begin(); it != hit.m_Selected.end(); )
-	      if (it->second != chi2min)
-		it = hit.m_Selected.erase(it);
-	      else
-		it++;
-	  }
+	    double chi2min = sel[ihit*pdim].second;
+	    for(unsigned k=1; k<nsel[ihit]; k++)
+	      if (sel[ihit*pdim + k].second < chi2min) chi2min = sel[ihit*pdim + k].second;
+	    // Keep the matching entries in their original (hit) order;
+	    unsigned keep = 0;
+	    for(unsigned k=0; k<nsel[ihit]; k++)
+	      if (sel[ihit*pdim + k].second == chi2min) {
+		if (keep != k) sel[ihit*pdim + keep] = sel[ihit*pdim + k];
+		keep++;
+	      } //if
+	    nsel[ihit] = keep;
+	  } //if
 	  else
-	    hit.m_Selected.clear();
+	    nsel[ihit] = 0;
 	} //for .. if
       
       } //if (chi^2 estimator)
@@ -809,24 +786,28 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  if (hit.m_BackgroundCandidate) nbg++;
 #endif
 	
+	// Per-track sums over the selected hits. Walking the hits, instead of the tracks 
+	// times the per-hit selection lists, removes a pdim*nhits loop per combination; 
+	// the order in which hits are attached to a given track is unchanged;
+	std::vector<unsigned> npev(pdim, 0);
+	std::vector<double> chi2trv(pdim, 0.0);
+	for(unsigned ihit=0; ihit<nhits; ihit++)
+	  for(unsigned k=0; k<nsel[ihit]; k++) {
+	    unsigned ipx = 0;
+	    while(ipx < pdim && Event()->ChargedParticles()[ipx] != sel[ihit*pdim + k].first) ipx++;
+	    if (ipx >= pdim) continue;
+
+	    npev[ipx]++;
+	    chi2trv[ipx] += sel[ihit*pdim + k].second;
+
+	    if (itr) Event()->ChargedParticles()[ipx]->AddHit(&Hits()[ihit]);
+	  } //for ihit
+
 	unsigned ndfev = 0, idx = 0;
 	double chi2ev = 0;
 	for(auto mcparticle: Event()->ChargedParticles()) {
-	  unsigned npe = 0;
-	  double chi2tr = 0.0;
-	  
-	  for(auto &hit: Hits()) 
-	    for(auto selected: hit.m_Selected)
-	      if (selected.first == mcparticle) {
-		npe++;
-		double chi2ph = selected.second;
-		chi2tr += chi2ph;
-		
-		if (itr) mcparticle->AddHit(&hit);
-		
-		// FIXME: there is only one entry selected here?;
-		break;
-	      } //for..if
+	  unsigned npe = npev[idx];
+	  double chi2tr = chi2trv[idx];
 	  
 	  unsigned ndftr = m_UseTimingInChiSquare && GetSinglePhotonTimingResolution() ? 2*npe : 1*npe;
 	  // Poissonic term is optional;
@@ -929,6 +910,82 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     }
   } //if
 } // ReconstructionFactory::LaunchRingFinder()
+
+// -------------------------------------------------------------------------------------
+
+// Evaluate every detected hit with respect to one particle, for every PID hypothesis, 
+// and cache the outcome. None of this depends on the [particle,hypothesis] combination, 
+// so it is done once per particle per iteration and the combination scan only has to 
+// read these tables. For each hypothesis the [radiator,optical path] component with the 
+// largest single-photon CCDF is kept, exactly as the in-line scan used to pick it;
+//
+void ReconstructionFactory::ScoreHits(ChargedParticle *mcparticle, unsigned ip,
+                                      bool calibration, std::vector<HypoScore> &scores)
+{
+  const unsigned hdim  = m_Hypotheses.size();
+  const unsigned nhits = Hits().size();
+
+  double theta = mcparticle->GetVertexMomentum().Theta();
+  unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
+
+  std::map<CherenkovRadiator*, double> momenta;
+  std::map<CherenkovRadiator*, double> paths;
+  for(auto rhptr: mcparticle->GetRadiatorHistory()) {
+    auto radiator = mcparticle->GetRadiator(rhptr);
+
+    momenta[radiator] = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
+    paths  [radiator] = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
+  } //for rhptr
+
+  for(unsigned ihit=0; ihit<nhits; ihit++) {
+    auto &hit = Hits()[ihit];
+    HypoScore *tab = &scores[(ip*nhits + ihit)*hdim];
+
+    for(unsigned ih=0; ih<hdim; ih++) tab[ih] = HypoScore();
+
+    for(auto &tag: hit.m_Solutions[mcparticle].m_All) {
+      auto radiator = tag.first.first;
+      auto &solution = tag.second;
+
+      //if (!_IsSelected(radiator)) continue;
+      if (!radiator->UsedInRingImaging()) continue;
+
+      double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
+	GetDefaultSinglePhotonThetaResolution() : radiator->m_Calibrations[ibin].m_Csigma;
+
+      double pp = momenta[radiator], ll = paths[radiator];
+
+      for(unsigned ih=0; ih<hdim; ih++) {
+	double mass = m_Hypotheses[ih]->Mass();
+
+	double beta   = 1./sqrt(1. + pow(mass/pp, 2)), tt = ll/(beta*300);
+	double thp    = acos(sqrt(pp*pp + mass*mass)/(mcparticle->n(radiator)*pp));
+	double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
+	double tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
+
+	unsigned ndf = 1;
+	double chi2 = pow(thdiff, 2)/pow(hsigma, 2);
+	if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
+	  ndf++;
+	  chi2 += pow(tmdiff, 2)/pow(GetSinglePhotonTimingResolution(), 2);
+	} //if
+	double ccdf = ROOT::Math::chisquared_cdf_c(chi2, ndf);
+
+	// Keep the component matching best for this hypothesis; on a tie the first one 
+	// wins, as it did in the in-line scan;
+	if (!tab[ih].m_Solution || ccdf > tab[ih].m_Ccdf) {
+	  tab[ih] = HypoScore();
+	  tab[ih].m_Solution = &solution;
+	  tab[ih].m_Radiator  = radiator;
+	  tab[ih].m_Thp    = thp;    tab[ih].m_Tt     = tt;
+	  tab[ih].m_Chi2   = chi2;   tab[ih].m_Ccdf   = ccdf;
+	  tab[ih].m_Thdiff = thdiff; tab[ih].m_Tmdiff = tmdiff;
+	  tab[ih].m_Ndf    = ndf;
+	} //if
+      } //for ih
+    } //for tag
+  } //for hit
+} // ReconstructionFactory::ScoreHits()
 
 // -------------------------------------------------------------------------------------
 
