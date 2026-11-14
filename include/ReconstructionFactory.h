@@ -9,10 +9,16 @@ class TParticlePDG;
 class TCanvas;
 class TFile;
 
+#include <vector>
+
 #include "Calibration.h"
 #include "Digitization.h"
 
 namespace IRT2 {
+
+class ChargedParticle;
+class CherenkovRadiator;
+class IRTSolution;
 
 struct ReconstructionFactoryPlots {
   ReconstructionFactoryPlots();
@@ -149,6 +155,22 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // when `assign` is set, the resulting responsibilities are also used to attach 
   // every hit to its most probable track (a posteriori assignment);
   double MixtureLnL(bool calibration, unsigned ic, bool assign = false);
+
+  // Single-photon evaluation of one hit for one PID hypothesis of one particle: the 
+  // [radiator,optical path] component which matches best for that hypothesis, together 
+  // with everything the combination scan needs to know about it;
+  struct HypoScore { IRTSolution *m_Solution; CherenkovRadiator *m_Radiator;
+    double m_Thp, m_Tt, m_Chi2, m_Ccdf, m_Thdiff, m_Tmdiff; unsigned m_Ndf;
+    HypoScore(): m_Solution(0), m_Radiator(0), m_Thp(0.0), m_Tt(0.0), m_Chi2(0.0),
+      m_Ccdf(0.0), m_Thdiff(0.0), m_Tmdiff(0.0), m_Ndf(1) {};
+  };
+
+  // Fill the [particle,hit,hypothesis] cache of the above for one particle. These 
+  // quantities do not depend on the [particle,hypothesis] combination at all, so they 
+  // are evaluated once per particle per iteration, which leaves the combination scan 
+  // itself with nothing but table lookups;
+  void ScoreHits(ChargedParticle *mcparticle, unsigned ip, bool calibration,
+                 std::vector<HypoScore> &scores);
 };
 
 } // namespace IRT2
