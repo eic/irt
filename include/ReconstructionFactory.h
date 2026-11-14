@@ -89,6 +89,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void SetHitCountCutoff(unsigned value) { m_HitCountCutoff = value; };
 
   unsigned GetProcessedEventCount() const { return m_ProcessedEventCount; };
+
+  // Estimator used to rank [particle,hypothesis] combinations: chi^2/CCDF (default) 
+  // or the global mixture log-likelihood;
+  bool MixtureLikelihoodRequired( void ) const { return m_UseMixtureLikelihood; };
+  void UseMixtureLikelihood( bool value = true ) { m_UseMixtureLikelihood = value; };
+  void SetBackgroundFraction( double value ) { m_BackgroundFraction = value; };
+  double GetBackgroundFraction( void ) const { return m_BackgroundFraction; };
   
  private:
   TFile *m_OutputFile;
@@ -109,6 +116,16 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // Whether use Poisson in the chi^2 logic or not;
   bool m_UsePoissonTermInChiSquare;
 
+  // Estimator used to rank [particle,hypothesis] combinations and to decide which 
+  // hits are kept: false = chi^2/CCDF with a hard, a priori hit-to-track assignment; 
+  // true = global mixture log-likelihood, where the assignment is marginalized over 
+  // all [particle,radiator,optical path] components and performed a posteriori;
+  bool m_UseMixtureLikelihood;
+
+  // Fraction of photosensor hits attributed to the flat background component of the 
+  // per-hit mixture, and the angular window [rad] normalizing that component;
+  double m_BackgroundFraction, m_BackgroundWindow;
+
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
   std::vector<TParticlePDG*> m_Hypotheses;
@@ -127,6 +144,11 @@ class ReconstructionFactory : public Digitization, public Calibration {
   
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
+
+  // Global mixture log-likelihood of the [particle,hypothesis] combination `ic`; 
+  // when `assign` is set, the resulting responsibilities are also used to attach 
+  // every hit to its most probable track (a posteriori assignment);
+  double MixtureLnL(bool calibration, unsigned ic, bool assign = false);
 };
 
 } // namespace IRT2

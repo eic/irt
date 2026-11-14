@@ -6,6 +6,9 @@
 // Especially this one is problematic since it should account for the size of radial bands;
 //#define _EXPECTED_BG_PHOTON_COUNT_         ( 0.5)
 
+#include <algorithm>
+#include <cmath>
+#include <vector>
 #include <fstream>
 
 #include <TFile.h>
@@ -43,6 +46,9 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
   m_ResolveHitOwnership(true),
   m_UsePoissonTermInChiSquare(true),
+  m_UseMixtureLikelihood(false),
+  m_BackgroundFraction(0.1),
+  m_BackgroundWindow(0.02),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -73,6 +79,9 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_SingleHitCCDFcut(_SINGLE_HIT_CCDF_CUT_DEFAULT_),
   m_ResolveHitOwnership(true),
   m_UsePoissonTermInChiSquare(true),
+  m_UseMixtureLikelihood(false),
+  m_BackgroundFraction(0.1),
+  m_BackgroundWindow(0.02),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -223,6 +232,21 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
     IgnorePoissonTermInChiSquare();
 
   // Outlier hit selection;
+  if (jconfig.find("Estimator") != jconfig.end()) {
+    TString estimator = jconfig["Estimator"].template get<std::string>();
+    estimator.ToLower();
+    m_UseMixtureLikelihood = (estimator == "ml" || estimator == "mixture" ||
+                              estimator == "likelihood" || estimator == "maximum likelihood");
+    if (BeVerbose()) printf("ReconstructionFactory: estimator = %s\n", estimator.Data());
+  } //if
+
+  if (jconfig.find("BackgroundFraction") != jconfig.end())
+    m_BackgroundFraction = jconfig["BackgroundFraction"].template get<double>();
+
+  if (jconfig.find("BackgroundWindow") != jconfig.end())
+    // Angular window [rad] over which the background component of the mixture is flat;
+    m_BackgroundWindow = jconfig["BackgroundWindow"].template get<double>();
+
   if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
     SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
 
@@ -566,6 +590,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   double  ccdfevsave[cdim];       memset(ccdfevsave, 0x00, sizeof(ccdfevsave));
   double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
   unsigned npetrsave[cdim][pdim]; memset(npetrsave,  0x00, sizeof(npetrsave));
+  std::vector<double> lnLsave(cdim, 0.0);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -635,6 +660,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
 } //if
 	
+	if (!m_UseMixtureLikelihood) {
 	//
 	// By this moment every detected hit is evaluated with respect to this particle 
 	// trajectory as originated from every radiator via every possible optical path; 
@@ -735,6 +761,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	    } //if
 	  }
 	} //for hits
+
+	} //if (chi^2 estimator)
 	
 	id /= Event()->ChargedParticles().size();
       } //for mcparticle
@@ -743,6 +771,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       // [particle,hypothesis] combinations;
       solutionsValid = true;
       
+      if (!m_UseMixtureLikelihood) {
       // Clean up background candidate list; obviously if at least one particle selected this 
       // hit for a hypothesis considered in this iteration, the hit is useful;
       for(auto &hit: Hits()) 
@@ -769,6 +798,9 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	    hit.m_Selected.clear();
 	} //for .. if
       
+      } //if (chi^2 estimator)
+
+      if (!m_UseMixtureLikelihood) {
       // And eventually calculate the overall event chi^2;
       {
 #ifdef _EXPECTED_BG_PHOTON_COUNT_
@@ -834,10 +866,19 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	
 	if (!ic || ccdfev > ccdfevsave[icbest]) icbest = ic;
       }
+      } else {
+	// Global mixture log-likelihood: every hit contributes through the sum inside 
+	// the log, so no hit is discarded and no ownership is resolved at this point;
+	lnLsave[ic] = MixtureLnL(calibration, ic);
+	if (!ic || lnLsave[ic] > lnLsave[icbest]) icbest = ic;
+      } //if
 
     _next_combination:
       ;
     } //for ic
+
+    // A posteriori hit-to-track assignment for the winning combination;
+    if (m_UseMixtureLikelihood && itr) MixtureLnL(calibration, icbest, true);
   } //for itr
   
   if (calibration) 
@@ -846,7 +887,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     // Now check how the PID procedure performed and fill out histograms;
     // Sure of interest is only to see a flat CCDF distribution for the right combination 
     // of event-level hypotheses; 
-    if (Plots()) {
+    if (Plots() && !m_UseMixtureLikelihood) {
       Plots()->hccdfev()->Fill(ccdfevsave[icbest]);
     
       for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) 
@@ -888,6 +929,158 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     }
   } //if
 } // ReconstructionFactory::LaunchRingFinder()
+
+// -------------------------------------------------------------------------------------
+
+// Global mixture log-likelihood for one [particle,hypothesis] combination.
+//
+// Every detected hit is described by a mixture over all [particle,radiator,optical 
+// path] components available for it, plus a flat background component. The hit-to-
+// track assignment is therefore marginalized (sum inside the log) rather than 
+// resolved a priori, so no hit is ever discarded and a hit claimed by several tracks 
+// is shared between them instead of being deleted;
+//
+// The expected Cherenkov photon yield of every track enters as an extended Poisson 
+// term, which is what makes the track hypotheses identifiable once the assignment is 
+// marginalized. When `assign` is set, the responsibilities of the converged mixture 
+// are used to attach each hit to its most probable track, i.e. the hit-to-track 
+// assignment is performed a posteriori;
+//
+double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic, bool assign)
+{
+  const unsigned hdim = m_Hypotheses.size();
+  std::vector<ChargedParticle*> &particles = Event()->ChargedParticles();
+  const unsigned pdim = particles.size();
+  if (!hdim || !pdim) return 0.0;
+
+  // Decode the PID hypotheses of this combination, exactly as the chi^2 path does;
+  std::vector<unsigned> hypo(pdim);
+  {
+    unsigned id = ic;
+    for(unsigned ip=0; ip<pdim; ip++) { hypo[ip] = id%hdim; id /= pdim; }
+  } //block
+
+  const double lnbg = std::log(m_BackgroundFraction/m_BackgroundWindow);
+  const double lnt  = std::log(1.0/pdim);
+
+  double lnL = 0.0;
+  std::vector<double> neff(pdim,0.0), thsum(pdim,0.0);
+
+  for(auto &hit: Hits()) {
+    struct MyComponent {unsigned m_Ip, m_Ibin; double m_LnG, m_Thp, m_Tt, m_Thdiff, m_Tmdiff;
+      CherenkovRadiator *m_Radiator; IRTSolution *m_Solution;};
+    std::vector<MyComponent> comps;
+
+    for(unsigned ip=0; ip<pdim; ip++) {
+      auto mcparticle = particles[ip];
+      auto sit = hit.m_Solutions.find(mcparticle);
+      if (sit == hit.m_Solutions.end()) continue;
+
+      double theta = mcparticle->GetVertexMomentum().Theta();
+      unsigned ibin = (unsigned)floor(theta/_THETA_BIN_WIDTH_);
+      if (ibin >= _THETA_BIN_COUNT_) continue;
+
+      for(auto &tag: sit->second.m_All) {
+	auto radiator = tag.first.first;
+	if (!radiator->UsedInRingImaging()) continue;
+	auto &solution = tag.second;
+
+	// Reference refractive index of this radiator for this particle;
+	auto nfit = mcparticle->m_ReferenceRefractiveIndices.find(radiator);
+	if (nfit == mcparticle->m_ReferenceRefractiveIndices.end()) continue;
+
+	// Momentum and path length inside this radiator;
+	double pp = 0.0, ll = 0.0;
+	for(auto rhptr: mcparticle->GetRadiatorHistory())
+	  if (mcparticle->GetRadiator(rhptr) == radiator) {
+	    pp = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
+	    ll = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
+	    break;
+	  } //if
+	if (!pp) continue;
+
+	const double mass = m_Hypotheses[hypo[ip]]->Mass();
+	const double thp  = acos(sqrt(pp*pp + mass*mass)/(nfit->second*pp));
+	if (std::isnan(thp)) continue;
+	const double beta = 1./sqrt(1. + pow(mass/pp,2));
+	const double tt   = ll/(beta*300);
+
+	const double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
+	  GetDefaultSinglePhotonThetaResolution() : radiator->m_Calibrations[ibin].m_Csigma;
+
+	const double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
+	double lnd = -log(hsigma*sqrt(2*M_PI)) - 0.5*pow(thdiff/hsigma,2);
+
+	double tmdiff = 0.0;
+	if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
+	  tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
+	  lnd -= log(GetSinglePhotonTimingResolution()*sqrt(2*M_PI)) +
+	    0.5*pow(tmdiff/GetSinglePhotonTimingResolution(),2);
+	} //if
+
+	comps.push_back(MyComponent{ip, ibin, lnd + lnt, thp, tt, thdiff, tmdiff, radiator, &solution});
+      } //for tag
+    } //for ip
+
+    if (!comps.size()) { lnL += lnbg; continue; }
+
+    // log-sum-exp over the components and the background slot;
+    double mx = lnbg;
+    for(auto &c: comps) mx = std::max(mx, c.m_LnG);
+    double sum = std::exp(lnbg - mx);
+    for(auto &c: comps) sum += std::exp(c.m_LnG - mx);
+    const double lnorm = mx + std::log(sum);
+    lnL += lnorm;
+
+    // E-step at the current parameters;
+    MyComponent *cbest = 0; double rbest = 0.0;
+    for(auto &c: comps) {
+      const double r = std::exp(c.m_LnG - lnorm);
+      neff[c.m_Ip] += r;
+      thsum[c.m_Ip] += r*c.m_Thp;
+      if (r > rbest) { rbest = r; cbest = &c; }
+
+      if (!assign) continue;
+      const bool truth = (particles[c.m_Ip]->GetPDG() ==
+			  m_Hypotheses[hypo[c.m_Ip]]->PdgCode());
+      if (!calibration && truth && c.m_Radiator->Plots())
+	c.m_Radiator->Plots()->hthph()->Fill(1000*c.m_Thdiff, r);
+      if (calibration && truth && c.m_Radiator->m_Calibrations[c.m_Ibin].m_hcalib)
+	c.m_Radiator->m_Calibrations[c.m_Ibin].m_hcalib->Fill(1000*c.m_Thdiff, r);
+    } //for c
+
+    // A posteriori hit-to-track assignment: attach the hit to its most probable 
+    // track, provided that track is more likely than the background. The winning 
+    // component is also recorded as the "best" solution for this [hit,track] pair, 
+    // which is what the track-level Cherenkov observables are built from;
+    if (assign && cbest && rbest > 0.5) {
+      auto dit = hit.m_Solutions.find(particles[cbest->m_Ip]);
+      if (dit != hit.m_Solutions.end()) {
+	// note: the last argument is the chi^2-path CCDF slot, reused here for the 
+	// posterior probability of this assignment;
+	dit->second.AssignVariables(cbest->m_Solution, cbest->m_Thp, cbest->m_Tt,
+				   cbest->m_Radiator, rbest);
+	particles[cbest->m_Ip]->AddHit(&hit);
+      } //if
+    } //if
+  } //for hit
+
+  // Extended Poisson term for the expected photon yield of every track;
+  for(unsigned ip=0; ip<pdim; ip++) {
+    const double theta = neff[ip] ? thsum[ip]/neff[ip] : 0.0;
+    double lambda = 0.0;
+    for(auto rhptr: particles[ip]->GetRadiatorHistory()) {
+      auto radiator = particles[ip]->GetRadiator(rhptr);
+      if (!radiator->UsedInRingImaging()) continue;
+      lambda += radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*
+	pow(sin(theta),2);
+    } //for rhptr
+    if (lambda <= 0.0) continue;
+    lnL += neff[ip]*log(lambda) - lambda;
+  } //for ip
+
+  return lnL;
+} // ReconstructionFactory::MixtureLnL()
 
 // -------------------------------------------------------------------------------------
 
