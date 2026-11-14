@@ -473,67 +473,83 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
     return;
   }
 	
-  // Loop through all digitized hits of a given event; apply IRT on a pre-calculated 
+  // Resolve the radiator history of this particle once; TRef lookups, dynamic_casts and
+  // the UsedInRingImaging() selection do not depend on hits or optical paths;
+  //
+  struct MyPath {CherenkovRadiator *m_Radiator; RadiatorHistory *m_History;};
+  std::vector<MyPath> paths;
+
+  for(auto rhistory: mcparticle->GetRadiatorHistory()) {
+    auto radiator = mcparticle->GetRadiator(rhistory);
+    if (!radiator->UsedInRingImaging()) continue;
+    paths.push_back(MyPath{radiator, mcparticle->GetHistory(rhistory)});
+  } //for rhistory
+
+  if (!paths.size()) return;
+
+  // Loop through all radiators crossed by this particle; apply IRT on a pre-calculated 
   // [vertex,momentum] pair for each hit-to-radiator association; no sampling any 
   // longer (assume gaussian errors);
   //
+  // NB: reference refractive indices depend on [theta-bin,radiator] only, hence they are 
+  // re-tuned once per radiator rather than once per [hit,optical-path] pair; the value in 
+  // effect at the moment of any given Solve() call is unchanged by this reordering;
+  //
   // FIXME: add orphan (a la DCR) photons;
-  for(auto &hit: hits) {
-    // Loop through all optical paths for this photosensor;
-    for(auto irt: *hit.m_IRTs) {
-      for(auto rhistory: mcparticle->GetRadiatorHistory()) {
-	auto history  = mcparticle->GetHistory (rhistory);
-	
-	auto radiator = mcparticle->GetRadiator(rhistory);
-	if (!radiator->UsedInRingImaging()) continue;
-	
-	auto tag = std::make_pair(radiator, irt);
+  for(auto &path: paths) {
+    auto radiator = path.m_Radiator;
 
-	{
-	  unsigned ir = 0;
-	  auto *calib = &radiator->m_Calibrations[ibin];
-	  if (calib->m_AverageRefractiveIndices.size() < GetMyRICH()->Radiators().size()) {
-	    if (BeVerbose()) printf("ProcessHits: no calibration for radiator '%s' theta-bin %u "
-	                            "(have %zu refractive indices, need %zu); skipping hit\n",
-	                            radiator->GetAlternativeMaterialName(), ibin,
-	                            calib->m_AverageRefractiveIndices.size(),
-	                            GetMyRICH()->Radiators().size());
-	    continue;
-	  }
+    {
+      unsigned ir = 0;
+      auto *calib = &radiator->m_Calibrations[ibin];
+      if (calib->m_AverageRefractiveIndices.size() < GetMyRICH()->Radiators().size()) {
+        if (BeVerbose()) printf("ProcessHits: no calibration for radiator '%s' theta-bin %u "
+                            "(have %zu refractive indices, need %zu); skipping radiator\n",
+                            radiator->GetAlternativeMaterialName(), ibin,
+                            calib->m_AverageRefractiveIndices.size(),
+                            GetMyRICH()->Radiators().size());
+        continue;
+      }
 
 #if 1
-	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
-	    mcparticle->SetReferenceRefractiveIndex(rad, calib->m_AverageRefractiveIndices[ir++]);
+      for(auto [name,rad] : GetMyRICH()->Radiators()) 
+        mcparticle->SetReferenceRefractiveIndex(rad, calib->m_AverageRefractiveIndices[ir++]);
 #else
-	  for(auto [name,rad] : GetMyRICH()->Radiators()) 
-	    rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
+      for(auto [name,rad] : GetMyRICH()->Radiators()) 
+        rad->SetReferenceRefractiveIndex(calib->m_AverageRefractiveIndices[ir++]);
 #endif
-	} 
-	
-	{
-	  IRTSolution seed;
+    } 
 
-	  // Loop through all of the provided seeds until IRT converges (yes, assume 
-	  // the solution is unique);
-	  unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
-	  for(unsigned iq=0; iq<smax; iq++) {
-	    if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
+    // Loop through all digitized hits of a given event;
+    for(auto &hit: hits) {
+      // Loop through all optical paths for this photosensor;
+      for(auto irt: *hit.m_IRTs) {
+        auto tag = std::make_pair(radiator, irt);
 
-	    auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
-	      irt->Solve(mcparticle, history->m_EstimatedVertex,
-			 // FIXME: give beam line as a parameter;
-			 history->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
-			 TVector3(0,0,1), false, use_seed ? &seed : 0);
-	    
-	    solution.m_Time = solution.m_Length/300;
+        {
+          IRTSolution seed;
 
-	    if (solution.m_Converged) break;
-	  } //for iq
-	  //solution.m_Time = radiator->m_AverageTime + solution.m_Length/300;
-	}
-      } //for rhistory
-    } //for irt
-  } //for hit
+          // Loop through all of the provided seeds until IRT converges (yes, assume 
+          // the solution is unique);
+          unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
+          for(unsigned iq=0; iq<smax; iq++) {
+            if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
+
+            auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
+              irt->Solve(mcparticle, path.m_History->m_EstimatedVertex,
+                         // FIXME: give beam line as a parameter;
+                         path.m_History->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
+                         TVector3(0,0,1), false, use_seed ? &seed : 0);
+            
+            solution.m_Time = solution.m_Length/300;
+
+            if (solution.m_Converged) break;
+          } //for iq
+          //solution.m_Time = radiator->m_AverageTime + solution.m_Length/300;
+        }
+      } //for irt
+    } //for hit
+  } //for path
 } // ReconstructionFactory::ProcessHits()
 
 // -------------------------------------------------------------------------------------
@@ -553,6 +569,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
+    // IRT solutions do not depend on the PID hypothesis combination, so calculate them 
+    // once per iteration and reuse them for every [particle,hypothesis] combination;
+    bool solutionsValid = false;
+
     for(unsigned ic=0; ic<cdim; ic++) {
       if (itr && ic != icbest) continue;
 
@@ -603,13 +623,17 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  paths  [radiator] = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
 	} //for rhptr
 	
+	if (!solutionsValid) {
+	// IRT solutions for this particle do not depend on the PID hypothesis combination; 
+	// they are calculated once per iteration (see above) and reused below;
 	// FIXME: memory leak; looks like nothing else needs to be cleaned up here?;
-	for(auto &hit: Hits()) 
+	for(auto &hit: Hits())
 	  hit.m_Solutions[mcparticle].m_All.clear();
-	
-	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case 
+
+	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case
 	// is problematic; do it better later;
 	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
+} //if
 	
 	//
 	// By this moment every detected hit is evaluated with respect to this particle 
@@ -714,6 +738,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	
 	id /= Event()->ChargedParticles().size();
       } //for mcparticle
+
+      // Solutions for this iteration are in place; keep them for the remaining 
+      // [particle,hypothesis] combinations;
+      solutionsValid = true;
       
       // Clean up background candidate list; obviously if at least one particle selected this 
       // hit for a hypothesis considered in this iteration, the hit is useful;
