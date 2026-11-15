@@ -572,7 +572,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  if (abs(mcparticle->GetPDG()) != abs(m_Hypotheses[hypo]->PdgCode())) 
 	    goto _next_combination;
 
-	  qid /= Event()->ChargedParticles().size();
+	  qid /= hdim;
 	} //for mcparticle
       } //if    
 
@@ -712,7 +712,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  }
 	} //for hits
 	
-	id /= Event()->ChargedParticles().size();
+	id /= hdim;
       } //for mcparticle
       
       // Clean up background candidate list; obviously if at least one particle selected this 
@@ -855,7 +855,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	int sign = mcparticle->GetPDG() < 0 ? -1 : 1;
 	mcparticle->SetRecoPdgCode(sign*abs(rcparticle->PdgCode()));
 	
-	id /= Event()->ChargedParticles().size();
+	id /= hdim;
       } //for ip
     }
   } //if
