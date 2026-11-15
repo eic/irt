@@ -103,15 +103,15 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // or the global mixture log-likelihood;
   bool MixtureLikelihoodRequired( void ) const { return m_UseMixtureLikelihood; };
   void UseMixtureLikelihood( bool value = true ) { m_UseMixtureLikelihood = value; };
-  void SetBackgroundFraction( double value ) { m_BackgroundFraction = value; };
-  double GetBackgroundFraction( void ) const { return m_BackgroundFraction; };
+  // Expected number of background photon hits per event (a fixed input, the same
+  // quantity the chi^2 path knows as _EXPECTED_BG_PHOTON_COUNT_);
+  void SetExpectedBackgroundPhotons( double value ) { m_ExpectedBackgroundPhotons = value; };
+  double GetExpectedBackgroundPhotons( void ) const { return m_ExpectedBackgroundPhotons; };
 
   // Expectation-maximization control of the mixture estimator (Stage B3);
   void SetEmMaxIterations( unsigned value )  { m_EmMaxIterations = value; };
   void SetEmTolerance( double value )        { m_EmTolerance = value; };
   void UseEmCalibration( bool value = true ) { m_EmFitCalibration = value; };
-  void UseEmBackgroundFit( bool value = true ) { m_EmFitBackground = value; };
-  void UseEmYieldFit( bool value = true )       { m_EmFitYields = value; };
   unsigned GetEmIterationsUsed( void ) const { return m_EmIterationsUsed; };
   
  private:
@@ -141,7 +141,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
 
   // Fraction of photosensor hits attributed to the flat background component of the 
   // per-hit mixture, and the angular window [rad] normalizing that component;
-  double m_BackgroundFraction, m_BackgroundWindow;
+  double m_BackgroundWindow, m_ExpectedBackgroundPhotons;
 
   // Expectation-maximization control of the mixture estimator: iteration cap, the 
   // absolute improvement of the objective below which the iterations stop, and which 
@@ -151,7 +151,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // scale of the event being reconstructed;
   unsigned m_EmMaxIterations, m_EmIterationsUsed;
   double m_EmTolerance;
-  bool m_EmFitCalibration, m_EmFitBackground, m_EmFitYields;
+  bool m_EmFitCalibration;
 
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
@@ -239,16 +239,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void ScoreMixture(ChargedParticle *mcparticle, unsigned ip, bool calibration,
                     MixtureCache &cache);
 
-  // Parameters of the per-hit mixture, all of them iterated by expectation-
-  // maximization: `m_Pi` holds pdim*hdim non-negative hypothesis weights summing to 1 
-  // for each particle, `m_Background` is the fraction of hits attributed to the flat 
-  // background component, and `m_YieldScale` scales the calibrated photon yield of each 
-  // imaging radiator *for this event only* (it is never written back into the geometry, 
-  // so the global yield calibration is left alone);
-  struct EmParameters { std::vector<double> m_Pi; double m_Background;
-    std::map<CherenkovRadiator*,double> m_YieldScale;
-    EmParameters(): m_Background(0.0) {};
-  };
+  // Parameters of the per-hit mixture that expectation-maximization actually
+  // fits: the hypothesis weights pi_{p,h}, pdim*hdim of them, normalized to 1 for
+  // each particle. Everything else is fixed input -- the background is a configured
+  // expected photon count, and the photon yield of a radiator comes from the
+  // calibration file ("YieldCff"), i.e. the average number of detected photons per
+  // track at a saturated Cherenkov angle;
+  struct EmParameters { std::vector<double> m_Pi; };
 
   // Global mixture log-likelihood evaluated from the caches above, with the PID 
   // hypothesis promoted to a mixture-component index: the assignment and the 

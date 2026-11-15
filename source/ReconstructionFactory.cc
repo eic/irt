@@ -48,12 +48,11 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_ResolveHitOwnership(true),
   m_UsePoissonTermInChiSquare(true),
   m_UseMixtureLikelihood(false),
-  m_BackgroundFraction(0.1),
   m_BackgroundWindow(0.02),
+  m_ExpectedBackgroundPhotons(0.1),
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
-  m_EmFitBackground(true), m_EmFitYields(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -85,12 +84,11 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_ResolveHitOwnership(true),
   m_UsePoissonTermInChiSquare(true),
   m_UseMixtureLikelihood(false),
-  m_BackgroundFraction(0.1),
   m_BackgroundWindow(0.02),
+  m_ExpectedBackgroundPhotons(0.1),
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
-  m_EmFitBackground(true), m_EmFitYields(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -249,8 +247,11 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
     if (BeVerbose()) printf("ReconstructionFactory: estimator = %s\n", estimator.Data());
   } //if
 
-  if (jconfig.find("BackgroundFraction") != jconfig.end())
-    m_BackgroundFraction = jconfig["BackgroundFraction"].template get<double>();
+  // Expected number of background photon hits per event -- the same quantity the
+  // chi^2 path knows as _EXPECTED_BG_PHOTON_COUNT_. It is a fixed input: the
+  // background is never estimated.
+  if (jconfig.find("ExpectedBackgroundPhotons") != jconfig.end())
+    m_ExpectedBackgroundPhotons = jconfig["ExpectedBackgroundPhotons"].template get<double>();
 
   if (jconfig.find("BackgroundWindow") != jconfig.end())
     // Angular window [rad] over which the background component of the mixture is flat;
@@ -269,18 +270,6 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   if (jconfig.find("EmFitCalibration") != jconfig.end() &&
       !strcmp(jconfig["EmFitCalibration"].template get<std::string>().c_str(), "yes"))
     UseEmCalibration();
-
-  // The background fraction and the per-radiator yield scale of the event are fitted 
-  // inside the expectation-maximization loop unless switched off (they are parameters 
-  // of the mixture, so fitting them is the point of maximizing the likelihood; the 
-  // configured BackgroundFraction only supplies the starting value);
-  if (jconfig.find("EmFitBackground") != jconfig.end() &&
-      !strcmp(jconfig["EmFitBackground"].template get<std::string>().c_str(), "no"))
-    UseEmBackgroundFit(false);
-
-  if (jconfig.find("EmFitYields") != jconfig.end() &&
-      !strcmp(jconfig["EmFitYields"].template get<std::string>().c_str(), "no"))
-    UseEmYieldFit(false);
 
   if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
     SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
@@ -672,18 +661,15 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
       // Hypothesis weights start from the MC truth for the calibration pass (the chi^2 
       // path does the same by forcing the truth combination), and from a uniform prior 
-      // otherwise; the background fraction starts from the configured value and the 
-      // yield scales of the imaging radiators from 1;
+      // otherwise. The background and the yields are NOT parameters of the fit -- they 
+      // come from the configuration;
       empar = EmParameters();
       empar.m_Pi.assign(pdim*hdim, 0.0);
-      empar.m_Background = m_BackgroundFraction;
       for(unsigned ip=0; ip<pdim; ip++)
 	for(unsigned ih=0; ih<hdim; ih++)
 	  empar.m_Pi[ip*hdim + ih] = calibration ?
 	    (abs(Event()->ChargedParticles()[ip]->GetPDG()) ==
 	     abs(m_Hypotheses[ih]->PdgCode()) ? 1.0 : 0.0) : 1.0/hdim;
-      for(auto rad: GetMyRICH()->Radiators())
-	if (rad.second->UsedInRingImaging()) empar.m_YieldScale[rad.second] = 1.0;
     } //if
 
     for(unsigned ic=0; ic<cdim; ic++) {
@@ -1271,10 +1257,12 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
 
   const double ninf = -std::numeric_limits<double>::infinity();
 
-  // Background fraction of this event (the configured value only seeds it);
-  double beta = par.m_Background;
-  if (beta <= 0.0) beta = m_BackgroundFraction;
-  if (beta >= 1.0) beta = m_BackgroundFraction;
+  // The background is NOT estimated: it is a fixed, small expected count of
+  // background photon hits per event (same meaning as _EXPECTED_BG_PHOTON_COUNT_
+  // in the chi^2 path), expressed as a mixture weight so that the expected number
+  // of hits attributed to the background component equals that count;
+  double beta = nhits ? m_ExpectedBackgroundPhotons/(double)nhits : 0.0;
+  if (beta > 0.5) beta = 0.5;
 
   const double lnbg = std::log(beta/m_BackgroundWindow);
   const double lnt  = std::log((1.0 - beta)/pdim);
@@ -1395,16 +1383,16 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
   std::vector<double> lambda(pdim, 0.0);
   for(unsigned ip=0; ip<pdim; ip++) {
     const double theta = neff[ip] ? thsum[ip]/neff[ip] : 0.0;
-    for(auto &entry: par.m_YieldScale) {
-      auto radiator = entry.first;
+    for(auto rad: GetMyRICH()->Radiators()) {
+      auto radiator = rad.second;
       if (!radiator->UsedInRingImaging()) continue;
       bool crossed = false;
       for(auto rhptr: particles[ip]->GetRadiatorHistory())
         if (particles[ip]->GetRadiator(rhptr) == radiator) { crossed = true; break; } //if
       if (!crossed) continue;
-      lambda[ip] += entry.second*radiator->m_YieldCff*
+      lambda[ip] += radiator->m_YieldCff*
         radiator->m_DetectedToCalibrationPhotonRatio*pow(sin(theta),2);
-    } //for entry
+    } //for radiator
     if (lambda[ip] <= 0.0) continue;
     lnL += neff[ip]*log(lambda[ip]) - lambda[ip];
   } //for ip
@@ -1423,43 +1411,6 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     if (tot <= 0.0) continue;
     for(unsigned ih=0; ih<hdim; ih++) par.m_Pi[ip*hdim + ih] = nhip[ip*hdim + ih]/tot;
   } //for ip
-
-  // Background fraction: the hits left over once every track has been paid its 
-  // responsibilities. Clamped away from the degenerate 0 and 1 ends, where the mixture 
-  // either has no background slot at all or explains nothing;
-  if (m_EmFitBackground && nhits) {
-    double ntot = 0.0;
-    for(unsigned ip=0; ip<pdim; ip++) ntot += neff[ip];
-    double b = ((double)nhits - ntot)/(double)nhits;
-    if (b < 1e-3)  b = 1e-3;
-    if (b > 0.999) b = 0.999;
-    par.m_Background = b;
-  } //if
-
-  // Yield scale of every radiator: multiplicative expectation-maximization update of a 
-  // Poisson mean which is linear in the parameters;
-  if (m_EmFitYields) {
-    for(auto &entry: par.m_YieldScale) {
-      auto radiator = entry.first;
-      const double y = radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio;
-      if (!radiator->UsedInRingImaging() || y <= 0.0) continue;
-
-      double num = 0.0, den = 0.0;
-      for(unsigned ip=0; ip<pdim; ip++) {
-        const double theta = neff[ip] ? thsum[ip]/neff[ip] : 0.0;
-        bool crossed = false;
-        for(auto rhptr: particles[ip]->GetRadiatorHistory())
-          if (particles[ip]->GetRadiator(rhptr) == radiator) { crossed = true; break; } //if
-        if (!crossed) continue;
-
-        const double piece = entry.second*y*pow(sin(theta),2);
-        den += piece;
-        if (neff[ip] > 0.0 && lambda[ip] > 0.0) num += neff[ip]*piece/lambda[ip];
-      } //for ip
-
-      if (den > 0.0 && num > 0.0) entry.second *= num/den;
-    } //for entry
-  } //if
 
   return lnL;
 } // ReconstructionFactory::MixtureLnLWeighted()
@@ -1499,9 +1450,13 @@ double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
     prev = lnL;
   } //for it
 
-  if (BeVerbose()) printf("ReconstructionFactory: EM used %u iterations, lnL = %g, "
-                          "background fraction = %.4f\n",
-                          m_EmIterationsUsed, lnL, par.m_Background);
+  // Deliberately not gated on BeVerbose(): EICrecon puts the factory in quiet
+  // mode (IrtInterface::SetQuietMode), and the iteration count is exactly what is
+  // needed to judge convergence in production runs;
+  const double beta = cache.m_Nhits ? m_ExpectedBackgroundPhotons/(double)cache.m_Nhits : 0.0;
+  printf("ReconstructionFactory: EM %u iteration(s), lnL = %.4f, beta = %.6f, "
+         "hits = %u, tracks = %u\n",
+         m_EmIterationsUsed, lnL, beta, cache.m_Nhits, cache.m_Pdim);
 
   return lnL;
 } // ReconstructionFactory::RunEM()
