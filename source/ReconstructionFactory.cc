@@ -700,7 +700,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	  if (abs(mcparticle->GetPDG()) != abs(m_Hypotheses[hypo]->PdgCode())) 
 	    goto _next_combination;
 
-	  qid /= Event()->ChargedParticles().size();
+	  qid /= hdim;
 	} //for mcparticle
       } //if    
 
@@ -807,7 +807,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	} //if (chi^2 estimator)
 	
 	ip++;
-	id /= Event()->ChargedParticles().size();
+	id /= hdim;
       } //for mcparticle
 
       // Solutions for this iteration are in place; keep them for the remaining 
@@ -942,7 +942,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     } //for ip
   } else {
     unsigned id = icbest;
-    for(unsigned ip=0; ip<pdim; ip++) { hypoBest[ip] = id%hdim; id /= pdim; }
+    for(unsigned ip=0; ip<pdim; ip++) { hypoBest[ip] = id%hdim; id /= hdim; }
   } //if
   
   if (calibration) 
