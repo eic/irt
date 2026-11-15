@@ -49,6 +49,9 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_UseMixtureLikelihood(false),
   m_BackgroundFraction(0.1),
   m_BackgroundWindow(0.02),
+  m_EmMaxIterations(20), m_EmIterationsUsed(0),
+  m_EmTolerance(1e-6),
+  m_EmFitCalibration(false),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -82,6 +85,9 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_UseMixtureLikelihood(false),
   m_BackgroundFraction(0.1),
   m_BackgroundWindow(0.02),
+  m_EmMaxIterations(20), m_EmIterationsUsed(0),
+  m_EmTolerance(1e-6),
+  m_EmFitCalibration(false),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -246,6 +252,20 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   if (jconfig.find("BackgroundWindow") != jconfig.end())
     // Angular window [rad] over which the background component of the mixture is flat;
     m_BackgroundWindow = jconfig["BackgroundWindow"].template get<double>();
+
+  // Expectation-maximization control of the mixture estimator (Stage B3);
+  if (jconfig.find("EmMaxIterations") != jconfig.end())
+    SetEmMaxIterations((unsigned)jconfig["EmMaxIterations"].template get<int>());
+
+  if (jconfig.find("EmTolerance") != jconfig.end())
+    SetEmTolerance(jconfig["EmTolerance"].template get<double>());
+
+  // Also fit the per-[radiator,theta bin] angular offset and resolution inside the 
+  // expectation-maximization loop; off by default, as this changes the calibration 
+  // constants which the reconstruction itself uses;
+  if (jconfig.find("EmFitCalibration") != jconfig.end() &&
+      !strcmp(jconfig["EmFitCalibration"].template get<std::string>().c_str(), "yes"))
+    UseEmCalibration();
 
   if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
     SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
@@ -875,7 +895,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       } else {
 	// Global mixture log-likelihood: every hit contributes through the sum inside 
 	// the log, so no hit is discarded and no ownership is resolved at this point;
-	lnLsave[ic] = MixtureLnLWeighted(calibration, mcache, weights, false, true);
+	lnLsave[ic] = RunEM(calibration, mcache, weights);
 	if (!ic || lnLsave[ic] > lnLsave[icbest]) icbest = ic;
       } //if
 
@@ -1158,16 +1178,23 @@ void ReconstructionFactory::ScoreMixture(ChargedParticle *mcparticle, unsigned i
 
       if (mx == ninf) continue;
 
-      double sum = 0.0, thw = 0.0;
+      double sum = 0.0, thw = 0.0, thsw = 0.0, ths2 = 0.0, thsp = 0.0, thp2 = 0.0;
       for(unsigned k=0; k<nnum; k++) {
         if (lnds[k] == ninf) continue;
         const double w = std::exp(lnds[k] - mx);
-        sum += w; thw += w*thps[k];
+        const double thp = thps[k], ths = cache.m_Comps[nbeg + k].m_Theta;
+        sum  += w;
+        thw  += w*thp;
+        // moments of the measured and predicted Cherenkov angles, needed by the 
+        // optional calibration M-step (Stage B3);
+        thsw += w*ths; ths2 += w*ths*ths; thsp += w*ths*thp; thp2 += w*thp*thp;
       } //for k
 
       MixAgg &ag = cache.m_Agg[idx*hdim + ih];
-      ag.m_LnSum = mx + std::log(sum);
-      ag.m_ThBar = thw/sum;
+      ag.m_LnSum    = mx + std::log(sum);
+      ag.m_ThBar    = thw/sum;
+      ag.m_ThSolBar = thsw/sum; ag.m_ThSol2 = ths2/sum;
+      ag.m_ThSolP   = thsp/sum; ag.m_ThP2   = thp2/sum;
     } //for ih
   } //for hit
 } // ReconstructionFactory::ScoreMixture()
@@ -1194,7 +1221,9 @@ void ReconstructionFactory::ScoreMixture(ChargedParticle *mcparticle, unsigned i
 //
 double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
                                                  std::vector<double> &weights,
-                                                 bool assign, bool mstep)
+                                                 bool assign, bool mstep,
+                                                 std::map<std::pair<CherenkovRadiator*,unsigned>,
+                                                           std::array<double,3>> *calib)
 {
   const unsigned hdim = cache.m_Hdim, nhits = cache.m_Nhits, pdim = cache.m_Pdim;
   std::vector<ChargedParticle*> &particles = Event()->ChargedParticles();
@@ -1258,9 +1287,10 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
       if (rip > rbest) { rbest = rip; ipbest = ip; }
     } //for ip
 
-    if (!assign) continue;
+    if (!assign && !calib) continue;
 
-    // The a posteriori assignment needs the per-component responsibilities. The plots 
+    // The a posteriori assignment, and the optional calibration M-step, need the 
+    // per-component responsibilities. The plots 
     // are filled for every component, weighted by its responsibility; the hit itself is 
     // attached to the most probable track, via the [hypothesis,radiator,optical path] 
     // component which matches best for that track;
@@ -1286,6 +1316,14 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
           if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
             comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
 
+          if (calib) {
+            // sums of [N, sum r*(theta_meas - theta_pred), sum r*(theta_meas - theta_pred)^2] 
+            // per [radiator,theta bin], i.e. the moments of a weighted least-squares fit; 
+            auto &s = (*calib)[std::make_pair(comp.m_Radiator, comp.m_Ibin)];
+            const double dd = comp.m_Theta - thp;
+            s[0] += r; s[1] += r*dd; s[2] += r*dd*dd;
+          } //if
+
           if (ip == ipbest && r > cbest_r) { cbest_r = r; cbest = &comp; bthp = thp; btt = tt; }
         } //for ih
       } //for k
@@ -1295,7 +1333,7 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     // than the background. The winning component is also recorded as the "best" 
     // solution for this [hit,track] pair, which is what the track-level Cherenkov 
     // observables are built from;
-    if (cbest && rbest > 0.5) {
+    if (assign && cbest && rbest > 0.5) {
       auto dit = hit.m_Solutions.find(particles[ipbest]);
       if (dit != hit.m_Solutions.end()) {
         // note: the last argument is the chi^2-path CCDF slot, reused here for the 
@@ -1334,6 +1372,95 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
 
   return lnL;
 } // ReconstructionFactory::MixtureLnLWeighted()
+
+// -------------------------------------------------------------------------------------
+//
+// Stage B3: expectation-maximization iterations for the mixture estimator.
+//
+// The expectation step is the separable mixture objective of Stage B2, evaluated at the
+// current hypothesis weights of every track; the maximization step updates those weights
+// in closed form from the responsibilities (a track nobody claimed keeps the weights it
+// had). Iterations continue until the objective stops improving.
+//
+// Deliberately *not* free parameters of the fit: the expected photon yield of a track.
+// It is tied to the responsibility-weighted mean Cherenkov angle of that track by the
+// radiator yield model, and that tie is exactly what makes the hypotheses identifiable
+// once the hit-to-track assignment is marginalized -- freeing the yield would turn the
+// extended Poisson term into a monotone function of the number of assigned photons and
+// destroy the discrimination. The global yield coefficients are still fitted by the
+// existing calibration machinery (UpdateYields).
+//
+// Optionally (off by default) the per-[radiator,theta bin] angular offset and width are
+// also updated by a maximization step, which is a weighted least-squares fit of the
+// single-photon angle residuals; since the objective uses those constants, the
+// component caches are rebuilt after such an update.
+//
+double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
+                                    std::vector<double> &weights)
+{
+  const double ninf = -std::numeric_limits<double>::infinity();
+
+  double prev = ninf, lnL = ninf;
+  m_EmIterationsUsed = 0;
+
+  for(unsigned it=0; it<m_EmMaxIterations; it++) {
+    std::map<std::pair<CherenkovRadiator*,unsigned>, std::array<double,3>> sums;
+
+    lnL = MixtureLnLWeighted(calibration, cache, weights, false, true,
+                             m_EmFitCalibration ? &sums : 0);
+    m_EmIterationsUsed = it + 1;
+
+    if (m_EmFitCalibration) {
+      ApplyCalibrationMStep(sums);
+      RebuildMixtureCache(cache, calibration);
+    } //if
+
+    // The objective is evaluated at the parameters which were in effect for this 
+    // expectation step, so successive values are directly comparable;
+    if (it && std::fabs(lnL - prev) < m_EmTolerance) break;
+    prev = lnL;
+  } //for it
+
+  if (BeVerbose()) printf("ReconstructionFactory: EM used %u iterations, lnL = %g\n",
+                          m_EmIterationsUsed, lnL);
+
+  return lnL;
+} // ReconstructionFactory::RunEM()
+
+// -------------------------------------------------------------------------------------
+
+void ReconstructionFactory::RebuildMixtureCache(MixtureCache &cache, bool calibration)
+{
+  const unsigned pdim = cache.m_Pdim, nhits = cache.m_Nhits, hdim = cache.m_Hdim;
+
+  cache.Reset(pdim, nhits, hdim);
+
+  unsigned ip = 0;
+  for(auto mcparticle: Event()->ChargedParticles())
+    ScoreMixture(mcparticle, ip++, calibration, cache);
+} // ReconstructionFactory::RebuildMixtureCache()
+
+// -------------------------------------------------------------------------------------
+
+void ReconstructionFactory::ApplyCalibrationMStep(
+  const std::map<std::pair<CherenkovRadiator*,unsigned>, std::array<double,3>> &sums)
+{
+  for(auto &entry: sums) {
+    auto radiator = entry.first.first;
+    const unsigned ibin = entry.first.second;
+    const double n = entry.second[0];
+
+    if (!radiator || ibin >= _THETA_BIN_COUNT_ || n <= 0.0) continue;
+
+    const double off = entry.second[1]/n;
+    double var = entry.second[2]/n - off*off;
+    if (var < 0.0) var = 0.0;
+
+    auto &calib = radiator->m_Calibrations[ibin];
+    calib.m_Coffset = off;
+    calib.m_Csigma  = std::sqrt(var);
+  } //for entry
+} // ReconstructionFactory::ApplyCalibrationMStep()
 
 // -------------------------------------------------------------------------------------
 

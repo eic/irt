@@ -11,6 +11,8 @@ class TFile;
 
 #include <vector>
 #include <limits>
+#include <map>
+#include <array>
 
 #include "Calibration.h"
 #include "Digitization.h"
@@ -103,6 +105,12 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void UseMixtureLikelihood( bool value = true ) { m_UseMixtureLikelihood = value; };
   void SetBackgroundFraction( double value ) { m_BackgroundFraction = value; };
   double GetBackgroundFraction( void ) const { return m_BackgroundFraction; };
+
+  // Expectation-maximization control of the mixture estimator (Stage B3);
+  void SetEmMaxIterations( unsigned value )  { m_EmMaxIterations = value; };
+  void SetEmTolerance( double value )        { m_EmTolerance = value; };
+  void UseEmCalibration( bool value = true ) { m_EmFitCalibration = value; };
+  unsigned GetEmIterationsUsed( void ) const { return m_EmIterationsUsed; };
   
  private:
   TFile *m_OutputFile;
@@ -132,6 +140,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // Fraction of photosensor hits attributed to the flat background component of the 
   // per-hit mixture, and the angular window [rad] normalizing that component;
   double m_BackgroundFraction, m_BackgroundWindow;
+
+  // Expectation-maximization control of the mixture estimator: iteration cap, the 
+  // absolute improvement of the objective below which the iterations stop, and whether 
+  // the per-[radiator,theta bin] angular offset and resolution are also fitted;
+  unsigned m_EmMaxIterations, m_EmIterationsUsed;
+  double m_EmTolerance;
+  bool m_EmFitCalibration;
 
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
@@ -185,9 +200,13 @@ class ReconstructionFactory : public Digitization, public Calibration {
 
   // Aggregation of the components of one [particle,hit] pair under one PID hypothesis: 
   // the log-sum-exp of the component log-densities and the density-weighted mean of the 
-  // Cherenkov angles. `m_LnSum` is -inf when the pair has no usable component;
-  struct MixAgg { double m_LnSum, m_ThBar;
-    MixAgg(): m_LnSum(-std::numeric_limits<double>::infinity()), m_ThBar(0.0) {};
+  // Cherenkov angles. `m_LnSum` is -inf when the pair has no usable component. The 
+  // remaining moments of the *measured* and *predicted* Cherenkov angles are needed for 
+  // the optional calibration M-step of Stage B3; they are all normalized by the same 
+  // sum of densities as `m_ThBar`;
+  struct MixAgg { double m_LnSum, m_ThBar, m_ThSolBar, m_ThSol2, m_ThSolP, m_ThP2;
+    MixAgg(): m_LnSum(-std::numeric_limits<double>::infinity()), m_ThBar(0.0),
+      m_ThSolBar(0.0), m_ThSol2(0.0), m_ThSolP(0.0), m_ThP2(0.0) {};
   };
 
   // Caches for one iteration, filled particle by particle: components are indexed 
@@ -223,7 +242,25 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // expectation-maximization step); when `assign` is set, every hit is attached to its 
   // most probable track, i.e. the hit-to-track assignment is performed a posteriori;
   double MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
-                            std::vector<double> &weights, bool assign, bool mstep);
+                            std::vector<double> &weights, bool assign, bool mstep,
+                            std::map<std::pair<CherenkovRadiator*,unsigned>,
+                                      std::array<double,3>> *calib = 0);
+
+  // Stage B3: expectation-maximization iterations for the mixture estimator. The 
+  // expectation step is the separable objective above, the maximization step updates 
+  // the hypothesis weights of every track (and, when enabled, the per-[radiator,theta 
+  // bin] angular offset and resolution, which forces the component caches to be 
+  // rebuilt); iterated until the objective stops improving;
+  double RunEM(bool calibration, MixtureCache &cache, std::vector<double> &weights);
+
+  // Rebuild the whole component/aggregate cache of the current event (needed when the 
+  // calibration constants used by the mixture change);
+  void RebuildMixtureCache(MixtureCache &cache, bool calibration);
+
+  // Write the calibration constants accumulated by one maximization step back into the 
+  // radiators;
+  void ApplyCalibrationMStep(const std::map<std::pair<CherenkovRadiator*,unsigned>,
+                                            std::array<double,3>> &sums);
 };
 
 } // namespace IRT2
