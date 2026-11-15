@@ -338,6 +338,15 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
             continue;
           const auto& rrconfig = rconfig[name.Data()];
 
+          // Optional photon yield coefficient of this radiator. Fixing it here
+          // also pins the detected-to-calibration photon ratio, which is the
+          // second factor the yield enters the chi^2 Poisson term through; a
+          // calibration pass re-derives both in UpdateYields().
+          if (rrconfig.find("YieldCff") != rrconfig.end()) {
+            radiator->m_YieldCff = rrconfig["YieldCff"].template get<double>();
+            radiator->m_DetectedToCalibrationPhotonRatio = 1.0;
+          } //if
+
           // Prefer to initialize in a separate loop; clear() is not really needed (?);
           radiator->m_Calibrations.clear();
           for (unsigned iq = 0; iq < _THETA_BIN_COUNT_; iq++)
@@ -887,8 +896,6 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	      double theta = mcparticle->GetRecoCherenkovAverageTheta(radiator);
 	      if (theta) {
-		//printf("Yield: %f %f\n", radiator->m_YieldCff, radiator->m_DetectedToCalibrationPhotonRatio);
-		radiator->m_YieldCff = 160.0; radiator->m_DetectedToCalibrationPhotonRatio = 1.0;
 		double texp = radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*pow(sin(theta), 2);
 		chi2tr += npe ? 2*(texp - npe + npe*log(npe/texp)) : 0.0;
 		ndftr++;
