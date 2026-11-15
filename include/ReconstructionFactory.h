@@ -110,6 +110,8 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void SetEmMaxIterations( unsigned value )  { m_EmMaxIterations = value; };
   void SetEmTolerance( double value )        { m_EmTolerance = value; };
   void UseEmCalibration( bool value = true ) { m_EmFitCalibration = value; };
+  void UseEmBackgroundFit( bool value = true ) { m_EmFitBackground = value; };
+  void UseEmYieldFit( bool value = true )       { m_EmFitYields = value; };
   unsigned GetEmIterationsUsed( void ) const { return m_EmIterationsUsed; };
   
  private:
@@ -142,11 +144,14 @@ class ReconstructionFactory : public Digitization, public Calibration {
   double m_BackgroundFraction, m_BackgroundWindow;
 
   // Expectation-maximization control of the mixture estimator: iteration cap, the 
-  // absolute improvement of the objective below which the iterations stop, and whether 
-  // the per-[radiator,theta bin] angular offset and resolution are also fitted;
+  // absolute improvement of the objective below which the iterations stop, and which 
+  // parameters are actually fitted -- the per-[radiator,theta bin] angular offset and 
+  // resolution (off by default, as this changes the calibration constants which the 
+  // reconstruction itself uses), the background fraction, and the per-radiator yield 
+  // scale of the event being reconstructed;
   unsigned m_EmMaxIterations, m_EmIterationsUsed;
   double m_EmTolerance;
-  bool m_EmFitCalibration;
+  bool m_EmFitCalibration, m_EmFitBackground, m_EmFitYields;
 
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
@@ -234,24 +239,35 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void ScoreMixture(ChargedParticle *mcparticle, unsigned ip, bool calibration,
                     MixtureCache &cache);
 
+  // Parameters of the per-hit mixture, all of them iterated by expectation-
+  // maximization: `m_Pi` holds pdim*hdim non-negative hypothesis weights summing to 1 
+  // for each particle, `m_Background` is the fraction of hits attributed to the flat 
+  // background component, and `m_YieldScale` scales the calibrated photon yield of each 
+  // imaging radiator *for this event only* (it is never written back into the geometry, 
+  // so the global yield calibration is left alone);
+  struct EmParameters { std::vector<double> m_Pi; double m_Background;
+    std::map<CherenkovRadiator*,double> m_YieldScale;
+    EmParameters(): m_Background(0.0) {};
+  };
+
   // Global mixture log-likelihood evaluated from the caches above, with the PID 
-  // hypothesis promoted to a mixture-component index: `weights` holds pdim*hdim 
-  // non-negative numbers summing to 1 for each particle, so the assignment and the 
+  // hypothesis promoted to a mixture-component index: the assignment and the 
   // hypothesis choice are both marginalized (sum inside the log) rather than resolved 
-  // a priori. When `mstep` is set, the responsibilities also update `weights` (one 
-  // expectation-maximization step); when `assign` is set, every hit is attached to its 
-  // most probable track, i.e. the hit-to-track assignment is performed a posteriori;
+  // a priori. When `mstep` is set, the responsibilities also update the parameters 
+  // (maximization steps); when `assign` is set, every hit is attached to its most 
+  // probable track, i.e. the hit-to-track assignment is performed a posteriori;
   double MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
-                            std::vector<double> &weights, bool assign, bool mstep,
+                            EmParameters &par, bool assign, bool mstep,
                             std::map<std::pair<CherenkovRadiator*,unsigned>,
                                       std::array<double,3>> *calib = 0);
 
   // Stage B3: expectation-maximization iterations for the mixture estimator. The 
-  // expectation step is the separable objective above, the maximization step updates 
-  // the hypothesis weights of every track (and, when enabled, the per-[radiator,theta 
+  // expectation step is the separable objective above; the maximization steps update 
+  // the hypothesis weights of every track, the background fraction and the per-
+  // radiator yield scales of this event (and, when enabled, the per-[radiator,theta 
   // bin] angular offset and resolution, which forces the component caches to be 
   // rebuilt); iterated until the objective stops improving;
-  double RunEM(bool calibration, MixtureCache &cache, std::vector<double> &weights);
+  double RunEM(bool calibration, MixtureCache &cache, EmParameters &par);
 
   // Rebuild the whole component/aggregate cache of the current event (needed when the 
   // calibration constants used by the mixture change);
