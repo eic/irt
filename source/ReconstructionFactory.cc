@@ -5,6 +5,7 @@
 
 // Especially this one is problematic since it should account for the size of radial bands;
 //#define _EXPECTED_BG_PHOTON_COUNT_         ( 0.5)
+#define _EXPECTED_BG_PHOTON_COUNT_         ( 0.1)
 
 #include <algorithm>
 #include <cmath>
@@ -886,6 +887,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	      double theta = mcparticle->GetRecoCherenkovAverageTheta(radiator);
 	      if (theta) {
+		//printf("Yield: %f %f\n", radiator->m_YieldCff, radiator->m_DetectedToCalibrationPhotonRatio);
+		radiator->m_YieldCff = 160.0; radiator->m_DetectedToCalibrationPhotonRatio = 1.0;
 		double texp = radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*pow(sin(theta), 2);
 		chi2tr += npe ? 2*(texp - npe + npe*log(npe/texp)) : 0.0;
 		ndftr++;
