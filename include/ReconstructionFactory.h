@@ -215,12 +215,15 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void ScoreMixture(ChargedParticle *mcparticle, unsigned ip, bool calibration,
                     MixtureCache &cache);
 
-  // Global mixture log-likelihood of the [particle,hypothesis] combination `ic`, 
-  // evaluated from the caches above; when `assign` is set, the resulting 
-  // responsibilities are also used to attach every hit to its most probable track 
-  // (a posteriori assignment);
-  double MixtureLnL(bool calibration, unsigned ic, const MixtureCache &cache,
-                    bool assign = false);
+  // Global mixture log-likelihood evaluated from the caches above, with the PID 
+  // hypothesis promoted to a mixture-component index: `weights` holds pdim*hdim 
+  // non-negative numbers summing to 1 for each particle, so the assignment and the 
+  // hypothesis choice are both marginalized (sum inside the log) rather than resolved 
+  // a priori. When `mstep` is set, the responsibilities also update `weights` (one 
+  // expectation-maximization step); when `assign` is set, every hit is attached to its 
+  // most probable track, i.e. the hit-to-track assignment is performed a posteriori;
+  double MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
+                            std::vector<double> &weights, bool assign, bool mstep);
 };
 
 } // namespace IRT2

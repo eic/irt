@@ -583,9 +583,13 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   unsigned const hdim = m_Hypotheses.size();
   
   unsigned cdim = 1, pdim = Event()->ChargedParticles().size(), icbest = 0;
-  // FIXME: come on!;
-  for(unsigned iq=0; iq<Event()->ChargedParticles().size(); iq++)
-    cdim *= hdim;
+  // The chi^2 estimator fixes one hypothesis per particle a priori, hence a scan over 
+  // hdim^pdim combinations is needed; the mixture estimator marginalizes over the 
+  // hypotheses inside the log, so for it the scan collapses to a single evaluation 
+  // (Stage B2);
+  if (!m_UseMixtureLikelihood)
+    for(unsigned iq=0; iq<Event()->ChargedParticles().size(); iq++)
+      cdim *= hdim;
   // Save intermediate chi^2 estimates;
   double  ccdfevsave[cdim];       memset(ccdfevsave, 0x00, sizeof(ccdfevsave));
   double  ccdftrsave[cdim][pdim]; memset(ccdftrsave, 0x00, sizeof(ccdftrsave));
@@ -607,6 +611,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   // Same for the mixture estimator: the [hit,radiator,optical path] components of each 
   // particle and their per-hypothesis aggregates, evaluated once per iteration (Stage B1);
   MixtureCache mcache;
+  // Hypothesis weights of the mixture estimator, [ip*hdim + ih], normalized per 
+  // particle, and the winning hypothesis of every particle used for the PID output;
+  std::vector<double> weights(pdim*hdim, 0.0);
+  std::vector<unsigned> hypoBest(pdim, 0);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
@@ -614,7 +622,18 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     // once per iteration and reuse them for every [particle,hypothesis] combination;
     bool solutionsValid = false;
 
-    if (m_UseMixtureLikelihood) mcache.Reset(pdim, nhits, hdim);
+    if (m_UseMixtureLikelihood) {
+      mcache.Reset(pdim, nhits, hdim);
+
+      // Hypothesis weights start from the MC truth for the calibration pass (the chi^2 
+      // path does the same by forcing the truth combination), and from a uniform prior 
+      // otherwise;
+      for(unsigned ip=0; ip<pdim; ip++)
+	for(unsigned ih=0; ih<hdim; ih++)
+	  weights[ip*hdim + ih] = calibration ?
+	    (abs(Event()->ChargedParticles()[ip]->GetPDG()) ==
+	     abs(m_Hypotheses[ih]->PdgCode()) ? 1.0 : 0.0) : 1.0/hdim;
+    } //if
 
     for(unsigned ic=0; ic<cdim; ic++) {
       if (itr && ic != icbest) continue;
@@ -629,7 +648,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       // FIXME: may want this check to be a bit more efficient; indeed for calibration pass
       // we better use MC truth as a PID hypothesis for all particles to calculate <theta>
       // as well as the width of this distribution; so skip all other combinations;
-      if (calibration) {
+      if (calibration && !m_UseMixtureLikelihood) {
 	// A local running variable, to simplify hypothesis calculation;
 	unsigned qid = ic;      
 	
@@ -856,7 +875,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       } else {
 	// Global mixture log-likelihood: every hit contributes through the sum inside 
 	// the log, so no hit is discarded and no ownership is resolved at this point;
-	lnLsave[ic] = MixtureLnL(calibration, ic, mcache);
+	lnLsave[ic] = MixtureLnLWeighted(calibration, mcache, weights, false, true);
 	if (!ic || lnLsave[ic] > lnLsave[icbest]) icbest = ic;
       } //if
 
@@ -865,8 +884,22 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     } //for ic
 
     // A posteriori hit-to-track assignment for the winning combination;
-    if (m_UseMixtureLikelihood && itr) MixtureLnL(calibration, icbest, mcache, true);
+    if (m_UseMixtureLikelihood && itr) MixtureLnLWeighted(calibration, mcache, weights, true, false);
   } //for itr
+
+  // The winning hypothesis of every particle: decoded from the best combination for the 
+  // chi^2 estimator, read off the marginalized weights for the mixture estimator;
+  if (m_UseMixtureLikelihood) {
+    for(unsigned ip=0; ip<pdim; ip++) {
+      unsigned ihbest = 0;
+      for(unsigned ih=1; ih<hdim; ih++)
+	if (weights[ip*hdim + ih] > weights[ip*hdim + ihbest]) ihbest = ih;
+      hypoBest[ip] = ihbest;
+    } //for ip
+  } else {
+    unsigned id = icbest;
+    for(unsigned ip=0; ip<pdim; ip++) { hypoBest[ip] = id%hdim; id /= pdim; }
+  } //if
   
   if (calibration) 
     UpdateYields();
@@ -882,11 +915,9 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     } //if
     
     {
-      // A running variable, to simplify hypothesis calculation;
-      unsigned id = icbest;
-      
+      unsigned ip = 0;
       for(auto mcparticle: Event()->ChargedParticles()) {
-	unsigned hypo = id%hdim;
+	unsigned hypo = hypoBest[ip];
 	auto rcparticle = m_Hypotheses[hypo];
 
 	//if (mcparticle->m_HadronicInteractionOccured) continue;
@@ -911,7 +942,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	int sign = mcparticle->GetPDG() < 0 ? -1 : 1;
 	mcparticle->SetRecoPdgCode(sign*abs(rcparticle->PdgCode()));
 	
-	id /= Event()->ChargedParticles().size();
+	ip++;
       } //for ip
     }
   } //if
@@ -1142,72 +1173,98 @@ void ReconstructionFactory::ScoreMixture(ChargedParticle *mcparticle, unsigned i
 } // ReconstructionFactory::ScoreMixture()
 
 // -------------------------------------------------------------------------------------
-
-// Global mixture log-likelihood of the [particle,hypothesis] combination `ic`, evaluated 
-// from the caches above. Every hit contributes through the sum inside the log, so no hit 
-// is discarded and no ownership is resolved a priori; a hit claimed by several tracks is 
-// shared between them. The expected Cherenkov photon yield of every track enters as an 
-// extended Poisson term, which is what makes the track hypotheses identifiable once the 
-// assignment is marginalized. When `assign` is set, the resulting responsibilities are 
-// also used to attach each hit to its most probable track, i.e. the hit-to-track 
-// assignment is performed a posteriori;
 //
-double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic,
-                                         const MixtureCache &cache, bool assign)
+// Stage B2: the mixture objective with the PID hypothesis promoted to a component 
+// index, i.e. a separable objective which no longer needs a combination scan.
+//
+// Every detected hit is described by a mixture over all 
+// [particle,hypothesis,radiator,optical path] components available for it, plus a flat 
+// background component. Neither the hit-to-track assignment nor the PID hypothesis 
+// choice is resolved a priori: both are marginalized inside the log, a hit claimed by 
+// several tracks is shared between them, and no hit is ever discarded. The expected 
+// Cherenkov photon yield of every track enters as an extended Poisson term, which is 
+// what makes the tracks identifiable once the assignment is marginalized.
+//
+// Because the objective is separable (Stage B1), there is nothing left to scan over: 
+// the hdim^pdim [particle,hypothesis] combination loop collapses to a single 
+// evaluation, and the hypothesis content of every track is carried by `weights` 
+// (pdim*hdim entries, summing to 1 for each particle). With `mstep` the 
+// responsibilities update those weights -- one expectation-maximization step; with 
+// `assign` each hit is attached to its most probable track a posteriori.
+//
+double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
+                                                 std::vector<double> &weights,
+                                                 bool assign, bool mstep)
 {
   const unsigned hdim = cache.m_Hdim, nhits = cache.m_Nhits, pdim = cache.m_Pdim;
   std::vector<ChargedParticle*> &particles = Event()->ChargedParticles();
   if (!hdim || !pdim) return 0.0;
 
-  // Decode the PID hypotheses of this combination, exactly as the chi^2 path does;
-  std::vector<unsigned> hypo(pdim);
-  {
-    unsigned id = ic;
-    for(unsigned ip=0; ip<pdim; ip++) { hypo[ip] = id%hdim; id /= pdim; }
-  } //block
-
   const double lnbg = std::log(m_BackgroundFraction/m_BackgroundWindow);
   const double lnt  = std::log(1.0/pdim);
   const double ninf = -std::numeric_limits<double>::infinity();
 
+  // Logarithms of the current hypothesis weights; a zero weight simply drops that 
+  // component from the mixture;
+  std::vector<double> lnw(pdim*hdim);
+  for(unsigned i=0; i<pdim*hdim; i++)
+    lnw[i] = weights[i] > 0.0 ? std::log(weights[i]) : ninf;
+
   double lnL = 0.0;
-  std::vector<double> neff(pdim, 0.0), thsum(pdim, 0.0);
+  std::vector<double> neff(pdim, 0.0), thsum(pdim, 0.0), nhip(pdim*hdim, 0.0);
+  // Scratch space for the responsibilities of one hit;
+  std::vector<double> resp(pdim*hdim, 0.0);
 
   for(unsigned ihit=0; ihit<nhits; ihit++) {
     auto &hit = Hits()[ihit];
 
-    // log-sum-exp over the background slot and the cached per-particle aggregates;
+    // log-sum-exp over the background slot and every [particle,hypothesis] component;
     double mx = lnbg;
-    for(unsigned ip=0; ip<pdim; ip++) {
-      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
-      if (ag.m_LnSum == ninf) continue;
-      if (ag.m_LnSum + lnt > mx) mx = ag.m_LnSum + lnt;
-    } //for ip
+    for(unsigned ip=0; ip<pdim; ip++)
+      for(unsigned ih=0; ih<hdim; ih++) {
+        const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + ih];
+        if (ag.m_LnSum == ninf || lnw[ip*hdim + ih] == ninf) continue;
+        const double tt = ag.m_LnSum + lnt + lnw[ip*hdim + ih];
+        if (tt > mx) mx = tt;
+      } //for ip, ih
 
     double sum = std::exp(lnbg - mx);
-    for(unsigned ip=0; ip<pdim; ip++) {
-      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
-      if (ag.m_LnSum == ninf) continue;
-      sum += std::exp(ag.m_LnSum + lnt - mx);
-    } //for ip
+    for(unsigned ip=0; ip<pdim; ip++)
+      for(unsigned ih=0; ih<hdim; ih++) {
+        const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + ih];
+        if (ag.m_LnSum == ninf || lnw[ip*hdim + ih] == ninf) continue;
+        sum += std::exp(ag.m_LnSum + lnt + lnw[ip*hdim + ih] - mx);
+      } //for ip, ih
 
     const double lnorm = mx + std::log(sum);
     lnL += lnorm;
 
-    // E-step at the current parameters: the responsibility of a whole track for this 
-    // hit follows from the cached aggregate, no component walk needed;
+    // E-step at the current parameters: the responsibility of every track, and of each 
+    // of its hypotheses, for this hit follows from the cached aggregates alone;
+    double rbest = 0.0; unsigned ipbest = 0;
     for(unsigned ip=0; ip<pdim; ip++) {
-      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
-      if (ag.m_LnSum == ninf) continue;
-      const double r = std::exp(ag.m_LnSum + lnt - lnorm);
-      neff[ip] += r; thsum[ip] += r*ag.m_ThBar;
+      double rip = 0.0, th = 0.0;
+      for(unsigned ih=0; ih<hdim; ih++) {
+        const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + ih];
+        if (ag.m_LnSum == ninf || lnw[ip*hdim + ih] == ninf) {
+          resp[ip*hdim + ih] = 0.0; continue;
+        } //if
+        const double r = std::exp(ag.m_LnSum + lnt + lnw[ip*hdim + ih] - lnorm);
+        resp[ip*hdim + ih] = r;
+        rip += r; th += r*ag.m_ThBar;
+        nhip[ip*hdim + ih] += r;
+      } //for ih
+      neff[ip] += rip; thsum[ip] += th;
+      if (rip > rbest) { rbest = rip; ipbest = ip; }
     } //for ip
 
     if (!assign) continue;
 
-    // The a posteriori assignment needs the per-component responsibilities, which only 
-    // the component list can give;
-    const MixComponent *cbest = 0; double rbest = 0.0, bthp = 0.0, btt = 0.0;
+    // The a posteriori assignment needs the per-component responsibilities. The plots 
+    // are filled for every component, weighted by its responsibility; the hit itself is 
+    // attached to the most probable track, via the [hypothesis,radiator,optical path] 
+    // component which matches best for that track;
+    const MixComponent *cbest = 0; double cbest_r = 0.0, bthp = 0.0, btt = 0.0;
 
     for(unsigned ip=0; ip<pdim; ip++) {
       const unsigned idx = ip*nhits + ihit;
@@ -1215,17 +1272,22 @@ double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic,
       for(unsigned k=0; k<cache.m_Num[idx]; k++) {
         const MixComponent &comp = cache.m_Comps[cache.m_Beg[idx] + k];
 
-        double lnd, thp, tt, thdiff, tmdiff;
-        if (!MixtureLnD(comp, hypo[ip], lnd, thp, tt, thdiff, tmdiff)) continue;
+        for(unsigned ih=0; ih<hdim; ih++) {
+          if (lnw[ip*hdim + ih] == ninf) continue;
 
-        const double r = std::exp(lnd + lnt - lnorm);
-        if (r > rbest) { rbest = r; cbest = &comp; bthp = thp; btt = tt; }
+          double lnd, thp, tt, thdiff, tmdiff;
+          if (!MixtureLnD(comp, ih, lnd, thp, tt, thdiff, tmdiff)) continue;
 
-        const bool truth = (particles[ip]->GetPDG() == m_Hypotheses[hypo[ip]]->PdgCode());
-        if (!calibration && truth && comp.m_Radiator->Plots())
-          comp.m_Radiator->Plots()->hthph()->Fill(1000*thdiff, r);
-        if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
-          comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
+          const double r = std::exp(lnd + lnt + lnw[ip*hdim + ih] - lnorm);
+
+          const bool truth = (particles[ip]->GetPDG() == m_Hypotheses[ih]->PdgCode());
+          if (!calibration && truth && comp.m_Radiator->Plots())
+            comp.m_Radiator->Plots()->hthph()->Fill(1000*thdiff, r);
+          if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
+            comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
+
+          if (ip == ipbest && r > cbest_r) { cbest_r = r; cbest = &comp; bthp = thp; btt = tt; }
+        } //for ih
       } //for k
     } //for ip
 
@@ -1234,12 +1296,12 @@ double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic,
     // solution for this [hit,track] pair, which is what the track-level Cherenkov 
     // observables are built from;
     if (cbest && rbest > 0.5) {
-      auto dit = hit.m_Solutions.find(particles[cbest->m_Ip]);
+      auto dit = hit.m_Solutions.find(particles[ipbest]);
       if (dit != hit.m_Solutions.end()) {
         // note: the last argument is the chi^2-path CCDF slot, reused here for the 
         // posterior probability of this assignment;
         dit->second.AssignVariables(cbest->m_Solution, bthp, btt, cbest->m_Radiator, rbest);
-        particles[cbest->m_Ip]->AddHit(&hit);
+        particles[ipbest]->AddHit(&hit);
       } //if
     } //if
   } //for hit
@@ -1258,8 +1320,20 @@ double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic,
     lnL += neff[ip]*log(lambda) - lambda;
   } //for ip
 
+  // M-step for the hypothesis weights of every track (the objective above was 
+  // evaluated at the weights coming in);
+  if (mstep) {
+    for(unsigned ip=0; ip<pdim; ip++) {
+      double tot = 0.0;
+      for(unsigned ih=0; ih<hdim; ih++) tot += nhip[ip*hdim + ih];
+      // A track nobody claimed keeps the weights it had;
+      if (tot <= 0.0) continue;
+      for(unsigned ih=0; ih<hdim; ih++) weights[ip*hdim + ih] = nhip[ip*hdim + ih]/tot;
+    } //for ip
+  } //if
+
   return lnL;
-} // ReconstructionFactory::MixtureLnL()
+} // ReconstructionFactory::MixtureLnLWeighted()
 
 // -------------------------------------------------------------------------------------
 
