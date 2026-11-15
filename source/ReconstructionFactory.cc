@@ -52,6 +52,7 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
+  m_EmFitBackground(true), m_EmFitYields(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -88,6 +89,7 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
+  m_EmFitBackground(true), m_EmFitYields(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -266,6 +268,18 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   if (jconfig.find("EmFitCalibration") != jconfig.end() &&
       !strcmp(jconfig["EmFitCalibration"].template get<std::string>().c_str(), "yes"))
     UseEmCalibration();
+
+  // The background fraction and the per-radiator yield scale of the event are fitted 
+  // inside the expectation-maximization loop unless switched off (they are parameters 
+  // of the mixture, so fitting them is the point of maximizing the likelihood; the 
+  // configured BackgroundFraction only supplies the starting value);
+  if (jconfig.find("EmFitBackground") != jconfig.end() &&
+      !strcmp(jconfig["EmFitBackground"].template get<std::string>().c_str(), "no"))
+    UseEmBackgroundFit(false);
+
+  if (jconfig.find("EmFitYields") != jconfig.end() &&
+      !strcmp(jconfig["EmFitYields"].template get<std::string>().c_str(), "no"))
+    UseEmYieldFit(false);
 
   if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
     SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
@@ -631,9 +645,10 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   // Same for the mixture estimator: the [hit,radiator,optical path] components of each 
   // particle and their per-hypothesis aggregates, evaluated once per iteration (Stage B1);
   MixtureCache mcache;
-  // Hypothesis weights of the mixture estimator, [ip*hdim + ih], normalized per 
-  // particle, and the winning hypothesis of every particle used for the PID output;
-  std::vector<double> weights(pdim*hdim, 0.0);
+  // Parameters of the mixture estimator (hypothesis weights, background fraction, 
+  // per-radiator yield scales of this event), and the winning hypothesis of every 
+  // particle used for the PID output;
+  EmParameters empar;
   std::vector<unsigned> hypoBest(pdim, 0);
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
@@ -647,12 +662,18 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
       // Hypothesis weights start from the MC truth for the calibration pass (the chi^2 
       // path does the same by forcing the truth combination), and from a uniform prior 
-      // otherwise;
+      // otherwise; the background fraction starts from the configured value and the 
+      // yield scales of the imaging radiators from 1;
+      empar = EmParameters();
+      empar.m_Pi.assign(pdim*hdim, 0.0);
+      empar.m_Background = m_BackgroundFraction;
       for(unsigned ip=0; ip<pdim; ip++)
 	for(unsigned ih=0; ih<hdim; ih++)
-	  weights[ip*hdim + ih] = calibration ?
+	  empar.m_Pi[ip*hdim + ih] = calibration ?
 	    (abs(Event()->ChargedParticles()[ip]->GetPDG()) ==
 	     abs(m_Hypotheses[ih]->PdgCode()) ? 1.0 : 0.0) : 1.0/hdim;
+      for(auto rad: GetMyRICH()->Radiators())
+	if (rad.second->UsedInRingImaging()) empar.m_YieldScale[rad.second] = 1.0;
     } //if
 
     for(unsigned ic=0; ic<cdim; ic++) {
@@ -895,7 +916,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       } else {
 	// Global mixture log-likelihood: every hit contributes through the sum inside 
 	// the log, so no hit is discarded and no ownership is resolved at this point;
-	lnLsave[ic] = RunEM(calibration, mcache, weights);
+	lnLsave[ic] = RunEM(calibration, mcache, empar);
 	if (!ic || lnLsave[ic] > lnLsave[icbest]) icbest = ic;
       } //if
 
@@ -904,7 +925,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     } //for ic
 
     // A posteriori hit-to-track assignment for the winning combination;
-    if (m_UseMixtureLikelihood && itr) MixtureLnLWeighted(calibration, mcache, weights, true, false);
+    if (m_UseMixtureLikelihood && itr) MixtureLnLWeighted(calibration, mcache, empar, true, false);
   } //for itr
 
   // The winning hypothesis of every particle: decoded from the best combination for the 
@@ -913,7 +934,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     for(unsigned ip=0; ip<pdim; ip++) {
       unsigned ihbest = 0;
       for(unsigned ih=1; ih<hdim; ih++)
-	if (weights[ip*hdim + ih] > weights[ip*hdim + ihbest]) ihbest = ih;
+	if (empar.m_Pi[ip*hdim + ih] > empar.m_Pi[ip*hdim + ihbest]) ihbest = ih;
       hypoBest[ip] = ihbest;
     } //for ip
   } else {
@@ -1201,26 +1222,35 @@ void ReconstructionFactory::ScoreMixture(ChargedParticle *mcparticle, unsigned i
 
 // -------------------------------------------------------------------------------------
 //
-// Stage B2: the mixture objective with the PID hypothesis promoted to a component 
-// index, i.e. a separable objective which no longer needs a combination scan.
+// The mixture objective with the PID hypothesis promoted to a component index, i.e. a
+// separable objective which no longer needs a combination scan (Stage B2), and its
+// expectation-maximization machinery (Stage B3).
 //
-// Every detected hit is described by a mixture over all 
-// [particle,hypothesis,radiator,optical path] components available for it, plus a flat 
-// background component. Neither the hit-to-track assignment nor the PID hypothesis 
-// choice is resolved a priori: both are marginalized inside the log, a hit claimed by 
-// several tracks is shared between them, and no hit is ever discarded. The expected 
-// Cherenkov photon yield of every track enters as an extended Poisson term, which is 
-// what makes the tracks identifiable once the assignment is marginalized.
+// Every detected hit is described by a mixture over all [particle,hypothesis,radiator,
+// optical path] components available for it, plus a flat background component. Neither
+// the hit-to-track assignment nor the PID hypothesis choice is resolved a priori: both
+// are marginalized inside the log, a hit claimed by several tracks is shared between
+// them, and no hit is ever discarded. The expected Cherenkov photon yield of every track
+// enters as an extended Poisson term, which is what makes the tracks identifiable once
+// the assignment is marginalized.
 //
-// Because the objective is separable (Stage B1), there is nothing left to scan over: 
-// the hdim^pdim [particle,hypothesis] combination loop collapses to a single 
-// evaluation, and the hypothesis content of every track is carried by `weights` 
-// (pdim*hdim entries, summing to 1 for each particle). With `mstep` the 
-// responsibilities update those weights -- one expectation-maximization step; with 
-// `assign` each hit is attached to its most probable track a posteriori.
+// The parameters of that mixture, all iterated by expectation-maximization:
+//   pi_{p,h}   hypothesis weights, pdim*hdim of them, normalized to 1 per particle;
+//   beta       fraction of hits attributed to the flat background component;
+//   s_r        per-radiator yield scale, multiplying the calibrated yield coefficient
+//              m_YieldCff * m_DetectedToCalibrationPhotonRatio of that radiator.
+// beta and s_r are *per event* parameters: they are never written back into the
+// geometry, so the global yield calibration (UpdateYields) and the configured background
+// fraction (which only supplies the starting value) are left alone.
+//
+// The per-track expected yield is deliberately not a free parameter of the fit: it is
+// tied to the responsibility-weighted mean Cherenkov angle of that track by the radiator
+// yield model, and that tie is exactly what makes the hypotheses identifiable once the
+// hit-to-track assignment is marginalized. Only the *global* scale of each radiator is
+// fitted, which leaves the discrimination (through sin^2(theta)) intact.
 //
 double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const MixtureCache &cache,
-                                                 std::vector<double> &weights,
+                                                 EmParameters &par,
                                                  bool assign, bool mstep,
                                                  std::map<std::pair<CherenkovRadiator*,unsigned>,
                                                            std::array<double,3>> *calib)
@@ -1229,15 +1259,21 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
   std::vector<ChargedParticle*> &particles = Event()->ChargedParticles();
   if (!hdim || !pdim) return 0.0;
 
-  const double lnbg = std::log(m_BackgroundFraction/m_BackgroundWindow);
-  const double lnt  = std::log(1.0/pdim);
   const double ninf = -std::numeric_limits<double>::infinity();
+
+  // Background fraction of this event (the configured value only seeds it);
+  double beta = par.m_Background;
+  if (beta <= 0.0) beta = m_BackgroundFraction;
+  if (beta >= 1.0) beta = m_BackgroundFraction;
+
+  const double lnbg = std::log(beta/m_BackgroundWindow);
+  const double lnt  = std::log((1.0 - beta)/pdim);
 
   // Logarithms of the current hypothesis weights; a zero weight simply drops that 
   // component from the mixture;
   std::vector<double> lnw(pdim*hdim);
   for(unsigned i=0; i<pdim*hdim; i++)
-    lnw[i] = weights[i] > 0.0 ? std::log(weights[i]) : ninf;
+    lnw[i] = par.m_Pi[i] > 0.0 ? std::log(par.m_Pi[i]) : ninf;
 
   double lnL = 0.0;
   std::vector<double> neff(pdim, 0.0), thsum(pdim, 0.0), nhip(pdim*hdim, 0.0);
@@ -1310,12 +1346,6 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
 
           const double r = std::exp(lnd + lnt + lnw[ip*hdim + ih] - lnorm);
 
-          const bool truth = (particles[ip]->GetPDG() == m_Hypotheses[ih]->PdgCode());
-          if (!calibration && truth && comp.m_Radiator->Plots())
-            comp.m_Radiator->Plots()->hthph()->Fill(1000*thdiff, r);
-          if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
-            comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
-
           if (calib) {
             // sums of [N, sum r*(theta_meas - theta_pred), sum r*(theta_meas - theta_pred)^2] 
             // per [radiator,theta bin], i.e. the moments of a weighted least-squares fit; 
@@ -1323,6 +1353,12 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
             const double dd = comp.m_Theta - thp;
             s[0] += r; s[1] += r*dd; s[2] += r*dd*dd;
           } //if
+
+          const bool truth = (particles[ip]->GetPDG() == m_Hypotheses[ih]->PdgCode());
+          if (!calibration && truth && comp.m_Radiator->Plots())
+            comp.m_Radiator->Plots()->hthph()->Fill(1000*thdiff, r);
+          if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
+            comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
 
           if (ip == ipbest && r > cbest_r) { cbest_r = r; cbest = &comp; bthp = thp; btt = tt; }
         } //for ih
@@ -1344,30 +1380,75 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     } //if
   } //for hit
 
-  // Extended Poisson term for the expected photon yield of every track;
+  // Expected photon yield of every track, at the current parameters, and the extended 
+  // Poisson term built from it;
+  std::vector<double> lambda(pdim, 0.0);
   for(unsigned ip=0; ip<pdim; ip++) {
     const double theta = neff[ip] ? thsum[ip]/neff[ip] : 0.0;
-    double lambda = 0.0;
-    for(auto rhptr: particles[ip]->GetRadiatorHistory()) {
-      auto radiator = particles[ip]->GetRadiator(rhptr);
+    for(auto &entry: par.m_YieldScale) {
+      auto radiator = entry.first;
       if (!radiator->UsedInRingImaging()) continue;
-      lambda += radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*
-        pow(sin(theta),2);
-    } //for rhptr
-    if (lambda <= 0.0) continue;
-    lnL += neff[ip]*log(lambda) - lambda;
+      bool crossed = false;
+      for(auto rhptr: particles[ip]->GetRadiatorHistory())
+        if (particles[ip]->GetRadiator(rhptr) == radiator) { crossed = true; break; } //if
+      if (!crossed) continue;
+      lambda[ip] += entry.second*radiator->m_YieldCff*
+        radiator->m_DetectedToCalibrationPhotonRatio*pow(sin(theta),2);
+    } //for entry
+    if (lambda[ip] <= 0.0) continue;
+    lnL += neff[ip]*log(lambda[ip]) - lambda[ip];
   } //for ip
 
-  // M-step for the hypothesis weights of every track (the objective above was 
-  // evaluated at the weights coming in);
-  if (mstep) {
-    for(unsigned ip=0; ip<pdim; ip++) {
-      double tot = 0.0;
-      for(unsigned ih=0; ih<hdim; ih++) tot += nhip[ip*hdim + ih];
-      // A track nobody claimed keeps the weights it had;
-      if (tot <= 0.0) continue;
-      for(unsigned ih=0; ih<hdim; ih++) weights[ip*hdim + ih] = nhip[ip*hdim + ih]/tot;
-    } //for ip
+  if (!mstep) return lnL;
+
+  //
+  // Maximization steps. The objective above was evaluated at the parameters coming in.
+  //
+
+  // Hypothesis weights of every track, in closed form from the responsibilities;
+  for(unsigned ip=0; ip<pdim; ip++) {
+    double tot = 0.0;
+    for(unsigned ih=0; ih<hdim; ih++) tot += nhip[ip*hdim + ih];
+    // A track nobody claimed keeps the weights it had;
+    if (tot <= 0.0) continue;
+    for(unsigned ih=0; ih<hdim; ih++) par.m_Pi[ip*hdim + ih] = nhip[ip*hdim + ih]/tot;
+  } //for ip
+
+  // Background fraction: the hits left over once every track has been paid its 
+  // responsibilities. Clamped away from the degenerate 0 and 1 ends, where the mixture 
+  // either has no background slot at all or explains nothing;
+  if (m_EmFitBackground && nhits) {
+    double ntot = 0.0;
+    for(unsigned ip=0; ip<pdim; ip++) ntot += neff[ip];
+    double b = ((double)nhits - ntot)/(double)nhits;
+    if (b < 1e-3)  b = 1e-3;
+    if (b > 0.999) b = 0.999;
+    par.m_Background = b;
+  } //if
+
+  // Yield scale of every radiator: multiplicative expectation-maximization update of a 
+  // Poisson mean which is linear in the parameters;
+  if (m_EmFitYields) {
+    for(auto &entry: par.m_YieldScale) {
+      auto radiator = entry.first;
+      const double y = radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio;
+      if (!radiator->UsedInRingImaging() || y <= 0.0) continue;
+
+      double num = 0.0, den = 0.0;
+      for(unsigned ip=0; ip<pdim; ip++) {
+        const double theta = neff[ip] ? thsum[ip]/neff[ip] : 0.0;
+        bool crossed = false;
+        for(auto rhptr: particles[ip]->GetRadiatorHistory())
+          if (particles[ip]->GetRadiator(rhptr) == radiator) { crossed = true; break; } //if
+        if (!crossed) continue;
+
+        const double piece = entry.second*y*pow(sin(theta),2);
+        den += piece;
+        if (neff[ip] > 0.0 && lambda[ip] > 0.0) num += neff[ip]*piece/lambda[ip];
+      } //for ip
+
+      if (den > 0.0 && num > 0.0) entry.second *= num/den;
+    } //for entry
   } //if
 
   return lnL;
@@ -1375,28 +1456,15 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
 
 // -------------------------------------------------------------------------------------
 //
-// Stage B3: expectation-maximization iterations for the mixture estimator.
-//
-// The expectation step is the separable mixture objective of Stage B2, evaluated at the
-// current hypothesis weights of every track; the maximization step updates those weights
-// in closed form from the responsibilities (a track nobody claimed keeps the weights it
-// had). Iterations continue until the objective stops improving.
-//
-// Deliberately *not* free parameters of the fit: the expected photon yield of a track.
-// It is tied to the responsibility-weighted mean Cherenkov angle of that track by the
-// radiator yield model, and that tie is exactly what makes the hypotheses identifiable
-// once the hit-to-track assignment is marginalized -- freeing the yield would turn the
-// extended Poisson term into a monotone function of the number of assigned photons and
-// destroy the discrimination. The global yield coefficients are still fitted by the
-// existing calibration machinery (UpdateYields).
-//
-// Optionally (off by default) the per-[radiator,theta bin] angular offset and width are
-// also updated by a maximization step, which is a weighted least-squares fit of the
-// single-photon angle residuals; since the objective uses those constants, the
-// component caches are rebuilt after such an update.
+// Expectation-maximization iterations (Stage B3): the expectation step is the separable
+// mixture objective above, the maximization steps update the hypothesis weights of every
+// track, the background fraction and the per-radiator yield scales of this event (and,
+// when enabled, the per-[radiator,theta bin] angular offset and resolution, which forces
+// the component caches to be rebuilt). Iterations continue until the objective stops
+// improving.
 //
 double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
-                                    std::vector<double> &weights)
+                                    EmParameters &par)
 {
   const double ninf = -std::numeric_limits<double>::infinity();
 
@@ -1406,7 +1474,7 @@ double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
   for(unsigned it=0; it<m_EmMaxIterations; it++) {
     std::map<std::pair<CherenkovRadiator*,unsigned>, std::array<double,3>> sums;
 
-    lnL = MixtureLnLWeighted(calibration, cache, weights, false, true,
+    lnL = MixtureLnLWeighted(calibration, cache, par, false, true,
                              m_EmFitCalibration ? &sums : 0);
     m_EmIterationsUsed = it + 1;
 
@@ -1421,8 +1489,9 @@ double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
     prev = lnL;
   } //for it
 
-  if (BeVerbose()) printf("ReconstructionFactory: EM used %u iterations, lnL = %g\n",
-                          m_EmIterationsUsed, lnL);
+  if (BeVerbose()) printf("ReconstructionFactory: EM used %u iterations, lnL = %g, "
+                          "background fraction = %.4f\n",
+                          m_EmIterationsUsed, lnL, par.m_Background);
 
   return lnL;
 } // ReconstructionFactory::RunEM()
