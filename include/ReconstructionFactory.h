@@ -10,6 +10,7 @@ class TCanvas;
 class TFile;
 
 #include <vector>
+#include <limits>
 
 #include "Calibration.h"
 #include "Digitization.h"
@@ -151,11 +152,6 @@ class ReconstructionFactory : public Digitization, public Calibration {
   bool BeVerbose( void )    const { return m_VerboseMode; };
   void LaunchRingFinder(bool calibration);
 
-  // Global mixture log-likelihood of the [particle,hypothesis] combination `ic`; 
-  // when `assign` is set, the resulting responsibilities are also used to attach 
-  // every hit to its most probable track (a posteriori assignment);
-  double MixtureLnL(bool calibration, unsigned ic, bool assign = false);
-
   // Single-photon evaluation of one hit for one PID hypothesis of one particle: the 
   // [radiator,optical path] component which matches best for that hypothesis, together 
   // with everything the combination scan needs to know about it;
@@ -171,6 +167,60 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // itself with nothing but table lookups;
   void ScoreHits(ChargedParticle *mcparticle, unsigned ip, bool calibration,
                  std::vector<HypoScore> &scores);
+
+  //
+  // Stage B1: the same idea for the mixture (maximum-likelihood) estimator.
+  //
+
+  // One [hit, radiator, optical path] component of one particle, with everything the 
+  // mixture needs -- and which does not depend on the PID hypothesis -- resolved once: 
+  // radiator, IRT solution, calibration bin, momentum and path length inside the 
+  // radiator, reference refractive index, angular resolution and offset;
+  struct MixComponent { unsigned m_Ip, m_Ibin; CherenkovRadiator *m_Radiator;
+    IRTSolution *m_Solution; double m_Pp, m_Ll, m_Nref, m_Hsigma, m_Coffset,
+      m_Theta, m_Time, m_Tmeas;
+    MixComponent(): m_Ip(0), m_Ibin(0), m_Radiator(0), m_Solution(0), m_Pp(0.0), m_Ll(0.0),
+      m_Nref(0.0), m_Hsigma(0.0), m_Coffset(0.0), m_Theta(0.0), m_Time(0.0), m_Tmeas(0.0) {};
+  };
+
+  // Aggregation of the components of one [particle,hit] pair under one PID hypothesis: 
+  // the log-sum-exp of the component log-densities and the density-weighted mean of the 
+  // Cherenkov angles. `m_LnSum` is -inf when the pair has no usable component;
+  struct MixAgg { double m_LnSum, m_ThBar;
+    MixAgg(): m_LnSum(-std::numeric_limits<double>::infinity()), m_ThBar(0.0) {};
+  };
+
+  // Caches for one iteration, filled particle by particle: components are indexed 
+  // [ip*nhits + ihit], aggregates [(ip*nhits + ihit)*hdim + ih];
+  struct MixtureCache { std::vector<MixComponent> m_Comps;
+    std::vector<unsigned> m_Beg, m_Num; std::vector<MixAgg> m_Agg;
+    unsigned m_Pdim, m_Nhits, m_Hdim;
+    MixtureCache(): m_Pdim(0), m_Nhits(0), m_Hdim(0) {};
+    void Reset(unsigned pdim, unsigned nhits, unsigned hdim) {
+      m_Pdim = pdim; m_Nhits = nhits; m_Hdim = hdim;
+      m_Comps.clear(); m_Beg.assign(pdim*nhits, 0); m_Num.assign(pdim*nhits, 0);
+      m_Agg.assign(pdim*nhits*hdim, MixAgg());
+    } //Reset
+  };
+
+  // Log-density of one component under one PID hypothesis, together with the kinematics 
+  // the assignment step needs; returns false when no Cherenkov light is expected for 
+  // this [momentum, mass, refractive index] combination;
+  bool MixtureLnD(const MixComponent &comp, unsigned ih, double &lnd, double &thp,
+                  double &tt, double &thdiff, double &tmdiff) const;
+
+  // Fill the component list and the per-hypothesis aggregates for one particle; the 
+  // mixture objective is then a sum over hits of a log-sum-exp over cached aggregates, 
+  // i.e. it is separable and independent of the [particle,hypothesis] combination;
+  void ScoreMixture(ChargedParticle *mcparticle, unsigned ip, bool calibration,
+                    MixtureCache &cache);
+
+  // Global mixture log-likelihood of the [particle,hypothesis] combination `ic`, 
+  // evaluated from the caches above; when `assign` is set, the resulting 
+  // responsibilities are also used to attach every hit to its most probable track 
+  // (a posteriori assignment);
+  double MixtureLnL(bool calibration, unsigned ic, const MixtureCache &cache,
+                    bool assign = false);
 };
 
 } // namespace IRT2

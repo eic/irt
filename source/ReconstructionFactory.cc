@@ -604,12 +604,17 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
   std::vector<std::pair<ChargedParticle*,double>> sel(pdim*nhits);
   std::vector<unsigned> nsel(nhits, 0);
   std::vector<DigitizedHitSolution*> solptr(pdim*nhits, 0);
+  // Same for the mixture estimator: the [hit,radiator,optical path] components of each 
+  // particle and their per-hypothesis aggregates, evaluated once per iteration (Stage B1);
+  MixtureCache mcache;
   
   // Now loop through all [particle,hypothesis] combinations and evaluate their chi^2;
   for(unsigned itr=0; itr<2; itr++) {
     // IRT solutions do not depend on the PID hypothesis combination, so calculate them 
     // once per iteration and reuse them for every [particle,hypothesis] combination;
     bool solutionsValid = false;
+
+    if (m_UseMixtureLikelihood) mcache.Reset(pdim, nhits, hdim);
 
     for(unsigned ic=0; ic<cdim; ic++) {
       if (itr && ic != icbest) continue;
@@ -677,6 +682,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 	// The IRT solutions are in place; evaluate every hit for every PID hypothesis 
 	// of this particle once, so the combination scan below is pure lookups;
 	if (!m_UseMixtureLikelihood) ScoreHits(mcparticle, ip, calibration, scores);
+	else ScoreMixture(mcparticle, ip, calibration, mcache);
 
 	// Cache the [hit,particle] solution pointers of this particle, so the 
 	// combination scan does not repeat a std::map lookup per hit per combination;
@@ -850,7 +856,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
       } else {
 	// Global mixture log-likelihood: every hit contributes through the sum inside 
 	// the log, so no hit is discarded and no ownership is resolved at this point;
-	lnLsave[ic] = MixtureLnL(calibration, ic);
+	lnLsave[ic] = MixtureLnL(calibration, ic, mcache);
 	if (!ic || lnLsave[ic] > lnLsave[icbest]) icbest = ic;
       } //if
 
@@ -859,7 +865,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     } //for ic
 
     // A posteriori hit-to-track assignment for the winning combination;
-    if (m_UseMixtureLikelihood && itr) MixtureLnL(calibration, icbest, true);
+    if (m_UseMixtureLikelihood && itr) MixtureLnL(calibration, icbest, mcache, true);
   } //for itr
   
   if (calibration) 
@@ -988,26 +994,169 @@ void ReconstructionFactory::ScoreHits(ChargedParticle *mcparticle, unsigned ip,
 } // ReconstructionFactory::ScoreHits()
 
 // -------------------------------------------------------------------------------------
+//
+// Stage B1: making the mixture objective separable.
+//
+// The mixture log-likelihood is a sum over hits of a log-sum-exp over every 
+// [particle,radiator,optical path] component available for that hit, plus a flat 
+// background term. No component depends on the [particle,hypothesis] combination, so 
+// -- exactly as ScoreHits() does for the chi^2 estimator -- the components and their 
+// per-hypothesis aggregates are evaluated once per particle per iteration. The 
+// objective is then a sum over hits of log-sum-exp over cached entries only: it is 
+// separable, and the [particle,hypothesis] combination scan no longer feeds anything 
+// into it (which is what allows that scan to be dropped).
+//
+// Log-density of one component under one PID hypothesis; returns false when this 
+// [momentum, mass, refractive index] combination emits no Cherenkov light.
+//
+bool ReconstructionFactory::MixtureLnD(const MixComponent &comp, unsigned ih, double &lnd,
+                                       double &thp, double &tt, double &thdiff,
+                                       double &tmdiff) const
+{
+  const double mass = m_Hypotheses[ih]->Mass();
 
-// Global mixture log-likelihood for one [particle,hypothesis] combination.
+  thp = acos(sqrt(comp.m_Pp*comp.m_Pp + mass*mass)/(comp.m_Nref*comp.m_Pp));
+  if (std::isnan(thp)) return false;
+
+  const double beta = 1./sqrt(1. + pow(mass/comp.m_Pp, 2));
+
+  tt     = comp.m_Ll/(beta*300);
+  thdiff = comp.m_Theta - thp - comp.m_Coffset;
+
+  lnd = -log(comp.m_Hsigma*sqrt(2*M_PI)) - 0.5*pow(thdiff/comp.m_Hsigma, 2);
+
+  tmdiff = 0.0;
+  if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
+    tmdiff = (tt + comp.m_Time) - comp.m_Tmeas;
+    lnd -= log(GetSinglePhotonTimingResolution()*sqrt(2*M_PI)) +
+      0.5*pow(tmdiff/GetSinglePhotonTimingResolution(), 2);
+  } //if
+
+  return true;
+} // ReconstructionFactory::MixtureLnD()
+
+// -------------------------------------------------------------------------------------
+
+// Fill the component list and the per-hypothesis aggregates of one particle. Everything 
+// which does not depend on the PID hypothesis -- radiator, IRT solution, calibration 
+// bin, momentum and path length in the radiator, reference refractive index, angular 
+// resolution and offset, measured detection time -- is resolved here once;
 //
-// Every detected hit is described by a mixture over all [particle,radiator,optical 
-// path] components available for it, plus a flat background component. The hit-to-
-// track assignment is therefore marginalized (sum inside the log) rather than 
-// resolved a priori, so no hit is ever discarded and a hit claimed by several tracks 
-// is shared between them instead of being deleted;
-//
-// The expected Cherenkov photon yield of every track enters as an extended Poisson 
-// term, which is what makes the track hypotheses identifiable once the assignment is 
-// marginalized. When `assign` is set, the responsibilities of the converged mixture 
-// are used to attach each hit to its most probable track, i.e. the hit-to-track 
+void ReconstructionFactory::ScoreMixture(ChargedParticle *mcparticle, unsigned ip,
+                                         bool calibration, MixtureCache &cache)
+{
+  const unsigned hdim  = cache.m_Hdim;
+  const unsigned nhits = cache.m_Nhits;
+
+  const double theta = mcparticle->GetVertexMomentum().Theta();
+  const unsigned ibin = (unsigned)floor(theta/_THETA_BIN_WIDTH_);
+  if (ibin >= _THETA_BIN_COUNT_) return;
+
+  // Momentum and path length inside every radiator this particle crossed;
+  std::map<CherenkovRadiator*, std::pair<double,double>> mompath;
+  for(auto rhptr: mcparticle->GetRadiatorHistory()) {
+    auto radiator = mcparticle->GetRadiator(rhptr);
+    mompath[radiator] = std::make_pair(
+      mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag(),
+      mcparticle->GetHistory(rhptr)->m_EstimatedPath);
+  } //for rhptr
+
+  // Scratch space for the log-densities of the current [hit,hypothesis] evaluation;
+  std::vector<double> lnds, thps;
+
+  for(unsigned ihit=0; ihit<nhits; ihit++) {
+    auto &hit = Hits()[ihit];
+    const unsigned idx = ip*nhits + ihit;
+
+    cache.m_Beg[idx] = cache.m_Comps.size();
+    cache.m_Num [idx] = 0;
+
+    auto sit = hit.m_Solutions.find(mcparticle);
+    if (sit == hit.m_Solutions.end()) continue;
+
+    for(auto &tag: sit->second.m_All) {
+      auto radiator = tag.first.first;
+      //if (!_IsSelected(radiator)) continue;
+      if (!radiator->UsedInRingImaging()) continue;
+
+      // Reference refractive index of this radiator for this particle;
+      auto nfit = mcparticle->m_ReferenceRefractiveIndices.find(radiator);
+      if (nfit == mcparticle->m_ReferenceRefractiveIndices.end()) continue;
+
+      auto mp = mompath.find(radiator);
+      if (mp == mompath.end() || !mp->second.first) continue;
+
+      MixComponent comp;
+      comp.m_Ip       = ip;
+      comp.m_Ibin     = ibin;
+      comp.m_Radiator = radiator;
+      comp.m_Solution = &tag.second;
+      comp.m_Pp       = mp->second.first;
+      comp.m_Ll       = mp->second.second;
+      comp.m_Nref     = nfit->second;
+      comp.m_Theta    = tag.second.GetTheta();
+      comp.m_Time     = tag.second.m_Time;
+      comp.m_Tmeas    = hit.GetAverageDetectionTime();
+      comp.m_Hsigma   = (calibration || !AutomaticCalibrationRequired()) ?
+        GetDefaultSinglePhotonThetaResolution() : radiator->m_Calibrations[ibin].m_Csigma;
+      comp.m_Coffset  = radiator->m_Calibrations[ibin].m_Coffset;
+
+      cache.m_Comps.push_back(comp);
+      cache.m_Num[idx]++;
+    } //for tag
+
+    // Per-hypothesis aggregation over the components of this [particle,hit] pair;
+    const unsigned nbeg = cache.m_Beg[idx], nnum = cache.m_Num[idx];
+    if (!nnum) continue;
+
+    const double ninf = -std::numeric_limits<double>::infinity();
+
+    lnds.resize(nnum); thps.resize(nnum);
+
+    for(unsigned ih=0; ih<hdim; ih++) {
+      double mx = ninf;
+
+      for(unsigned k=0; k<nnum; k++) {
+        double lnd, thp, tt, thdiff, tmdiff;
+        if (!MixtureLnD(cache.m_Comps[nbeg + k], ih, lnd, thp, tt, thdiff, tmdiff)) {
+          lnds[k] = ninf; continue;
+        } //if
+        lnds[k] = lnd; thps[k] = thp;
+        if (lnd > mx) mx = lnd;
+      } //for k
+
+      if (mx == ninf) continue;
+
+      double sum = 0.0, thw = 0.0;
+      for(unsigned k=0; k<nnum; k++) {
+        if (lnds[k] == ninf) continue;
+        const double w = std::exp(lnds[k] - mx);
+        sum += w; thw += w*thps[k];
+      } //for k
+
+      MixAgg &ag = cache.m_Agg[idx*hdim + ih];
+      ag.m_LnSum = mx + std::log(sum);
+      ag.m_ThBar = thw/sum;
+    } //for ih
+  } //for hit
+} // ReconstructionFactory::ScoreMixture()
+
+// -------------------------------------------------------------------------------------
+
+// Global mixture log-likelihood of the [particle,hypothesis] combination `ic`, evaluated 
+// from the caches above. Every hit contributes through the sum inside the log, so no hit 
+// is discarded and no ownership is resolved a priori; a hit claimed by several tracks is 
+// shared between them. The expected Cherenkov photon yield of every track enters as an 
+// extended Poisson term, which is what makes the track hypotheses identifiable once the 
+// assignment is marginalized. When `assign` is set, the resulting responsibilities are 
+// also used to attach each hit to its most probable track, i.e. the hit-to-track 
 // assignment is performed a posteriori;
 //
-double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic, bool assign)
+double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic,
+                                         const MixtureCache &cache, bool assign)
 {
-  const unsigned hdim = m_Hypotheses.size();
+  const unsigned hdim = cache.m_Hdim, nhits = cache.m_Nhits, pdim = cache.m_Pdim;
   std::vector<ChargedParticle*> &particles = Event()->ChargedParticles();
-  const unsigned pdim = particles.size();
   if (!hdim || !pdim) return 0.0;
 
   // Decode the PID hypotheses of this combination, exactly as the chi^2 path does;
@@ -1019,105 +1168,78 @@ double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic, bool ass
 
   const double lnbg = std::log(m_BackgroundFraction/m_BackgroundWindow);
   const double lnt  = std::log(1.0/pdim);
+  const double ninf = -std::numeric_limits<double>::infinity();
 
   double lnL = 0.0;
-  std::vector<double> neff(pdim,0.0), thsum(pdim,0.0);
+  std::vector<double> neff(pdim, 0.0), thsum(pdim, 0.0);
 
-  for(auto &hit: Hits()) {
-    struct MyComponent {unsigned m_Ip, m_Ibin; double m_LnG, m_Thp, m_Tt, m_Thdiff, m_Tmdiff;
-      CherenkovRadiator *m_Radiator; IRTSolution *m_Solution;};
-    std::vector<MyComponent> comps;
+  for(unsigned ihit=0; ihit<nhits; ihit++) {
+    auto &hit = Hits()[ihit];
 
+    // log-sum-exp over the background slot and the cached per-particle aggregates;
+    double mx = lnbg;
     for(unsigned ip=0; ip<pdim; ip++) {
-      auto mcparticle = particles[ip];
-      auto sit = hit.m_Solutions.find(mcparticle);
-      if (sit == hit.m_Solutions.end()) continue;
-
-      double theta = mcparticle->GetVertexMomentum().Theta();
-      unsigned ibin = (unsigned)floor(theta/_THETA_BIN_WIDTH_);
-      if (ibin >= _THETA_BIN_COUNT_) continue;
-
-      for(auto &tag: sit->second.m_All) {
-	auto radiator = tag.first.first;
-	if (!radiator->UsedInRingImaging()) continue;
-	auto &solution = tag.second;
-
-	// Reference refractive index of this radiator for this particle;
-	auto nfit = mcparticle->m_ReferenceRefractiveIndices.find(radiator);
-	if (nfit == mcparticle->m_ReferenceRefractiveIndices.end()) continue;
-
-	// Momentum and path length inside this radiator;
-	double pp = 0.0, ll = 0.0;
-	for(auto rhptr: mcparticle->GetRadiatorHistory())
-	  if (mcparticle->GetRadiator(rhptr) == radiator) {
-	    pp = mcparticle->GetHistory(rhptr)->m_AverageParentMomentum.Mag();
-	    ll = mcparticle->GetHistory(rhptr)->m_EstimatedPath;
-	    break;
-	  } //if
-	if (!pp) continue;
-
-	const double mass = m_Hypotheses[hypo[ip]]->Mass();
-	const double thp  = acos(sqrt(pp*pp + mass*mass)/(nfit->second*pp));
-	if (std::isnan(thp)) continue;
-	const double beta = 1./sqrt(1. + pow(mass/pp,2));
-	const double tt   = ll/(beta*300);
-
-	const double hsigma = (calibration || !AutomaticCalibrationRequired()) ?
-	  GetDefaultSinglePhotonThetaResolution() : radiator->m_Calibrations[ibin].m_Csigma;
-
-	const double thdiff = solution.GetTheta() - thp - radiator->m_Calibrations[ibin].m_Coffset;
-	double lnd = -log(hsigma*sqrt(2*M_PI)) - 0.5*pow(thdiff/hsigma,2);
-
-	double tmdiff = 0.0;
-	if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
-	  tmdiff = (tt + solution.m_Time) - hit.GetAverageDetectionTime();
-	  lnd -= log(GetSinglePhotonTimingResolution()*sqrt(2*M_PI)) +
-	    0.5*pow(tmdiff/GetSinglePhotonTimingResolution(),2);
-	} //if
-
-	comps.push_back(MyComponent{ip, ibin, lnd + lnt, thp, tt, thdiff, tmdiff, radiator, &solution});
-      } //for tag
+      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
+      if (ag.m_LnSum == ninf) continue;
+      if (ag.m_LnSum + lnt > mx) mx = ag.m_LnSum + lnt;
     } //for ip
 
-    if (!comps.size()) { lnL += lnbg; continue; }
-
-    // log-sum-exp over the components and the background slot;
-    double mx = lnbg;
-    for(auto &c: comps) mx = std::max(mx, c.m_LnG);
     double sum = std::exp(lnbg - mx);
-    for(auto &c: comps) sum += std::exp(c.m_LnG - mx);
+    for(unsigned ip=0; ip<pdim; ip++) {
+      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
+      if (ag.m_LnSum == ninf) continue;
+      sum += std::exp(ag.m_LnSum + lnt - mx);
+    } //for ip
+
     const double lnorm = mx + std::log(sum);
     lnL += lnorm;
 
-    // E-step at the current parameters;
-    MyComponent *cbest = 0; double rbest = 0.0;
-    for(auto &c: comps) {
-      const double r = std::exp(c.m_LnG - lnorm);
-      neff[c.m_Ip] += r;
-      thsum[c.m_Ip] += r*c.m_Thp;
-      if (r > rbest) { rbest = r; cbest = &c; }
+    // E-step at the current parameters: the responsibility of a whole track for this 
+    // hit follows from the cached aggregate, no component walk needed;
+    for(unsigned ip=0; ip<pdim; ip++) {
+      const MixAgg &ag = cache.m_Agg[(ip*nhits + ihit)*hdim + hypo[ip]];
+      if (ag.m_LnSum == ninf) continue;
+      const double r = std::exp(ag.m_LnSum + lnt - lnorm);
+      neff[ip] += r; thsum[ip] += r*ag.m_ThBar;
+    } //for ip
 
-      if (!assign) continue;
-      const bool truth = (particles[c.m_Ip]->GetPDG() ==
-			  m_Hypotheses[hypo[c.m_Ip]]->PdgCode());
-      if (!calibration && truth && c.m_Radiator->Plots())
-	c.m_Radiator->Plots()->hthph()->Fill(1000*c.m_Thdiff, r);
-      if (calibration && truth && c.m_Radiator->m_Calibrations[c.m_Ibin].m_hcalib)
-	c.m_Radiator->m_Calibrations[c.m_Ibin].m_hcalib->Fill(1000*c.m_Thdiff, r);
-    } //for c
+    if (!assign) continue;
 
-    // A posteriori hit-to-track assignment: attach the hit to its most probable 
-    // track, provided that track is more likely than the background. The winning 
-    // component is also recorded as the "best" solution for this [hit,track] pair, 
-    // which is what the track-level Cherenkov observables are built from;
-    if (assign && cbest && rbest > 0.5) {
+    // The a posteriori assignment needs the per-component responsibilities, which only 
+    // the component list can give;
+    const MixComponent *cbest = 0; double rbest = 0.0, bthp = 0.0, btt = 0.0;
+
+    for(unsigned ip=0; ip<pdim; ip++) {
+      const unsigned idx = ip*nhits + ihit;
+
+      for(unsigned k=0; k<cache.m_Num[idx]; k++) {
+        const MixComponent &comp = cache.m_Comps[cache.m_Beg[idx] + k];
+
+        double lnd, thp, tt, thdiff, tmdiff;
+        if (!MixtureLnD(comp, hypo[ip], lnd, thp, tt, thdiff, tmdiff)) continue;
+
+        const double r = std::exp(lnd + lnt - lnorm);
+        if (r > rbest) { rbest = r; cbest = &comp; bthp = thp; btt = tt; }
+
+        const bool truth = (particles[ip]->GetPDG() == m_Hypotheses[hypo[ip]]->PdgCode());
+        if (!calibration && truth && comp.m_Radiator->Plots())
+          comp.m_Radiator->Plots()->hthph()->Fill(1000*thdiff, r);
+        if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
+          comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
+      } //for k
+    } //for ip
+
+    // Attach the hit to its most probable track, provided that track is more likely 
+    // than the background. The winning component is also recorded as the "best" 
+    // solution for this [hit,track] pair, which is what the track-level Cherenkov 
+    // observables are built from;
+    if (cbest && rbest > 0.5) {
       auto dit = hit.m_Solutions.find(particles[cbest->m_Ip]);
       if (dit != hit.m_Solutions.end()) {
-	// note: the last argument is the chi^2-path CCDF slot, reused here for the 
-	// posterior probability of this assignment;
-	dit->second.AssignVariables(cbest->m_Solution, cbest->m_Thp, cbest->m_Tt,
-				   cbest->m_Radiator, rbest);
-	particles[cbest->m_Ip]->AddHit(&hit);
+        // note: the last argument is the chi^2-path CCDF slot, reused here for the 
+        // posterior probability of this assignment;
+        dit->second.AssignVariables(cbest->m_Solution, bthp, btt, cbest->m_Radiator, rbest);
+        particles[cbest->m_Ip]->AddHit(&hit);
       } //if
     } //if
   } //for hit
@@ -1130,7 +1252,7 @@ double ReconstructionFactory::MixtureLnL(bool calibration, unsigned ic, bool ass
       auto radiator = particles[ip]->GetRadiator(rhptr);
       if (!radiator->UsedInRingImaging()) continue;
       lambda += radiator->m_YieldCff*radiator->m_DetectedToCalibrationPhotonRatio*
-	pow(sin(theta),2);
+        pow(sin(theta),2);
     } //for rhptr
     if (lambda <= 0.0) continue;
     lnL += neff[ip]*log(lambda) - lambda;
