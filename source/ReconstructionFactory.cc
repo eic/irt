@@ -53,6 +53,7 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
+  m_AssignmentMode(kAssignPlurality),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -89,6 +90,7 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_EmMaxIterations(20), m_EmIterationsUsed(0),
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
+  m_AssignmentMode(kAssignPlurality),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -252,6 +254,17 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   // background is never estimated.
   if (jconfig.find("ExpectedBackgroundPhotons") != jconfig.end())
     m_ExpectedBackgroundPhotons = jconfig["ExpectedBackgroundPhotons"].template get<double>();
+
+  // A posteriori hit-to-track attachment: "plurality" (default) keeps a hit whose best
+  // track beats the background component; "majority" restores the pre-v2.2.3a8 rule of
+  // requiring more than half of the total posterior.
+  if (jconfig.find("AssignmentMode") != jconfig.end()) {
+    TString mode = jconfig["AssignmentMode"].template get<std::string>(); mode.ToLower();
+
+    if (!strcmp(mode.Data(), "majority")) SetAssignmentMode(kAssignMajority);
+    else if (!strcmp(mode.Data(), "plurality")) SetAssignmentMode(kAssignPlurality);
+    if (BeVerbose()) printf("ReconstructionFactory: assignment mode = %s\n", mode.Data());
+  } //if
 
   if (jconfig.find("BackgroundWindow") != jconfig.end())
     // Angular window [rad] over which the background component of the mixture is flat;
@@ -1367,7 +1380,13 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     // than the background. The winning component is also recorded as the "best" 
     // solution for this [hit,track] pair, which is what the track-level Cherenkov 
     // observables are built from;
-    if (assign && cbest && rbest > 0.5) {
+    const double rbg = std::exp(lnbg - lnorm);   // this hit's background posterior
+    // "plurality": signal if the best track beats the background component, i.e. the 
+    // hit is more likely signal than background even when several tracks share it; 
+    // "majority": the best track must hold more than half of the total posterior.
+    const bool is_signal = (m_AssignmentMode == kAssignPlurality) ? (rbest > rbg)
+                                                                  : (rbest > 0.5);
+    if (assign && cbest && is_signal) {
       auto dit = hit.m_Solutions.find(particles[ipbest]);
       if (dit != hit.m_Solutions.end()) {
         // note: the last argument is the chi^2-path CCDF slot, reused here for the 

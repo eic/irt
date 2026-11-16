@@ -108,6 +108,18 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void SetExpectedBackgroundPhotons( double value ) { m_ExpectedBackgroundPhotons = value; };
   double GetExpectedBackgroundPhotons( void ) const { return m_ExpectedBackgroundPhotons; };
 
+  // How the a posteriori (MAP) hit-to-track attachment decides that a hit is signal:
+  //   majority  - the winning track must carry more than 1/2 of the total posterior
+  //               (the behaviour of v2.2.3a5..a7: with several competing tracks an
+  //               ambiguous 0.4/0.4/0.2 hit is thrown away as background);
+  //   plurality - the winning track must simply carry more than the background
+  //               component, i.e. the hit is more likely signal than background. This
+  //               keeps genuinely claimed-by-nobody hits out while not punishing
+  //               ambiguity between tracks.
+  enum AssignmentMode { kAssignMajority = 0, kAssignPlurality = 1 };
+  void SetAssignmentMode( AssignmentMode mode ) { m_AssignmentMode = mode; };
+  AssignmentMode GetAssignmentMode( void ) const { return (AssignmentMode)m_AssignmentMode; };
+
   // Expectation-maximization control of the mixture estimator (Stage B3);
   void SetEmMaxIterations( unsigned value )  { m_EmMaxIterations = value; };
   void SetEmTolerance( double value )        { m_EmTolerance = value; };
@@ -152,6 +164,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   unsigned m_EmMaxIterations, m_EmIterationsUsed;
   double m_EmTolerance;
   bool m_EmFitCalibration;
+  unsigned m_AssignmentMode;
 
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
