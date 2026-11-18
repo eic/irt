@@ -240,13 +240,23 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
       !strcmp(jconfig["UsePoissonTermInChiSquare"].template get<std::string>().c_str(), "no"))
     IgnorePoissonTermInChiSquare();
 
-  // Outlier hit selection;
+  // Estimator selection: exactly two values are supported, "chi2" (the default, also
+  // used when the key is absent) and "ml". Anything else is rejected with a message and
+  // falls back to "chi2";
   if (jconfig.find("Estimator") != jconfig.end()) {
     TString estimator = jconfig["Estimator"].template get<std::string>();
     estimator.ToLower();
-    m_UseMixtureLikelihood = (estimator == "ml" || estimator == "mixture" ||
-                              estimator == "likelihood" || estimator == "maximum likelihood");
-    if (BeVerbose()) printf("ReconstructionFactory: estimator = %s\n", estimator.Data());
+
+    if (!strcmp(estimator.Data(), "ml")) m_UseMixtureLikelihood = true;
+    else if (!strcmp(estimator.Data(), "chi2")) m_UseMixtureLikelihood = false;
+    else {
+      printf("ReconstructionFactory: unsupported \"Estimator\" value \"%s\" -- only \"chi2\" "
+             "(default) and \"ml\" are recognised, falling back to \"chi2\"\n", estimator.Data());
+      m_UseMixtureLikelihood = false;
+    } //if
+
+    if (BeVerbose()) printf("ReconstructionFactory: estimator = %s\n",
+                            m_UseMixtureLikelihood ? "ml" : "chi2");
   } //if
 
   // Expected number of background photon hits per event -- the same quantity the
@@ -284,6 +294,7 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
       !strcmp(jconfig["EmFitCalibration"].template get<std::string>().c_str(), "yes"))
     UseEmCalibration();
 
+  // Outlier hit selection;
   if (jconfig.find("SingleHitCCDFcut") != jconfig.end())
     SetSingleHitCCDFcut(jconfig["SingleHitCCDFcut"].template get<double>());
 
