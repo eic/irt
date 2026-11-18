@@ -1,0 +1,958 @@
+================================================================================
+MEMO-v00  --  fresh measurement protocol for the PFRICH benchmark
+================================================================================
+Replaces TAGS.txt as the working ledger (TAGS.txt is abandoned, left on disk
+untouched). Every number quoted in this file names the IRT ref it came from.
+
+--------------------------------------------------------------------------------
+1. WHAT IS BEING MEASURED
+--------------------------------------------------------------------------------
+Performance (wall time) and PID quality of the PFRICH IRT reconstruction as a
+function of
+  (a) the IRT version: v2.2.3 (upstream) and the local milestones
+      v2.2.3a1 ... v2.2.3a8,
+  (b) the number of charged tracks per event: 1, 2, 3, 5.
+
+THE RADIX BUG IS FIXED IN EVERY VERSION BEFORE MEASUREMENT (see section 4), so
+all numbers are comparable and none of them is contaminated by the wrong
+[particle -> hypothesis] combination index. Each version is therefore measured
+as "fix/<tag>", a branch created at that tag with only the fix on top.
+
+--------------------------------------------------------------------------------
+2. SAMPLES (generated with the macro as it is NOW)
+--------------------------------------------------------------------------------
+Generator: hepmc-writer-multiple-tracks.C, current signature
+  hepmc_writer_multiple_tracks(fname, n_events, n_tracks,
+                               pmin, pmax, etamin, etamax, phimin, phimax)
+PDG per track is drawn at random: particles[rdmn_gen->Integer(_PDIM_)] with
+particles = {211 pi+-, 321 K+-, 2212 proton} (the earlier deterministic
+`itrack%2` line is commented out), TRandom seed 0x12345678, p uniform,
+phi uniform.
+
+  root -l -q 'hepmc-writer-multiple-tracks.C("benchN.hepmc", 1000, N,
+                                             7.0, 7.0, -2.5, -2.5, 0, M_PI/6)'
+  N = 1, 2, 3, 5   ->  bench1.hepmc bench2.hepmc bench3.hepmc bench5.hepmc
+  (1000 events generated; 500 are simulated and reconstructed)
+
+--------------------------------------------------------------------------------
+3. SIMULATION AND RECONSTRUCTION COMMANDS (exactly as in BUG.txt)
+--------------------------------------------------------------------------------
+npsim:
+  npsim --runType run \
+        --compactFile $EIC_SHELL_PREFIX/share/epic/epic_tracking_and_pfrich.xml \
+        --outputFile ./sim.benchN.root --part.userParticleHandler= \
+        --inputFiles ./benchN.hepmc -N 500
+
+eicrecon:
+  $EIC_SHELL_PREFIX/bin/eicrecon -Pplugins="janadot" \
+    -Pdd4hep:xml_files=$EIC_SHELL_PREFIX/share/epic/epic.xml \
+    -Ppodio:output_collections="PFRICHHits,MCParticles,PFRICHTracks,PFRICHIrtRadiatorInfo,PFRICHIrtParticles" \
+    -Peicrecon:LogLevel="info" -Pjana:timeout=180 -Pjana:warmup_timeout=180 \
+    -Pjana:nevents="500" -Pjana:debug_plugin_loading="1" \
+    -Pacts:MaterialMap="calibrations/materials-map.cbor" \
+    -Pplugins_to_ignore=LUMISPECCAL,LOWQ2,FOFFMTRK,RPOTS,B0TRK,ZDC,B0ECAL,FHCAL,BHCAL,EHCAL,FEMC,BEMC,EEMC,PFRICH,DIRC \
+    -Ppodio:output_file="rec_<ref>_<N>tr.root" sim.benchN.root \
+    -PPFRICH:config=pfrich-reco.json
+
+Difference from BUG.txt: -Pjana:nevents="500" instead of "0" (which there means
+"all 1000 generated"); fixed at 500 per run as required. Everything else
+verbatim, single-threaded, ONE measured run per setting, no averaging.
+
+WARM-UP (added 2026-11-15, mandatory for every future benchmark): before each
+measured run there is a one-event warm-up run of the same command
+(-Pjana:nevents="1", output warm_<ref>_<N>tr.root and its log, both discarded
+afterwards; the pfrich.root it writes is discarded too). It exists only to put
+every ref in the same cache state (DD4hep/GField/ACTS lookups, file pages); it
+is NOT part of any measured number. Implemented in runbench.sh.
+
+--------------------------------------------------------------------------------
+4. THE RADIX BUG AND ITS FIX (applied to every measured ref)
+--------------------------------------------------------------------------------
+Symptom (BUG.txt): reordering "IdentifiedParticles" from ["pi+","proton","K+"]
+to ["pi+","K+","proton"] destroyed PID for ~50% of tracks, although a
+reordering must be a pure relabeling.
+
+Cause: the [particle -> hypothesis] combination index is ENCODED with radix
+hdim (`for(...) cdim *= hdim;` i.e. cdim = hdim^pdim) but DECODED with radix
+= number of particles:
+      unsigned hypo = id%hdim;  ...  id /= Event()->ChargedParticles().size();
+Correct only when hdim == pdim (or pdim == 1). Otherwise the scan evaluates a
+subset of the hdim^pdim assignments, several times over, and never considers
+the rest -- possibly including the true one:
+      pdim=2 hdim=3 : 9 iterations -> 6 distinct, missing (0,2),(1,1),(2,0)
+      pdim=3 hdim=2 : 8 -> 4 ; pdim=5 hdim=3 : 243 -> 54 ; pdim=5 hdim=2 : 32 -> 8
+Secondary effect: the calibration-pass filter (`goto _next_combination`) can
+never find the truth-matching combination when it is one of the missing ones,
+so that pass is silently skipped.
+
+Fix: divide by hdim.
+  source/ReconstructionFactory.cc
+    qid /= hdim;                      (calibration-pass filter)
+    id  /= hdim;                      (the combination scan)
+    id  /= hdim;                      (final PID decode)
+    id  /= hdim;                      (v2.2.3a4 only: MixtureLnL decode of ic)
+    id  /= hdim;                      (v2.2.3a5+: hypoBest decode for the
+                                       chi^2 branch)
+
+Refs measured: fix/v2.2.3, fix/a1 ... fix/a8 -- branch created at the tag, the
+fix applied on top, nothing else. Commit ids are recorded next to the numbers.
+
+--------------------------------------------------------------------------------
+5. BASELINE CONFIGURATION (pfrich-reco.json exactly as on disk)
+--------------------------------------------------------------------------------
+  Calibration                       pfrich-calibration.json
+  OutputRootFile                    pfrich.root
+  WriteOutputTree                   no
+  UsePoissonTermInChiSquare         yes        <- Poisson yield term ON
+  UseTimingInChiSquare              yes
+  DefaultSinglePhotonThetaResolution 0.005
+  SinglePhotonTimingResolution      0.050 ps
+  SingleHitCCDFcut                  0.001
+  RemoveAmbiguousHits               no         <- ownership resolved, hits kept
+  SensorActiveAreaPixellation       32
+  UseMcTruthPhotonDirectionSeed     yes        <- truth photon seeds ON
+  MinHitCountCutoff                 5
+  IdentifiedParticles               ["pi+","K+","proton"]   (hdim = 3)
+  CombinedEvaluationPlots           store      (was "display" until 15:33)
+  Acceptance eta                    [-3.51, -1.49]
+  Radiators: Aerogel imaging yes (acts-planes 5, evaluation-plots "store",
+             cherenkov-angle-range [200,290], photon-vertex-range
+             [-1275,-1240], refractive-index-range [1.035,1.045]);
+             Acrylic imaging no
+  Re-read 2026-11-15 15:33: the only changes vs the previous baseline are
+  CombinedEvaluationPlots and Aerogel evaluation-plots, both now "store".
+  No physics effect (visualization only), but it means every run now writes
+  the same "pfrich.root" (OutputRootFile) -- runbench.sh therefore archives
+  it per (ref,N) as pfrich_<ref>_<N>tr.root, otherwise the plots of earlier
+  runs are silently clobbered. The 2-track run recorded in section 10 was
+  done under "display", so it left no plot file.
+  Photosensor: QE table 160-660 nm, rescaling factor 0.81
+
+Note: ["pi+","K+","proton"] is one of the two orders the radix bug broke, so
+the unfixed numbers are the bad ones; with the fix applied the order of
+IdentifiedParticles must not matter.
+
+--------------------------------------------------------------------------------
+6. WHAT IS RECORDED FOR EVERY (ref, N) RUN
+--------------------------------------------------------------------------------
+  - wall time [s] and jana's "Final report: N events at X Hz"
+  - number of PFRICHIrtParticles, PDG content, pion efficiency, kaon mis-ID
+  - mean npe and mean nhits per IRT particle, sum npe / sum nhits
+  - number of PFRICHHits in the event (pool size)
+  - run log file name and rec file name
+================================================================================
+
+--------------------------------------------------------------------------------
+7. EXTRA PATCHES NOW PART OF EVERY BENCHMARK BUILD  (added 2026-11-15)
+--------------------------------------------------------------------------------
+On top of the radix fix, every measured ref carries the two experimental
+changes that used to live only in v2.2.3a8, applied by
+  apply-bench-patches.py  (idempotent; aborts if an anchor is missing)
+  1) #define _EXPECTED_BG_PHOTON_COUNT_  ( 0.1 )
+     -> the event chi^2 gets a Poisson term for hits that no track
+        hypothesis claims (nbg, +1 degree of freedom), active when hdim >= 2
+        (hdim = 3 here, so it is ACTIVE).
+  2) the photon yield coefficient of the Aerogel radiator, now a CONFIG option
+     (see section 11): pfrich-calibration.json carries
+         "Radiators": { "Aerogel": { "YieldCff": 160.0, ... } }
+     and ReconstructionFactory::JsonParser() assigns
+         radiator->m_YieldCff = YieldCff;  and  m_DetectedToCalibrationPhotonRatio = 1.0;
+     in the same per-radiator clause that reads "theta-bins". ACTIVE because the
+     baseline config has "UsePoissonTermInChiSquare": "yes". Caveat: a calibration
+     pass re-derives both quantities in Calibration::UpdateYields(), so the key
+     pins them for the reconstruction proper; and under "Estimator":"ml" the chi^2
+     Poisson term (where the yield is used) is not evaluated at all -- the ML
+     lambda uses m_YieldCff times the per-event fitted scale s_r (a7 up).
+
+--------------------------------------------------------------------------------
+8. MEASURED REFS: branch = tag + radix fix + the two patches above
+   (the commit ids below are SUPERSEDED by section 11 -- head commits are there)
+--------------------------------------------------------------------------------
+  (branch created at the tag, one commit on top; each compiled with
+   cmake --build -j 24 against the local IRT2 build tree; the EICrecon
+   RICH-IRT plugin is rebuilt + reinstalled per ref at run time)
+
+  ref                commit     radix sites fixed        patches present
+  bench/v2.2.3       e9c4ead    qid/=hdim x1, id/=hdim x3   define + yield
+  bench/v2.2.3a1     d8e54ab    qid/=hdim x1, id/=hdim x3   define + yield
+  bench/v2.2.3a2     a6e28f0    + ic decode (MixtureLnL)    define + yield
+  bench/v2.2.3a3     a14507e    + ic decode (MixtureLnL)    define + yield
+  bench/v2.2.3a4     b7197f7    + ic decode (MixtureLnL)    define + yield
+  bench/v2.2.3a5     6954924    + hypoBest decode          define + yield
+  bench/v2.2.3a6     d7a3eb1    + hypoBest decode          define + yield
+  bench/v2.2.3a7     e701541    + hypoBest decode          define + yield
+  bench/v2.2.3a8     05698d0    + hypoBest decode          (already in tag)
+
+  Verified for all nine: 0 remaining occurrences of
+  `/= Event()->ChargedParticles().size();` and of `id /= pdim;`.
+
+--------------------------------------------------------------------------------
+9. STATUS (2026-11-15)
+--------------------------------------------------------------------------------
+  Samples are generated and simulated (500 events each):
+     bench{1,2,3,5}.hepmc -> sim.bench{1,2,3,5}.root
+     npsim wall: 1tr 24.97 s, 2tr 35.49 s, 3tr 43.45 s, 5tr 66.12 s
+     (PDG mix per track: random over {211, 321, 2212}, from the current macro)
+  All nine benchmark refs are patched and compile.
+  NO eicrecon runs have been performed yet -- the benchmark matrix (9 refs x
+  4 samples, one run per setting, 500 events) is pending, on request.
+  Helper scripts in the sandbox root: apply-bench-patches.py, runbench.sh
+  (4 runs + collect), collect.py (IRT observables from a rec file).
+  Installed stack right now: install/lib/libIRT2.so from bench/v2.2.3
+  (installed before the ref sweep); the sweep only built, did not install.
+================================================================================
+
+--------------------------------------------------------------------------------
+10. RESULTS
+--------------------------------------------------------------------------------
+ref = bench/v2.2.3 (upstream v2.2.3 + radix fix + the two patches), baseline
+pfrich-reco.json, 500 events, single-threaded, one run, no averaging.
+Installed at 15:19 (libIRT2.so + RICH-IRT.so), log eicrecon_v223_2tr.log,
+output rec_v223_2tr.root.
+
+  ref            Ntr  wall [s]  jana Hz   IRT parts  PFRICHHits/ev
+  bench/v2.2.3    2     64.48     23.4        969        570.1
+
+  ref            reco PDG mix                       truth PDG mix
+  bench/v2.2.3    {211:318, 321:301, 2212:323, 0:27}  {211:341, 321:306, 2212:353}
+
+  ref            mean npe  mean nhits  sum npe  sum nhits  attached
+  bench/v2.2.3    12.186    10.472     11808    10147     0.8593
+
+  index-wise PDG agreement 390/744 = 52.4%  (approximate metric: IRT particles
+  are matched to the truth charged primaries in eta by order of appearance,
+  because the rec file does not carry the IRT->track->MC link; treat it as an
+  indicator, not as the PID efficiency. The PDG *composition* above is exact.)
+
+  Notes: 969 IRT particles vs 1000 truth tracks (31 tracks dropped: no reco
+  link or below the eta acceptance); 27 IRT particles with PDG = 0 (no ID).
+  attached = 0.859 is high because the baseline config has
+  "UseMcTruthPhotonDirectionSeed": "yes".
+  The baseline now uses "cherenkov-angle-range": [200, 290]. Expected aerogel
+  Cherenkov angles at 7 GeV for n = 1.04 (cos t = 1/(n*beta)): pi 278.2 mrad,
+  K 269.4 mrad, p 245.2 mrad. So the pi/K separation is only ~9 mrad,
+  comparable to DefaultSinglePhotonThetaResolution = 5 mrad -- near-random
+  pi<->K assignment at this momentum is physically expected, while p vs
+  (pi,K) differs by ~30 mrad and should be resolvable. That is consistent
+  with the reco PDG composition tracking the truth composition while the
+  index-wise agreement stays around one half.
+================================================================================
+
+--------------------------------------------------------------------------------
+11. RECIPE CHANGE 2026-11-15: yield coefficient via the calibration file
+--------------------------------------------------------------------------------
+Replaces the hard-coded override with a configuration option:
+
+  a) pfrich-calibration.json (NOT under version control -- recorded here):
+        "Radiators": { "Aerogel": { "YieldCff": 160.0, "theta-bins": { ... } }, ... }
+     Other radiators (Acrylic, GasVolume, QuartzWindow) have no such key, so
+     their yield coefficient stays whatever the calibration/UpdateYields path
+     produces. IRT never writes this file (no JSON writer in Calibration.cc),
+     so the key survives reruns.
+
+  b) ReconstructionFactory::JsonParser(), inside the per-radiator clause that
+     reads the calibration file's "theta-bins":
+        if (rrconfig.find("YieldCff") != rrconfig.end()) {
+          radiator->m_YieldCff = rrconfig["YieldCff"].template get<double>();
+          radiator->m_DetectedToCalibrationPhotonRatio = 1.0;
+        }
+     i.e. the ratio is pinned to 1.0 in the same clause, exactly as requested.
+
+  c) the hard-coded `radiator->m_YieldCff = 160.0; ... = 1.0;` line in
+     LaunchRingFinder() is REMOVED (and with it the commented-out debug
+     printf in the refs that had one).
+
+  Tooling: apply-bench-patches.py now (i) fixes the radix, (ii) adds the
+  _EXPECTED_BG_PHOTON_COUNT_ (0.1) define, (iii) removes any hard-coded
+  m_YieldCff override, (iv) inserts the JsonParser YieldCff clause. Idempotent
+  (a no-op re-run reports "applied: 0").
+
+  Head commits of all nine benchmark refs after this change (each = tag +
+  radix/experiment commit + this recipe commit; all compile):
+
+    bench/v2.2.3    de2afd0    bench/v2.2.3a5   aeb3925
+    bench/v2.2.3a1  113fa67    bench/v2.2.3a6   c58c53e
+    bench/v2.2.3a2  c68e564    bench/v2.2.3a7   01bd1af
+    bench/v2.2.3a3  ac48538    bench/v2.2.3a8   4543a24
+    bench/v2.2.3a4  f71b015
+
+  Verified identical structure across all nine refs:
+    hard-coded m_YieldCff = 160.0 : 0 occurrences
+    JsonParser YieldCff clause    : 1
+    _EXPECTED_BG_PHOTON_COUNT_    : 1 define
+    buggy radix patterns          : 0
+    (qid|id) /= hdim              : 3 (4 for a2, a3, a4, which decode ic in
+                                     MixtureLnL)
+
+  IMPORTANT for the numbers already recorded: the section 10 measurement
+  (bench/v2.2.3, 2 tracks, 64.48 s) was taken with the hard-coded override,
+  before this change. The effective values are the same (160.0, ratio 1.0),
+  so it is expected to reproduce, but it is formally superseded -- rerun it
+  with the current head commit de2afd0 when the benchmark campaign starts.
+  Also note the installed stack is now bench/v2.2.3 head (de2afd0), built and
+  installed at 15:28 (libIRT2.so + RICH-IRT.so); every ref is installed right
+  before its own runs.
+================================================================================
+
+  RE-RUN of the same setting with the config-driven yield (section 11),
+  bench/v2.2.3 @ de2afd0, installed 15:28, log eicrecon_v223_2tr.log,
+  output rec_v223_2tr.root (the previous artifacts were kept as *.hardcode.*):
+
+    wall 46.70 s   jana 23.2 Hz   IRT particles 969   PFRICHHits/ev 570.1
+    reco PDG {211:318, 321:301, 2212:323, 0:27}   truth {211:341, 321:306, 2212:353}
+    mean npe 12.186  mean nhits 10.472  sum npe 11808  sum nhits 10147  attached 0.8593
+    index-wise PDG agreement 390/744 = 52.42%
+
+  Physics is identical to the previous run, as expected: the calibration key
+  supplies the same values the hard-coded line did (160.0, ratio 1.0). The
+  effective recipe is therefore unchanged.
+
+  TIMING CAVEAT, important for the whole campaign: the same configuration ran
+  in 64.48 s (15:20, right after install/checkout) and 46.70 s (15:31). The
+  physics output was identical, so the difference is machine/cache state
+  (cold DD4hep/ACTS/field-map and file-page caches on the first run after a
+  checkout+rebuild), not the code. Consequences for the benchmark:
+    - one run per setting, no averaging, is kept;
+    - but every ref must be run in the same, warm state: install + a first
+      throwaway run to warm the caches is NOT allowed (that would be a second
+      run), so instead the caches are already warm from the ref that ran
+      before, and refs are measured in a fixed order (v2.2.3, a1..a8) with
+      only the install step in between;
+    - wall times below ~60 s for this sample should be read as warm-cache
+      numbers; the 64.48 s figure above is a cold-cache number and is kept
+      only as the record of that first run.
+================================================================================
+
+  PROTOCOL-CONSISTENT RE-RUN (1-event warm-up + measured run), bench/v2.2.3 @
+  de2afd0, 2 tracks, log eicrecon_v223_2tr.log, warm-up log warm_v223_2tr.log,
+  plots archived as pfrich_v223_2tr.root:
+
+    wall 39.84 s   jana 22.6 Hz   IRT particles 969   PFRICHHits/ev 570.1
+    reco PDG {211:318, 321:301, 2212:323, 0:27}   truth {211:341, 321:306, 2212:353}
+    mean npe 12.186  mean nhits 10.472  sum npe 11808  sum nhits 10147  attached 0.8593
+    index-wise PDG agreement 390/744 = 52.42%
+
+  Same configuration, three measurements, to calibrate expectations for the
+  campaign: 64.48 s (cold, no warm-up) | 46.70 s (warm, no warm-up) |
+  39.84 s (with the 1-event warm-up). Physics identical in all three, bit for
+  bit, so the spread is purely machine state. The warm-up number is the one
+  the campaign will use from now on; the two earlier figures are kept as the
+  history of this setting only.
+================================================================================
+
+  Config fingerprints at the start of the campaign (so drift is detectable;
+  both files are NOT under version control):
+    pfrich-reco.json      (1899 B, mtime 2026-11-15 15:33)  md5 see below
+    pfrich-calibration.json (Aerogel "YieldCff": 160.0 at line 13)
+  Re-check these md5 lines before comparing numbers across sessions:
+    a90056d9c0c6cd151f0e80444e1f85d4  pfrich-reco.json
+    bcfd930e07f8a66ef0f59b857e79aec9  pfrich-calibration.json
+EOF
+
+================================================================================
+12. SWEEP RESULTS 2026-11-15 -- 9 refs x {1,2,3,5} tracks
+================================================================================
+Protocol: BUG.txt commands, 500 events, single-threaded, 1-event warm-up then
+ONE measured run per setting, no averaging. Baseline = on-disk
+pfrich-reco.json (md5 a90056d9c0c6cd151f0e80444e1f85d4, "store" plots) and
+pfrich-calibration.json (md5 bcfd930e07f8a66ef0f59b857e79aec9, Aerogel
+"YieldCff": 160.0). Refs = bench/<tag>, each = tag + radix fix + the two
+benchmark patches. Raw log: sweep.tsv.
+
+ Wall time [s] for 500 events
+ ref      1 tr       2 tr       3 tr        5 tr
+ main    29.12      39.80      93.07     1365.91     (bench/v2.2.3  @ de2afd0)
+ a1      28.59      31.32      35.71       65.44
+ a2      28.55      31.16      36.03       65.88
+ a3      28.66      31.21      35.07       46.71
+ a4      28.62      31.05      34.67       46.27
+ a5      28.42      31.21      35.09       45.73
+ a6      28.87      30.83      35.15       46.67
+ a7      28.96      31.15      34.68       46.07
+ a8      28.46      31.27      35.23       46.75
+
+ Speedup vs main:  1 tr x1.0   2 tr x1.27   3 tr x2.61   5 tr x20.9 (a1) -> x29.2 (a3+)
+ Scaling with N:  main 29 -> 40 -> 93 -> 1366 s (combinatorial);
+                  a3+   29 -> 31 -> 35 ->  47 s (~linear, ~4.5 s per extra track)
+
+ PHYSICS: identical across all nine refs for every sample. For each of
+ N = 1, 2, 3, 5 there is exactly ONE distinct physics signature over the nine
+ refs (IRT particle count, PDG content, mean npe, mean nhits, sum npe, sum
+ nhits, attached fraction, index-wise agreement). The chi^2 reference path is
+ therefore unchanged by a1..a8, and the ML/EM code (present in a2, a4..a8)
+ is inert under the baseline config, as intended.
+
+ Per-sample numbers (same for all nine refs):
+   1 tr: PFRICHHits/ev 275.7  IRT parts 488  PDG {0:2, 211:165, 321:140, 2212:181}
+         truth {211:171, 321:141, 2212:188}  npe 12.654 nhits 10.855 attached 0.8578
+         index-wise 205/422 = 48.6%
+   2 tr: 570.1 hits/ev  969 parts  {0:27, 211:318, 321:301, 2212:323}
+         truth {341, 306, 353}  npe 12.186 nhits 10.472 attached 0.8593  52.4%
+   3 tr: 855.8 hits/ev 1472 parts  {0:70, 211:471, 321:452, 2212:479}
+         truth {520, 473, 507}  npe 12.166 nhits 10.596 attached 0.8710  37.5%
+   5 tr: 1434.3 hits/ev 2432 parts {0:221, 211:746, 321:722, 2212:743}
+         truth {853, 818, 829}  npe 12.083 nhits 10.412 attached 0.8617  38.0%
+
+ Why main is so much slower now than in the old TAGS.txt ledger: the radix fix
+ makes the scan enumerate 3^5 = 243 DISTINCT assignments (before the fix the
+ same 243 iterations collapsed to 54 distinct ones, and hdim was 2 in the old
+ config, i.e. 32 iterations). So the fixed baseline is legitimately ~7-20x
+ more expensive than the buggy one, and the patched refs buy it back.
+
+ Artifacts per (ref,N): rec_<ref>_<N>tr.root (physics), eicrecon_<ref>_<N>tr.log
+ (timing + jana report), pfrich_<ref>_<N>tr.root (evaluation plots, "store"),
+ warm_<ref>_<N>tr.log (warm-up, output file deleted), plus sweep.tsv.
+ Cross-check: bench/v2.2.3a7 and bench/v2.2.3a8 have an EMPTY source diff
+ after the YieldCff propagation, and their numbers agree -- as expected.
+================================================================================
+
+================================================================================
+13. ML MATRIX 2026-11-15 -- "Estimator":"ml", same refs/samples/protocol
+================================================================================
+Config pfrich-reco-ml.json = baseline + "Estimator":"ml" + "BackgroundFraction":
+0.1 + "BackgroundWindow": 0.02 (the two background values are the code
+defaults, so making them explicit changes nothing). Only refs that contain the
+mixture estimator were run: a2, a4, a5, a6, a7, a8 (main/a1/a3 have no ML code).
+
+ Wall time [s]      1tr    2tr    3tr    5tr     attached (sum nhits / sum npe)
+ a2ml              28.32  31.10  35.28  61.06   0.8513 0.8354 0.8008 0.7130
+ a4ml              28.51  31.27  34.72  47.01   0.8513 0.8354 0.8008 0.7130
+ a5ml              28.45  31.20  34.95  45.81   0.8544 0.8462 0.7799 0.6056
+ a6ml              28.36  31.02  34.96  45.65   0.8549 0.8534 0.8189 0.6985
+ a7ml              28.98  31.00  34.90  46.10   0.7252 0.4482 0.1330 0.0023
+ a8ml              28.52  31.32  35.43  46.09   0.7252 0.4482 0.1330 0.0023
+ chi^2 reference   28.42  30.83  34.67  45.73   0.8578 0.8593 0.8710 0.8617
+ (chi^2 row = best of the patched refs; all nine refs identical in physics)
+
+ Index-wise PDG agreement (chi^2 reference: 48.58 / 52.42 / 37.49 / 38.04 %)
+ a2ml, a4ml    48.58  52.82  37.34  38.49
+ a5ml          48.34  54.03  36.68  36.60
+ a6ml          48.34  53.90  36.83  37.49
+ a7ml, a8ml    48.10  54.17  37.12  36.55
+
+ FINDINGS
+ 1. Stage B1 is exactly output-preserving: a4ml physics == a2ml physics for all
+    four samples, and it is 23% faster at 5 tracks (47.0 s vs 61.1 s).
+ 2. Stage B2 (scan removed) costs nothing further in time (45.8 s) and changes
+    physics: better at 2 tracks (54.03 vs 52.82), worse at 5 (36.60 vs 38.49),
+    with attached dropping to 0.6056.
+ 3. Stage B3 (EM to convergence) recovers most of it: attached 0.6985,
+    agreement 37.49 at 5 tracks.
+ 4. v2.2.3a7 (the per-event background-fraction and yield-scale M-steps)
+    BREAKS the attachment: attached collapses with multiplicity
+    0.7252 / 0.4482 / 0.1330 / 0.0023 -- at 5 tracks essentially no hit is
+    attached (sum nhits 68 of 29386), while the PDG composition and agreement
+    barely move. Attribution, by running the same setting with one M-step at a
+    time switched off (5 tracks, a7):
+        EmFitBackground "no"  -> attached 0.6887  (recovered)
+        EmFitYields     "no"  -> attached 0.0023  (still broken)
+    so the BACKGROUND-FRACTION M-step is the culprit: (beta, s_r) has a
+    degenerate direction, beta runs to the 0.999 clamp as the number of
+    ambiguous hits grows, the signal weights (1-beta)/pdim * pi become tiny,
+    no track reaches the posterior > 0.5 needed for MAP attachment, and the
+    mixture explains everything as background. The yield-scale M-step alone is
+    mild (0.6887 vs 0.6985 with it on/off at fixed beta).
+ 5. Timing is now flat across a4..a8 (~28 / 31 / 35 / 46 s) and in ML as well
+    as chi^2 -- the estimator is no longer the cost driver. The unpatched
+    reference at 5 tracks is 1365.91 s.
+ 6. Diagnostic gap confirmed at runtime: EM iteration counts and lnL are
+    invisible under EICrecon, because IrtInterface.cc:95 calls
+    SetQuietMode() and RunEM's printf is gated on BeVerbose(). Only
+    "ReconstructionFactory: estimator = ml" reaches the log. Making lnL /
+    iterations / beta / s_r observable needs a plot or an unconditional
+    diagnostic (still the top unimplemented item).
+
+ RECOMMENDATION (not yet applied): default EmFitBackground to OFF (or fit beta
+ globally over the run rather than per event, or bound it far tighter than
+ 0.999 / give it a prior); keep EmFitYields. With beta fixed, a7 behaves like
+ a6 (attached 0.6887 vs 0.6985 at 5 tracks).
+
+ Extra configs introduced: pfrich-reco-ml.json, pfrich-reco-ml-nobg.json,
+ pfrich-reco-ml-noyld.json. runbench.sh now honours CFG=<config>.
+================================================================================
+
+================================================================================
+14. FIX TO THE MIXTURE PARAMETERS (ref bench/v2.2.3a8 @ 1eaf12a) + a8ml repeat
+================================================================================
+Per instruction, the mixture now has ONE fitted set of parameters (the
+hypothesis weights pi_{p,h}) and nothing else is estimated:
+
+  * Background is never estimated. It is a fixed, small expected *count* of
+    background photon hits per event -- the same meaning as the chi^2 define
+    _EXPECTED_BG_PHOTON_COUNT_ -- given by the new config key
+        "ExpectedBackgroundPhotons": 0.1
+    and used as a fixed mixture weight beta = ExpectedBackgroundPhotons / nhits
+    (clamped at 0.5), so the expected number of hits attributed to the
+    background component is exactly that count. The background M-step and the
+    EmFitBackground / BackgroundFraction keys are REMOVED from the code.
+  * Yields are never varied. lambda_p is built directly from the calibration
+    file: radiator->m_YieldCff (the "YieldCff" key, i.e. the average number of
+    detected photons per track at a saturated Cherenkov angle) times
+    m_DetectedToCalibrationPhotonRatio (pinned to 1.0 by JsonParser) times
+    sin^2(theta_p). The per-event yield scales s_r and the EmFitYields key are
+    REMOVED; EmParameters now holds pi_{p,h} only.
+  * EM iteration printout is now unconditional (RunEM), because EICrecon puts
+    the factory in quiet mode (IrtInterface.cc:95 SetQuietMode) and the previous
+    BeVerbose()-gated message never reached a log:
+      "ReconstructionFactory: EM N iteration(s), lnL = ..., beta = ...,
+       hits = ..., tracks = ..."
+    Two lines per event (calibration pass + reconstruction pass), so ~950-1000
+    lines per 500-event log.
+
+ CONFIGS: pfrich-reco-ml.json now carries "Estimator":"ml",
+ "ExpectedBackgroundPhotons": 0.1, "BackgroundWindow": 0.02 (BackgroundFraction
+ and the two EmFit* keys deleted). pfrich-reco-ml-nobg.json / -noyld.json
+ (diagnostic, obsolete) deleted. New: pfrich-reco-ml-it60.json (+ EmMaxIterations
+ 60).
+
+ REPEAT OF THE 5-TRACK-CLASS ML MATRIX, ref bench/v2.2.3a8 @ 1eaf12a (label
+ a8mlv2), same samples/protocol/500 events, one measured run each:
+
+  setting      wall [s]   attached   index-wise PDG agreement
+  a8mlv2 1tr   28.33      0.8617     48.82%   (chi^2: 28.42 s, 0.8578, 48.58%)
+  a8mlv2 2tr   31.08      0.8861     53.63%   (chi^2: 30.83 s, 0.8593, 52.42%)
+  a8mlv2 3tr   35.05      0.8883     37.27%   (chi^2: 34.67 s, 0.8710, 37.49%)
+  a8mlv2 5tr   46.14      0.8120     37.64%   (chi^2: 45.73 s, 0.8617, 38.04%)
+
+  The collapse of section 13 is gone: attached went
+     0.7252 / 0.4482 / 0.1330 / 0.0023   (a7ml, a8ml with fitted beta)
+  back to
+     0.8617 / 0.8861 / 0.8883 / 0.8120   (a8mlv2, fixed background + fixed yields)
+  i.e. at or above the chi^2 reference for 1-3 tracks and slightly below at 5.
+  PDG composition: {211:164, 321:140, 2212:182} / {319, 296, 327} /
+  {473, 450, 479} / {738, 713, 760} vs truth {171,141,188} / {341,306,353} /
+  {520,473,507} / {853,818,829}; no-ID (PDG 0) counts identical to chi^2.
+  Timing unchanged: 28 / 31 / 35 / 46 s.
+
+ EM CONVERGENCE (from the new printout):
+   cap 20 (default, EmTolerance 1e-6): iterations min/median/max
+      1tr 4/19/20   2tr 4/20/20   3tr 8/20/20   5tr 20/20/20
+   -> the cap binds for essentially every event, i.e. the tolerance is not
+      reached; lnL ~ 61 / 97 / 138 / 218 (median) so an absolute 1e-6 is very
+      strict; beta = 0.00526 / 0.00270 / 0.00182 / 0.00114 (= 0.1/nhits, as
+      intended).
+   cap 60 probe (a8mlv2it60, 5 tr): iterations 20/60/60, wall 47.26 s
+      (+1.1 s), attached 0.8171 vs 0.8120 -- three extra iterations' worth of
+      gain. So the default cap of 20 is operationally adequate; the sensible
+      change is a looser/relative tolerance rather than more iterations.
+
+ RECOMMENDED NEXT STEPS (not applied): relax EmTolerance (relative, e.g.
+ 1e-6*|lnL|, or absolute ~1e-4) so the loop stops on convergence instead of on
+ the cap; add lnL / iteration count / beta as histograms so the ML path has
+ goodness-of-fit diagnostics; consider propagating this parameter treatment to
+ bench/v2.2.3a7 (a5/a6 never fitted beta or yields, so they are unaffected).
+================================================================================
+
+================================================================================
+15. PLURALITY ATTACHMENT RULE (bench/v2.2.3a8 @ 0bb8638) + 5-track check
+================================================================================
+What changed (ML path only; the chi^2 ownership logic is untouched):
+
+  * a posteriori attachment criterion, previously hard-coded as
+        rbest > 0.5
+    is now policy-switchable:
+        plurality : rbest > rbg      (the hit is more likely signal than background;
+                                     ambiguity between tracks no longer throws the hit
+                                     away)                          <-- new DEFAULT
+        majority  : rbest > 0.5      (v2.2.3a5..a7 behaviour)
+    rbg = exp(lnbg - lnorm) is the hit's background posterior.
+  * JSON key in the PFRICH config:  "AssignmentMode": "plurality" | "majority"
+    (default plurality when the key is absent).
+  * Header: enum AssignmentMode {kAssignMajority, kAssignPlurality},
+    member m_AssignmentMode, Set/GetAssignmentMode.
+  * Commit: 0bb8638 (branch bench/v2.2.3a8). Configs used: pfrich-reco-ml.json
+    (plurality, default) and pfrich-reco-ml-maj.json (explicit majority).
+
+5-track sample, 500 events, one measured run each after a 1-event warm-up:
+
+  setting                 wall [s]  sum npe  sum nhits  attached  index-wise PDG
+  chi^2 baseline (a8)      46.75     29386     25323     0.8617     38.04%
+  ML, majority (a8mlv2)    46.09     29386     23860     0.8120     37.64%
+  ML, majority (a8mlv3maj) 45.62     29386     23860     0.8120     37.64%   <- exact
+  ML, plurality (a8mlv3)   46.21     29386     26676     0.9078     37.64%      repro
+
+  reco PDG composition, ML (both modes): {0:221, 211:738, 321:713, 2212:760}
+                                         (chi^2: {0:221, 211:746, 321:722, 2212:743})
+  truth: {211:853, 321:818, 2212:829}; mean npe 12.083 in all cases.
+
+ Conclusions:
+  * the switch is a pure policy change: majority reproduces the recorded a8mlv2
+    numbers exactly (sum nhits 23860, attached 0.8120, match 37.64%), so nothing
+    else moved;
+  * plurality recovers +11.8% of attached photons vs majority (23860 -> 26676) and
+    also beats the chi^2 reference by +5.3%, while leaving PID quality unchanged
+    (composition and index-wise agreement identical between the two ML modes) --
+    as expected, since the weights/theta_bar that drive PID use the soft
+    responsibilities, not the hard attachment;
+  * timing is unaffected (45.6-46.2 s);
+  * caveat: hits attached under plurality can have modest posterior (anything above
+    rbg qualifies). The posterior is already stored per hit via
+    AssignVariables(..., rbest) in the (reused) CCDF slot, so it can be dumped with
+    "WriteOutputTree": "yes" and used to sort attached hits by confidence -- and it
+    is the quantity a ring-level / joint-assignment upgrade should consume.
+
+ Follow-ups this opens (not yet done):
+  * export the expected (fractional) counts sum_i r_ip and the effective sample
+    size (sum r)^2/sum r^2 per track -- edm4eic npe/nhits are uint16_t, so this
+    goes into IRT's own output tree and/or evaluation histograms;
+  * joint assignment with the Poisson count constraint (max-weight matching with a
+    background slot) to replace per-hit argmax entirely;
+  * ring-level statistic on theta_bar with sigma/sqrt(n_stat) -- the 6.1-sigma
+    pi/K separation estimate depends on using n_stat, not sum r.
+================================================================================
+
+================================================================================
+16. TAG REGISTRY (irt repo, all local-only -- nothing pushed)
+================================================================================
+  v2.2.3      1479e60  upstream base (== origin/main)
+  v2.2.3a1    fd112fa  Stage A: ProcessHits combinatorial overhead
+  v2.2.3a2    402409f  global mixture log-likelihood (flagged)
+  v2.2.3a3    4878d0a  Stage A per-hit hypothesis cache
+  v2.2.3a4    074265d  Stage B1 separable mixture objective
+  v2.2.3a5    224795f  Stage B2 hypothesis marginalised, cdim -> 1
+  v2.2.3a6    a139245  Stage B3 EM iterations
+  v2.2.3a7    d4ab0d8  M-steps for background fraction + yield scales
+  v2.2.3a8    9326e29  EXPERIMENT: ExpectedBackgroundPhotons + hard-coded yields
+  v2.2.3a9    0bb8638  radix BUGFIX + YieldCff from calibration file + fixed
+                       background/yields + unconditional EM printout + plurality
+                       attachment rule ("AssignmentMode" key). Lineage:
+                       9326e29 -> 05698d0 -> 4543a24 -> 1eaf12a -> 0bb8638,
+                       on branch bench/v2.2.3a8.
+
+  Benchmark refs (branch = tag + benchmark patches, one commit each unless noted):
+    bench/v2.2.3   de2afd0  radix fix + define + YieldCff recipe
+    bench/v2.2.3a1 113fa67  "
+    bench/v2.2.3a2 c68e564  "
+    bench/v2.2.3a3 ac48538  "
+    bench/v2.2.3a4 f71b015  "
+    bench/v2.2.3a5 aeb3925  "
+    bench/v2.2.3a6 c58c53e  "
+    bench/v2.2.3a7 01bd1af  "
+    bench/v2.2.3a8 0bb8638  = tag v2.2.3a9 (adds 1eaf12a parameter treatment and
+                             0bb8638 plurality rule on top of the recipe)
+
+  NOT yet propagated: the parameter treatment (1eaf12a) and the plurality rule
+  (0bb8638) exist only on the v2.2.3a8 lineage. bench/v2.2.3a7 (and a5/a6) still
+  carry the fitted-background M-step; for a5/a6 that M-step never existed, so
+  they are unaffected in practice, but bench/v2.2.3a7 does and should be updated
+  before it is measured again.
+================================================================================
+
+================================================================================
+17. CALIBRATION FILE CORRECTED (pfrich-calibration.json)
+================================================================================
+Change: in the "Aerogel" section (the only section actually consumed, since
+only Aerogel has imaging: "yes"), the 4th effective-index column
+(QuartzWindow) was 1.000290 -- air-like, instead of the material value. Now
+set to 1.460000 in all five theta-bins (31-35). Other fields untouched
+(stat, AverageZvtx -1258.3..-1258.5, Coffset -1.62..-1.29, Csigma 4.69..5.20,
+YieldCff 160.0).
+
+Aerogel bin 31 columns now: acrylic 1.501700 (table value, exact), aerogel
+1.040493 (table 1.0399; fitted average, fine), gas 1.000330 (N2, exact),
+quartz window 1.460000 (table RINDEX__QuartzOptical, constant 243-1240 nm).
+
+File fingerprint: md5 was bcfd930e07f8a66ef0f59b857e79aec9 (sections 10-16
+measurements), now 348498b0f76e1d0d0e255c5867663b89. The file is NOT under
+version control, so every number recorded earlier belongs to the OLD file.
+
+Consequences of the fix (model-level, not cosmetic):
+  * optical path / timing: excess optical length along a nominal 450 mm
+    aerogel-photon path rises 2.11 mm -> 3.86 mm, i.e. delay 7.1 ps -> 12.9 ps,
+    against the GEANT-truth residual dt - L/c = 14.0 ps. The remaining ~1 ps is
+    Rayleigh kinks in aerogel; the "first segment weighted by 1.0" bug in
+    IRT::Transport (prev ? prev->GetRadiator() : 0) still costs ~1.6 ps and is
+    a code fix, not a file value.
+  * Snell refraction at the window boundaries is now applied (previously
+    n1 = n2 ~ 1, so the window was optically invisible). Lateral displacement
+    through 3.8 mm: 0.21 mm at 10 deg incidence, 0.46 mm at 20 deg, 0.67 mm at
+    27 deg -> theta bias up to 0.67/450 ~ 1.5 mrad, i.e. ~0.3 of Csigma (5 mrad).
+    Therefore the ring solutions shift measurably: the sweep numbers in sections
+    12/15 must be re-measured under the corrected file before being compared.
+
+Remaining inconsistency (harmless today, a trap later): the other three
+sections still carry the old bad values -- last column 1.000290 everywhere, and
+columns 3/4 are unphysical (n = 0.949..0.986 < 1) in the Acrylic and GasVolume
+sections. They are never read (only the processed imaging radiator's section
+supplies the index list), but if another radiator is ever set imaging: "yes",
+it would silently use those. Keep all four columns in every section (the parser
+validates rnum == number of radiators, and columns are positional in map order
+Acrylic, Aerogel, GasVolume, QuartzWindow) and set them to the material values.
+================================================================================
+
+================================================================================
+18. IRT::Transport() first-segment weighting fixed (bench/v2.2.3a8 @ c05c9c0)
+================================================================================
+Code change:
+  include/IRT.h        new member CherenkovRadiator *m_EmissionRadiator (init 0) and
+                       public SetEmissionRadiator(); declared last to keep the
+                       constructor's initialiser list in declaration order;
+  source/IRT.cc        Transport():
+                         auto *radiator = prev ? prev->GetRadiator() : m_EmissionRadiator;
+                       (was: : 0  ->  segment weighted by n = 1);
+  source/ReconstructionFactory.cc
+                       ProcessHits() calls irt->SetEmissionRadiator(radiator) right
+                       before each Solve(), since that is where the radiator the photon
+                       is attributed to is known.
+
+Honest assessment of the numerical impact: for the present PFRICH boundary ordering
+the list is [Aerogel, Acrylic, mirrors..., QuartzWindow, sensor], and for a photon
+emitted inside the aerogel the surfaces behind it are skipped (no crossing) but remain
+in the list -- so the first *crossed* boundary always has prev != 0 and is preceded by
+the Aerogel surface, meaning that segment was already weighted by the aerogel index.
+Hence this is a robustness/explicitness fix (correct behaviour when the estimated
+emission point lies upstream of the first registered surface), not a numerical change
+for this detector. Consistent with the accounting: after the calibration-file fix the
+model delay is 12.9 ps against the GEANT-truth residual 14.0 ps; had the emission
+segment been unweighted the model would have been ~1.6 ps lower, and that hole was not
+there. The remaining ~1 ps is attributed to Rayleigh kinks in the aerogel.
+
+Placement and follow-ups:
+  * the fix is on branch bench/v2.2.3a8 only; the tag v2.2.3a9 points at 0bb8638, i.e.
+    one commit earlier. Add a new tag (e.g. v2.2.3a10) if this state must be pinned;
+  * IRT.h/IRT.cc are shared files: the change can be cherry-picked onto the other
+    bench/* refs, but it is numerically neutral for PFRICH, so this is optional;
+  * ABI note: the IRT object gained a member, so libIRT2.so and EICrecon's RICH-IRT.so
+    were both rebuilt and reinstalled;
+  * stray file noticed: irt/source/ReconstructionFactory.cc.save (editor backup). It is
+    not matched by the *.cc sources list, so it is not compiled, but it is confusing
+    and should be removed.
+================================================================================
+
+--------------------------------------------------------------------------------
+18b. REVERT of section 18 (2026-11-17)
+--------------------------------------------------------------------------------
+The change described in section 18 was reverted: branch bench/v2.2.3a8 was reset
+back to 0bb8638 (== tag v2.2.3a9), so c05c9c0 is no longer in the branch history
+(local-only branch, nothing pushed, so no dangling published commit).
+Verified after reset: source/IRT.cc:40 is back to
+    auto *radiator = prev ? prev->GetRadiator() : 0;
+and there are zero references to SetEmissionRadiator/m_EmissionRadiator in
+include/IRT.h, source/IRT.cc, source/ReconstructionFactory.cc.
+libIRT2.so and EICrecon/plugins/RICH-IRT.so were rebuilt and reinstalled from the
+reverted tree (2026-11-17 20:01), so the installed stack matches the source again.
+Rationale: as established in section 18, the change is numerically neutral for the
+present PFRICH boundary ordering (prev is index-based and the skipped surfaces stay
+in the list), so it was not worth carrying.
+================================================================================
+
+================================================================================
+19. EM PRINTOUT REMOVED (bench/v2.2.3a8 @ 88a9bd6)
+================================================================================
+Removed from ReconstructionFactory::RunEM the unconditional diagnostic added in
+1eaf12a:
+
+  printf("ReconstructionFactory: EM %u iteration(s), lnL = %.4f, beta = %.6f, "
+         "hits = %u, tracks = %u\n", ...);
+  plus the local "beta" computed only for it.
+
+Still in place: m_EmIterationsUsed is tracked and exposed via GetEmIterationsUsed(),
+so re-adding an (optionally gated) printout is one line.
+Remaining printf's in this file are the two config echoes, both gated on
+BeVerbose() -- which EICrecon disables via IrtInterface's SetQuietMode(), so they
+never reach production logs:
+  :249  "ReconstructionFactory: estimator = %s"          (pre-existing)
+  :266  "ReconstructionFactory: assignment mode = %s"    (added with the
+                                                         AssignmentMode key)
+Build: libIRT2.so rebuilt and reinstalled; no header changed, so no ABI change and
+EICrecon's RICH-IRT.so needed no rebuild. Tag v2.2.3a9 still points at 0bb8638,
+i.e. one commit before this removal; 88a9bd6 is currently untagged.
+================================================================================
+
+================================================================================
+20. "Estimator" restricted to two values (bench/v2.2.3a8 @ 5e66511)
+================================================================================
+Behaviour now (JsonParser):
+  key absent          -> "chi2"  (default; m_UseMixtureLikelihood = false)
+  "chi2"              -> chi^2 scan path
+  "ml"                -> mixture log-likelihood + EM path
+  anything else       -> prints (unconditionally, because EICrecon runs the factory in
+                          quiet mode) 'unsupported "Estimator" value "..." -- only
+                          "chi2" (default) and "ml" are recognised, falling back to
+                          "chi2"' and selects chi^2.
+  Matching is case-insensitive (ToLower), but exact: the old aliases "mixture",
+  "likelihood" and "maximum likelihood" are GONE and now count as unsupported.
+Checked: every config in the sandbox already used "ml", so nothing breaks --
+pfrich-reco.json, pfrich-reco-ml.json, pfrich-reco-ml-maj.json,
+pfrich-reco-ml-it60.json, drich-reco.json.
+Also restored the misplaced "// Outlier hit selection;" comment (it belongs to
+SingleHitCCDFcut, not to Estimator). libIRT2.so rebuilt + reinstalled; no header
+change, so RICH-IRT.so needed no rebuild.
+
+CONFIG DRIFT NOTED (found while doing this): the nominal baseline pfrich-reco.json
+is no longer the configuration described in section 5 -- it now also contains
+    "Estimator": "ml", "ExpectedBackgroundPhotons": 0.1,
+    "AssignmentMode": "plurality", "BackgroundWindow": 0.02
+and "CombinedEvaluationPlots": "display". Its fingerprint is now
+md5 4a1f0e61cc8853d84844f4bd2959ccfd (section 5 describes the earlier
+a90056d9c0c6cd151f0e80444e1f85d4, which had no Estimator key and therefore ran
+the chi^2 path). In other words "the baseline" today means the ML path with the
+plurality attachment rule; a chi^2 comparison run needs either that key removed
+or "Estimator": "chi2" set explicitly.
+================================================================================
+
+================================================================================
+21. Background re-parameterised as one DarkHitRate (bench/v2.2.3a8 @ ae11f64)
+================================================================================
+What changed in the code:
+  REMOVED: the _EXPECTED_BG_PHOTON_COUNT_ define, the "ExpectedBackgroundPhotons"
+           config key, and the "BackgroundWindow" normalisation;
+  ADDED:   "DarkHitRate" [hits mm^-2 s^-1] (default 0) and "SensitiveArea" [mm^2]
+           (default 7.93e5 = 68 HRPPDs x 108 x 108 mm);
+  NEW:     ReconstructionFactory::AccumulateAccidentals(mcparticle, ibin), called once
+           per particle per pass. It scales the rate by the acceptance a candidate
+           photon must satisfy:
+             annulus  = 2*pi*L*tan(theta_C) x (2 n_sigma sigma_theta L)
+             dt_gate  = 2 n_sigma sigma_t   (ns -> s)
+             rings    = distinct hypothesis rings (merged within 2 n_sigma sigma_theta)
+           with n_sigma = _ACCIDENTAL_N_SIGMA_ = 3.0, sigma_theta from the calibration
+           (Csigma, per radiator and theta bin), sigma_t from
+           SinglePhotonTimingResolution, L the mean solved photon path length.
+           Result m_ExpectedAccidentals feeds BOTH estimators: the chi^2 unclaimed-hits
+           Poisson term (bexp) and the mixture weight beta = M/nhits, whose density in
+           [rad] is (1/A_eff) dA/dtheta.
+
+5-track check (500 events, one measured run each after a 1-event warm-up):
+
+  recipe                                   sum nhits  attached   wall
+  a8 chi^2, _EXPECTED_BG_PHOTON_COUNT_=0.1 (sec.12)   25323   0.8617   46.75 s
+  a8 ML plurality                        (sec.15)     26676   0.9078   46.21 s
+  now  chi^2, DarkHitRate = 0                          22456   0.7642   45.50 s
+  now  ML,    DarkHitRate = 0                          40199   1.3680   62.87 s
+  now  ML,    DarkHitRate = 3e6 (stress)               40199   1.3680   47.02 s
+  (sum npe is 29386 in all cases; ML, chi2 and npe are otherwise unchanged)
+
+Three findings, two of them defects this check exposed:
+
+ 1. With DarkHitRate = 0 the mixture has no background, so the plurality attachment
+    rule ("best track beats the background posterior") degenerates into "attach every
+    hit to its best track": attached = 1.368 > 1, i.e. more hits attached than there
+    are detected signal photons, because the quartz-window/gas population is now
+    absorbed as signal. The ML path has no absolute single-hit quality criterion
+    comparable to the chi^2 path's SingleHitCCDFcut -- with beta -> 0 one is needed.
+ 2. The chi^2 attached fraction changed 0.8617 -> 0.7642 purely because the
+    _EXPECTED_BG_PHOTON_COUNT_ term is gone. That term added 2*(0.1 - nbg +
+    nbg ln(nbg/0.1)) to the event chi^2 -- of order 10^4 when nbg was nonzero, with
+    only +1 degree of freedom -- which flattened the event-level CCDF ranking. So the
+    chi^2 numbers in sections 12 and 15 were partly an artifact of that term, and the
+    0.7642 figure is the honest one.
+ 3. beta is no longer bounded: M > nhits would make log(1-beta) undefined. Needs a
+    clamp/renormalisation before large rates are used. Also, the stress value 3e6
+    produced no measurable change (beta x shape ~ 0.03/rad versus signal densities
+    ~5/rad), so the mechanism is only weakly exercised at that level.
+
+Suggested follow-up (not done yet): clamp beta; add an absolute per-hit consistency
+cut in the ML attachment, reusing the existing SingleHitCCDFcut on the winning
+component; then re-measure both estimators at 1/2/3/5 tracks and correct sections 12
+and 15, whose chi^2 rows carry the artifact of the removed term.
+================================================================================
+
+================================================================================
+22. ROLLBACK: the background re-parameterisation and the track-shadow veto
+    (2026-11-17)
+================================================================================
+Rolled back everything from the "_BG_ elimination" onward:
+
+  git reset --hard 5e66511   (branch bench/v2.2.3a8)
+  Dropped commits:
+    ae11f64 "background: single DarkHitRate input scaled by angular+timing acceptance"
+  Discarded uncommitted work:
+    the TrackShadowVetoRadius parameter, DigitizedHit::m_Excluded and
+    FlagTrackShadowHits().
+  Current head is 5e66511 "JsonParser: restrict Estimator to exactly chi2 and ml";
+  tag v2.2.3a9 still points at 0bb8638, two commits back.
+
+State after the rollback (verified):
+  * no trace of DarkHitRate / SensitiveArea / AccumulateAccidentals /
+    TrackShadowVetoRadius / m_Excluded in the source or in the installed library;
+  * _EXPECTED_BG_PHOTON_COUNT_ (0.1), m_ExpectedBackgroundPhotons and
+    m_BackgroundWindow are back;
+  * configs pfrich-reco.json, pfrich-reco-ml.json, pfrich-reco-chi2.json restored
+    ("ExpectedBackgroundPhotons": 0.1, "BackgroundWindow": 0.02); the derived
+    veto/noise configs were deleted;
+  * libIRT2.so and RICH-IRT.so rebuilt and reinstalled from the reverted tree.
+
+Runs to consider VOID (they exercised the reverted code, listed in section 21 and
+below): a9ml0/a9chi2/a9mlstr (5 tr), a9ml0_1tr, a9mlv50_1tr, a9mlv30, a9mlv50.
+
+Observations worth keeping (as diagnosis, not as behaviour of the current stack):
+ 1. The chi^2 rows of sections 12 and 15 are affected by the
+    _EXPECTED_BG_PHOTON_COUNT_ term, which is present in the CURRENT stack: it adds
+    2*(0.1 - nbg + nbg ln(nbg/0.1)) to the event chi^2 -- ~10^4 when nbg is nonzero,
+    for one extra degree of freedom -- which flattens the event-level CCDF ranking.
+    A run without that term gave attached 0.7642 versus 0.8617 with it, at 5 tracks.
+ 2. If the background weight is removed altogether, the plurality attachment rule
+    degenerates ("attach everything"): attached reached 1.368 at 5 tracks and 1.506
+    at 1 track, i.e. nhits exceeds npe. The mixture needs either a background
+    component or an absolute per-hit quality criterion.
+ 3. The track-shadow veto was measured before being rolled back (ML, 5 tracks):
+    attached 1.368 (no veto) -> 0.920 with a 30 mm veto, index-wise PDG agreement
+    37.64% -> 38.14%, wall 46-49 s. The effect is large because ~88% of the noise
+    population lies within 20 mm of the track projection, while a genuine ring sits
+    at L*tan(theta_C) ~ 130 mm. Kept here as evidence; the code is not in the stack.
+
+Also noted during this episode: several config variants were missing the keys the
+tests assumed (pfrich-reco-ml.json had no AssignmentMode/DarkHitRate), which made
+two "stress" runs identical by construction rather than by physics. Config contents
+should be printed/echoed in the run logs before any comparison is trusted.
+================================================================================
+
+--------------------------------------------------------------------------------
+23b. A posteriori CCDF plots implemented WITHOUT adding new histograms
+     (bench/v2.2.3a8 @ 2767789)
+--------------------------------------------------------------------------------
+Final form (simplified after review -- no new plots):
+  * DigitizedHitSolution gained m_chi2 and m_ndf of the winning [radiator, optical
+    path] component, and the mixture posterior moved into its own slot m_posterior,
+    so m_ccdf now holds the actual CCDF in both estimators;
+  * FillPosteriorCCDFPlots() walks the attached hits of every track and fills the
+    EXISTING histograms: ccdfph (per radiator) per photon, ccdftr per track,
+    ccdfev per event, with the usual ndf convention (1, or 2 when timing is used);
+  * the scan-time fills are gated off when this is on, so nothing is double-counted;
+  * config key "PosteriorCCDFPlots" (default yes; "no" restores the old scan-time
+    fills).
+
+5-track ML check (500 events, one run each after a 1-event warm-up):
+
+  PosteriorCCDFPlots            sum nhits  attached   index-wise PID   wall
+  yes (a10ml)                     26706     0.9088       37.09%         46.42 s
+  no  (a10mlnp)                   26706     0.9088       37.09%         46.25 s
+  -> bit-identical: the change is confirmed physics-neutral, and the a posteriori
+     fill replaces the scan-time one rather than adding to it.
+
+Two open observations, not chased down:
+  * section 15 recorded 26676 / 37.64% for what should be the same configuration.
+    Since the on/off A/B above is identical, the 30-hit and 0.5-pp difference is NOT
+    caused by this patch; it comes from the state of the stack at that time (that run
+    predates the printout removal, the Estimator restriction and the rollback). The
+    section-15 chi^2/ML rows should be re-measured on the current head before being
+    compared with anything else.
+  * "pfrich.root" (the OutputRootFile with the evaluation plots) was NOT produced in
+    these runs, with CombinedEvaluationPlots either "store" or "display" -- nothing
+    about it appears in the run logs. Needs a separate look, because without it the
+    CCDF histograms above cannot be inspected.
+================================================================================
+
+--------------------------------------------------------------------------------
+TAG v2.2.3a10 (created 2026-11-18, at 2767789 on branch bench/v2.2.3a8)
+--------------------------------------------------------------------------------
+  Annotated tag for the current state. Between v2.2.3a9 (0bb8638, plurality
+  attachment rule) and v2.2.3a10:
+    88a9bd6  RunEM: drop the unconditional iteration/lnL printout
+    5e66511  JsonParser: restrict "Estimator" to exactly "chi2" (default) and "ml"
+    2767789  CCDF plots: fill the existing histograms a posteriori (section 23b)
+  Milestone tags now: v2.2.3a1 .. v2.2.3a10, all local-only (nothing pushed).
+  irt-2.2a still ends at v2.2.3a8; bench/v2.2.3a8 is the up-to-date branch.
+================================================================================
+
+--------------------------------------------------------------------------------
+LOG LOCATION (2026-11-18)
+--------------------------------------------------------------------------------
+BUG.txt (the bug report), TAGS.txt (abandoned ledger) and MEMO-v00.txt (this file)
+moved from the sandbox root into the repository under log/, together with
+log/README.md describing each. This makes the reasoning behind the measurements
+travel with the branches; the PFRICH reco configs (pfrich-reco*.json), the run
+scripts (runbench.sh, apply-bench-patches.py, collect.py) and the sim/recon/root
+outputs remain in the sandbox root, so paths quoted elsewhere in this file refer
+to that directory.
+================================================================================

@@ -1,0 +1,30 @@
+1. File electron-going-endcap.hepmcwas created by
+
+root -l 'hepmc-writer-multiple-tracks.C("electron-going-endcap.hepmc", 1000, 2, 7.0, 7.0, -2.5, -2.5, 0, M_PI/6)'
+
+, therefore it has a mix of pions and protons
+
+2. Simulation command was
+
+npsim --runType run --compactFile $EIC_SHELL_PREFIX/share/epic/epic_tracking_and_pfrich.xml --outputFile ./sim.edm4hep.pfrich.root --part.userParticleHandler= --inputFiles ./electron-going-endcap.hepmc -N 500
+
+, though it is not really important.
+
+3. Reconstruction command is
+
+$EIC_SHELL_PREFIX/bin/eicrecon -Pplugins="janadot" -Pdd4hep:xml_files=$EIC_SHELL_PREFIX/share/epic/epic.xml -Ppodio:output_collections="PFRICHHits,MCParticles,PFRICHTracks,PFRICHIrtRadiatorInfo,PFRICHIrtParticles" -Peicrecon:LogLevel="info" -Pjana:timeout=180 -Pjana:warmup_timeout=180 -Pjana:nevents="0" -Pjana:debug_plugin_loading="1" -Pacts:MaterialMap="calibrations/materials-map.cbor" -Pplugins_to_ignore=LUMISPECCAL,LOWQ2,FOFFMTRK,RPOTS,B0TRK,ZDC,B0ECAL,FHCAL,BHCAL,EHCAL,FEMC,BEMC,EEMC,PFRICH,DIRC -Ppodio:output_file="rec.edm4hep.pfrich.root" sim.edm4hep.pfrich.root -PPFRICH:config=pfrich-reco.json
+
+4. If this reconstruction call is performed with the present on-disk version of pfrich-reco.json, it provides a correct PID assignment for most of the tracks
+
+5. If the line
+
+"IdentifiedParticles": ["pi+", "proton", "K+"],
+
+is changed to
+
+"IdentifiedParticles": ["pi+", "K+", "proton"],
+
+the PID assignment becomes wrong in ~50% of cases.
+
+  WHY?
+  

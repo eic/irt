@@ -1,0 +1,678 @@
+================================================================================
+TAGS.txt -- version tags, provenance and measurement ledger for the ePIC / IRT
+            PFRICH sandbox in /home/ayk/ePIC-2026-11-13
+================================================================================
+
+MAINTENANCE RULE (applies to every future session)
+  1. Whenever a git tag is created in any repo here, APPEND an entry to section
+     "IRT TAG HISTORY" (or a sibling section for other repos) in this file.
+  2. Never rewrite or reorder existing entries; append only, newest at the end
+     of the relevant section, and keep the "MEASUREMENT LEDGER" consistent with
+     the tags it quotes.
+  3. A tag must be annotated (git tag -a) and its message must state what
+     changed and the measured effect.
+  4. Any timing or physics number quoted anywhere must name the tag it was
+     obtained with, so it can be reproduced.
+
+--------------------------------------------------------------------------------
+STACK AS INSTALLED IN $EIC_SHELL_PREFIX (= /home/ayk/ePIC-2026-11-13/install)
+--------------------------------------------------------------------------------
+  repo      version (git describe)   HEAD       branch   role
+  edm4eic   v8.11.0                  2ae1454    main     EDM4eic definitions
+  irt       v2.2.3a3                 4878d0a    irt-2.2a IRT2 reconstruction  <- tagged here
+  epic      26.11.0-13-ge671ab285    e671ab285  main     geometry / calibration
+  EICrecon  v1.43.0-31-gc4708fd9     c4708fd9   main     jana2 reconstruction chain
+
+  container: eic_xl-nightly.sif;  ROOT 6.40.04, jana2 2026.03.01, podio 1.8,
+  EDM4HEP 1.1.1, ACTS 47.7.0, DD4hep 1.38, cmake 3.31.12.
+
+  ABI WARNING: ReconstructionFactory gained data members in v2.2.3a2. Whenever
+  IRT headers change, EICrecon MUST be rebuilt AND reinstalled
+  (cmake --build EICrecon/build -j 24 && cmake --install EICrecon/build),
+  otherwise install/lib/EICrecon/plugins/RICH-IRT.so keeps the stale layout.
+
+--------------------------------------------------------------------------------
+IRT TAG HISTORY  (repo: ./irt, remote https://github.com/eic/irt.git)
+--------------------------------------------------------------------------------
+  v2.2.3        1479e60  2026-10-02  upstream base ("CherenkovEvent: use
+                std::vector for reproducible behaviour (#65)"). Baseline for
+                all comparisons; branch main == this commit.
+
+  v2.2.3a1      fd112fa  2026-11-13  branch irt-2.2a. "ReconstructionFactory:
+                cut combinatorial overhead in ProcessHits()". Radiator history
+                resolved once per particle; UsedInRingImaging() filter, TRef
+                lookup and dynamic_cast hoisted out of the hit / optical-path
+                loops; reference refractive indices retuned once per radiator;
+                loops reordered radiator -> hit -> optical path; IRT solutions
+                cached across hypothesis combinations (solutionsValid).
+                Estimator unchanged, output bit-identical to v2.2.3.
+                Measured: 5-track sample 223.09 s -> 46.79 s; marginal-cost
+                scaling ~p^4 -> ~p^2.
+
+  v2.2.3a2      402409f  2026-11-14  branch irt-2.2a HEAD. "Reconstruction-
+                Factory: add global mixture log-likelihood estimator". New JSON
+                key "Estimator": "chi2" (default, unchanged behaviour) or "ml":
+                per-hit mixture over all [particle,radiator,optical path]
+                components plus flat background ("BackgroundFraction",
+                "BackgroundWindow"), extended Poisson yield term, hit-to-track
+                assignment marginalized and then performed a posteriori (MAP).
+                Config for the ml mode: pfrich-reco-ml.json.
+                Measured: pion efficiency +1.6 to +3.0 pts, kaon mis-ID down
+                42-60% (1,2,3,5 tracks); +7% wall time at 5 tracks vs v2.2.3a1;
+                default chi2 output identical to v2.2.3a1.
+
+  v2.2.3a3      4878d0a  2026-11-14  branch irt-2.2a HEAD. "Reconstruction-
+                Factory: cache per-hit hypothesis evaluation, scan becomes
+                lookups" (Stage A). New ScoreHits() evaluates the single-photon
+                thp/tt/chi2/CCDF of every hit for every PID hypothesis once per
+                particle per iteration, keeping the best [radiator,optical path]
+                component per hypothesis; the cdim combination scan is reduced to
+                table lookups. Scan bookkeeping moved out of per-hit std::set /
+                std::map operations into flat per-event tables (selected hits per
+                particle, cached [hit,particle] solution pointers); the event
+                chi^2 accumulation walks the hits once instead of tracks times
+                per-hit selection lists.
+                Output identical to v2.2.3a2 with the chi2 estimator at 1, 2, 3
+                and 5 tracks (incl. radiator angle sums).
+                Measured: 5 tracks 46.79 -> 43.62 s; marginal cost above the
+                single-track floor 18.2 -> 15.0 s. See the hypothesis-count
+                diagnostic below: the scan is no longer the bottleneck.
+
+  Naming convention for future tags: v<upstream-base>a<N> for local development
+  milestones on top of an upstream release (a1, a2, ...). Next expected tags:
+  v2.2.3a4 = Stage B (separable objective, cdim scan removed),
+  v2.2.3a5 = Stage C (EM iterations).
+
+--------------------------------------------------------------------------------
+MEASUREMENT LEDGER  (all runs: README.AYK eicrecon recipe, single-threaded,
+                     -Pjana:nevents=500, ONE run per configuration)
+--------------------------------------------------------------------------------
+  Wall time, seconds (500 events):
+    tracks   v2.2.3 (main)   v2.2.3a1 (chi2)   v2.2.3a2 (ml)   v2.2.3a3 (chi2)
+      1          29.05            28.63           29.22           28.64
+      2          34.34            31.28           31.71           31.17
+      3          48.50            33.89           34.50           34.64
+      5         223.09            46.79           50.09           43.62
+
+  Marginal cost above the ~29 s single-track floor:
+    tracks      v2.2.3    v2.2.3a1    v2.2.3a2    v2.2.3a3
+      2           5.3         2.7         2.5         2.5
+      3          19.5         5.3         5.3         6.0
+      5         194.1        18.2        20.9        15.0
+    log-log slope p=2..5:  v2.2.3 ~p^3.5-4.5 ;  v2.2.3a1/a2/a3 ~p^2
+
+  v2.2.3a3 physics output is IDENTICAL to v2.2.3a1 (and to the chi2 column of
+  v2.2.3a2): same IRT particle counts, PDG content, npe, nhits and radiator
+  angle sums at 1, 2, 3 and 5 tracks. Use the v2.2.3a1/a2 physics table below.
+
+  Hypothesis-count diagnostic (5-track sample, 500 events, one run, v2.2.3a3,
+  configs pfrich-reco-1hypo/3hypo/4hypo.json which change only the value of
+  "IdentifiedParticles"):  cdim = hdim^pdim
+    hdim=1 (cdim=1)    44.18 s   PDG {211: 2267, 0: 183}
+    hdim=2 (cdim=32)   43.62 s   PDG {211: 2101, 321: 166, 0: 183}
+    hdim=3 (cdim=243)  43.99 s   PDG {211: 1823, 321: 168, 2212: 276, 0: 183}
+    hdim=4 (cdim=1024) 45.34 s   PDG {211: 1143, 321: 187, 2212: 373, 11: 564, 0: 183}
+    -> a x1024 increase in the number of combinations costs 2.7%: after
+       v2.2.3a1 + v2.2.3a3 the combinatorial scan is essentially free. What is
+       left scales with particles x hits, i.e. with the IRT ray-tracing.
+
+  Physics, 500 events (IRT particles / pion efficiency / K mis-ID / no-ID /
+  mean npe / mean nhits):
+    1tr  v2.2.3     493   94.73%   15   11   13.18  11.07
+    1tr  v2.2.3a1   493   94.73%   15   11   13.18  11.07
+    1tr  v2.2.3a2   493   96.55%    6   11   13.18  11.03
+    2tr  v2.2.3     982   92.36%   56   19   13.47  11.57
+    2tr  v2.2.3a1   982   92.36%   56   19   13.47  11.57
+    2tr  v2.2.3a2   982   94.70%   33   19   13.47  11.28
+    3tr  v2.2.3    1475   87.73%   64  117   13.21  11.35
+    3tr  v2.2.3a1  1475   87.73%   64  117   13.21  11.35
+    3tr  v2.2.3a2  1475   89.29%   41  117   13.21  10.63
+    5tr  v2.2.3    2450   85.76%  166  183   13.30  11.73
+    5tr  v2.2.3a1  2450   85.76%  166  183   13.30  11.73
+    5tr  v2.2.3a2  2450   88.73%   93  183   13.30  10.18
+
+  VOID / DO NOT QUOTE: every timing number produced before 2026-11-14 13:20
+  local (the "411 s -> 57.9 s", "23.32/33.43/63.82 s" and the 75 s ladder) was
+  measured with a non-README command line ("-o", "-c /concurrency=24",
+  JANA_THREADS, jana:parameter_strictness=2). Those flags are invalid or change
+  the threading, so those numbers are not reproducible and are superseded by the
+  tables above.
+
+--------------------------------------------------------------------------------
+SAMPLE INVENTORY (sandbox root; 1000 events each unless noted)
+--------------------------------------------------------------------------------
+  electron-going-endcap.hepmc        1 track  (pi+/- 211, p=7 GeV, eta=-2.5,
+                                               phi=pi/2)  -> sim.edm4hep.pfrich.root
+                                               is only 300 events (cannot feed
+                                               a 500-event comparison)
+  tracks1.hepmc / tracks2.hepmc / tracks3.hepmc
+                                     1/2/3 tracks (211, p=7, eta=-2.5,
+                                               phi in [0, pi/2])
+                                -> sim.1tr.root / sim.2tr.root / sim.3tr.root
+  electron-going-endcap-5tracks.hepmc  5 tracks -> sim.edm4hep.pfrich.5tr.root
+
+  Generators: hepmc-writer-single-track.C, hepmc-writer-multiple-tracks.C.
+  Simulation: npsim --runType run --compactFile
+    $EIC_SHELL_PREFIX/share/epic/epic_tracking_and_pfrich.xml
+    --part.userParticleHandler= -N 1000
+
+--------------------------------------------------------------------------------
+RUN RECIPE (the ONLY eicrecon keys allowed; single-threaded, never add
+threading flags, -o, -c /concurrency, jana:parameter_strictness)
+--------------------------------------------------------------------------------
+  $EIC_SHELL_PREFIX/bin/eicrecon -Pplugins="janadot" \
+    -Pdd4hep:xml_files=$EIC_SHELL_PREFIX/share/epic/epic.xml \
+    -Ppodio:output_collections="PFRICHHits,MCParticles,PFRICHTracks,PFRICHIrtRadiatorInfo,PFRICHIrtParticles" \
+    -Peicrecon:LogLevel="info" -Pjana:timeout=180 -Pjana:warmup_timeout=180 \
+    -Pjana:nevents=500 -Pjana:debug_plugin_loading="1" \
+    -Pacts:MaterialMap="calibrations/materials-map.cbor" \
+    -Pplugins_to_ignore=LUMISPECCAL,LOWQ2,FOFFMTRK,RPOTS,B0TRK,ZDC,B0ECAL,FHCAL,BHCAL,EHCAL,FEMC,BEMC,EEMC,PFRICH,DIRC \
+    -Ppodio:output_file="rec_<sample>_<tag>.root" <sim file> \
+    -PPFRICH:config=pfrich-reco.json          # chi2 estimator
+    -PPFRICH:config=pfrich-reco-ml.json       # ml estimator (v2.2.3a2+)
+
+  Only the VALUES of these keys may be changed (output file, input file,
+  PFRICH:config, nevents). Comparisons are always 500 events, one run.
+
+--------------------------------------------------------------------------------
+OPEN WORK (as of v2.2.3a2)
+--------------------------------------------------------------------------------
+  Combinatorics plan:
+    Stage A  DONE (v2.2.3a3). Memoize the per [hit,particle,radiator,path,
+             hypothesis] evaluation; scan reduced to lookups; scan bookkeeping
+             moved to flat tables.
+    Stage B  separable objective / hypothesis-as-mixture-component, cdim -> 1
+             (-> v2.2.3a4). Timing value is now small (the diagnostic above
+             shows cdim=1024 costs 2.7%); its value is that it makes the
+             objective statistically coherent and enables Stage C.
+    Stage C  EM iterations (weights, yields, optionally Coffset/Csigma)
+             (-> v2.2.3a5).
+  NEW finding from v2.2.3a3: the remaining p-dependence is the IRT ray-tracing
+  in ProcessHits(), which costs ~particles x hits. Candidate next levers,
+  orthogonal to the estimator:
+    - pre-filter hits before solving (cheap theta-window test against the
+      kinematic band of any hypothesis) so IRT is not asked for hits that cannot
+      match;
+    - reuse/share IRT solutions between hypotheses (already done) and across
+      events with identical geometry context, if safe;
+    - reduce the number of [radiator,optical path] components solved per hit.
+  Validation for each stage: the MEASUREMENT LEDGER protocol above, plus new
+  7- and 8-track samples to fit the scaling exponent (target ~p^1-2).
+
+  Diagnostic configs added on 2026-11-14: pfrich-reco-1hypo.json,
+  pfrich-reco-3hypo.json, pfrich-reco-4hypo.json (hypothesis-count scan only;
+  their physics output is NOT to be used for PID comparisons).
+================================================================================
+================================================================================
+APPENDED 2026-11-14 (v2.2.3a3) -- single-track eta scan, PFRICH geometry audit,
+                                  MC-truth direction-seed test
+================================================================================
+A. Single-track production runs. All v2.2.3a3, 300 events, README.AYK recipe,
+   single-threaded, -Pjana:nevents="0" (all events):
+     eta=-2.5  sim.edm4hep.pfrich.root       24.35 s  300 ev @ 43.5 Hz
+               295 IRT particles  PDG {211:289, 321:5,  0:1}  pi 97.97%
+               npe 14.27  nhits 11.98  sim hits/ev 328.5
+     eta=-2.0  sim.edm4hep.pfrich.eta2.root  23.98 s  300 ev @ 43.4 Hz
+               295 IRT particles  PDG {211:284, 321:8,  0:3}  pi 96.27%
+               npe 13.97  nhits  8.91  sim hits/ev 351.1
+     eta=-1.9  sim.edm4hep.pfrich.eta19.root 23.90 s  300 ev @ 43.7 Hz
+               295 IRT particles  PDG {211:278, 321:16, 0:1}  pi 94.24%
+               npe 13.04  nhits  7.17  sim hits/ev 367.2
+               -> baseline for sections B/C; outputs preserved as
+                  rec.edm4hep.pfrich.eta19.root, pfrich_eta19_a3.root
+   main (v2.2.3) repeat of eta=-1.9: 24.37 s, 300 ev @ 41.9 Hz; physics
+   identical to v2.2.3a3 (PDG / npe / nhits / radiator angle / radiator npe /
+   radiator nhits all element-wise equal); pfrich.root differs only by 96
+   bytes, all ROOT timestamp fields. Preserved as pfrich_eta19_main.root.
+
+B. PFRICH geometry audit (code reading only, no measurement):
+   - EICrecon/src/services/geometry/richgeo/IrtGeoPFRICH.cc is DEAD CODE in
+     this configuration: the only GetIrtGeo() call site in EICrecon passes the
+     literal "DRICH" (src/factories/pid/IrtCherenkovParticleID_factory.h:72);
+     the dispatch (RichGeo_service.cc:44-52) maps "RICHEndcapN" -> IrtGeoPFRICH
+     and throws for anything else, while the DD4hep detector is named "PFRICH"
+     (install/share/epic/compact/pid/pfrich.xml:70-73, type epic_PFRICH) and
+     "RICHEndcapN" appears nowhere in the geometry.
+   - The IRT geometry actually used is built by the DD4hep detector
+     constructor epic/src/PFRICH_geo.cpp: AddNewDetector("PFRICH") (:80),
+     SetContainerVolume "GasVolume" (:179), AddFlatRadiator "Aerogel" /
+     "Acrylic" / "QuartzWindow" (:276 / :311 / :469). The conical mirrors ARE
+     registered with IRT2, as OpticalBoundary of the GasVolume radiator via a
+     ConicalSurface + cdet->StoreOpticalBoundary (:363-370, :393-401);
+     WITH_IRT2_SUPPORT is on in the built install/lib/libepic.so.
+   - Optical paths per HRPPD = 4 (PFRICH_geo.cpp:674 switch): direct,
+     inner-mirror, outer-mirror, outer->inner; paths are truncated at 2
+     reflections. HRPPD modules = 68 (9x9 flags grid, :479-489) => 272 IRT
+     ray tracers. Each hit carries hit.m_IRTs of size 4 (Digitization.cc:78 ->
+     CherenkovPhotonDetector::GetIRTs) and ProcessHits loops over them
+     (ReconstructionFactory.cc:550): 4 ray-trace solves per hit per imaging
+     radiator, i.e. ~4 x 367 ~ 1.5k solves/event at eta=-1.9.
+   - With pfrich-reco.json only "Aerogel" has imaging:yes, so GasVolume (the
+     radiator the cone is a boundary of) never enters the ring fit; nhits
+     counts aerogel-attributed hits only.
+
+C. MC-truth photon direction seed test. v2.2.3a3, eta=-1.9 sample, 300 events,
+   README.AYK recipe, single-threaded. Config pfrich-reco-seedyes.json =
+   pfrich-reco.json with "UseMcTruthPhotonDirectionSeed": "yes" (line 10;
+   code default is true, the JSON "no" disables it via
+   ReconstructionFactory::IgnoreMcTruthPhotonDirectionSeed, :282-284).
+                              seed "no" (baseline)   seed "yes"
+     wall                      23.90 s                24.75 s
+     IRT particles             295                    295
+     PDG                       {211:278, 321:16, 0:1} {211:286, 321:8, 0:1}
+     pi correct                94.24%                 96.95%
+     mean npe                  13.044                 13.044 (unchanged by
+                                                        construction)
+     mean nhits                7.173                  10.831  (+51%)
+     sum nhits / sum npe       2116 / 3848 = 0.5499   3195 / 3848 = 0.8303
+     mean radiator angle       275.99 mrad            276.47 mrad
+   Interpretation: the npe -> nhits deficit is dominated by IRT solver
+   convergence, not by a missing mirror model. Seeding each hit with the true
+   photon direction at the photocathode (Digitization.cc:132,
+   photon->GetVertexMomentum().Unit()) raises the attached fraction from 55%
+   to 83% and halves kaon mis-ID (321: 16 -> 8) at ~+0.9 s cost. Candidate
+   explanations for the remaining 17% (NOT yet measured): photons needing >=3
+   reflections (paths truncated at 2), hits whose best solution is attributed
+   to the non-imaging GasVolume radiator, and the single-hit CCDF cut.
+   CAVEAT: this mode is a diagnostic upper bound, not a reconstruction option
+   -- it feeds truth information into the fit.
+   Outputs: rec.edm4hep.pfrich.eta19.seedyes.root, pfrich_eta19_seedyes.root,
+   eicrecon_eta19_seedyes.log, pfrich-reco-seedyes.json.
+================================================================================
+D. Why nhits < npe (analysis of existing files, no new runs; eta=-1.9 sample,
+   v2.2.3a3 baseline and seed-"yes" variant):
+   Definitions (code): npe = photons in the particle's radiator history with
+   WasDetected() (ReconstructionFactory.cc:1231-1233); nhits =
+   ChargedParticle::GetRecoCherenkovPhotonCount() = attached DigitizedHits
+   (:1226). They count different objects: photons vs hits.
+   Measured chain of the yield, per event, 300 events:
+     aerogel photons reaching the photosensor (sim truth, MC photon vertex z
+       in [-1275,-1240] mm)                      147.10
+     virtual QE x collection-efficiency selection (IrtInterface.cc:299-311;
+       geoEff = HRPPD_COLLECTION_EFFICIENCY = 0.70, QE table 160-660 nm
+       x 0.81 rescaling) -> npe                   12.83  (8.7%; naive
+       <QE>x0.70 from the table = 13.3%)
+     digitization cell merging (Digitization.cc:113-120, SensorActiveArea-
+       Pixellation=32 over 10.8 cm -> 3.375 mm cells): -0.4% -> 12.64
+       (blackout cells not configured; no out-of-area / unknown-cellID
+       messages in the logs)
+     attached (nhits): seed off  6.75  (plot nhitsA mean 7.20 per track)
+                       seed on  10.46  (plot nhitsA mean 10.87 per track)
+   => digitization is NOT the loss (ceiling 99.6% of npe); the whole gap is
+   "hit not attached". Attachment requires a converged IRT solution in at
+   least one of the 4 modeled optical paths (ReconstructionFactory.cc:715
+   "if (!sc.m_Solution) continue;") AND single-photon CCDF > cut
+   (m_SingleHitCCDFcut = _SINGLE_HIT_CCDF_CUT_DEFAULT_ = 0.001, :4, not
+   overridden in pfrich-reco.json); then AddHit() at :803.
+   Evidence on which mechanism: ccdfphA (attached hits only) is broad, mean
+   0.465 (seed off) / 0.474 (seed on), only 1.6% below 0.02 -> the 0.001 cut
+   is not marginal; rejected hits have CCDF ~ 0 or no solution at all.
+   thphA (Cherenkov angle offset of attached photons) rms 5.4 mrad, nothing
+   beyond +-20 mrad -> rejection is hard, not a soft tail. Both point to
+   photons whose true path is not among the 4 modeled ones (paths truncated
+   at 2 reflections, PFRICH_geo.cpp:674).
+   Not yet measured: the split between "no converged solution" and "CCDF
+   below cut" -- needs one run with "WriteOutputTree": "yes".
+================================================================================
+
+STATE CHANGE 2026-11-14 17:54: the working tree of irt/ was checked out back
+  to `main` (= tag v2.2.3, commit 1479e60, == origin/main). libIRT2.so and
+  EICrecon's RICH-IRT.so were rebuilt and reinstalled from that commit, so
+  the INSTALLED STACK IS NOW v2.2.3 (unpatched): nm -D -C install/lib/libIRT2.so
+  contains no ScoreHits / HypoScore / MixtureLnL symbols.
+  Nothing was deleted: branch irt-2.2a (tip 4878d0a) and the annotated tags
+  v2.2.3a1 / v2.2.3a2 / v2.2.3a3 remain local-only (never pushed). To restore
+  the patched stack: `git checkout irt-2.2a` (or `git checkout v2.2.3a3`) and
+  rebuild + reinstall IRT2 and RICH-IRT.so.
+  All measurements in sections A-D above were taken with the tags named in
+  each entry; they are unaffected by this checkout.
+================================================================================
+
+STATE CHANGE 2026-11-14 18:58: irt/ checked out back to branch `irt-2.2a`
+  (tip 4878d0a, `git describe --tags` = v2.2.3a3) and the stack rebuilt +
+  reinstalled from it: install/lib/libIRT2.so (1 149 544 B) and
+  install/lib/EICrecon/plugins/RICH-IRT.so (921 272 B), plugin resolving
+  libIRT2.so to the local install. Verified patched: nm -D -C libIRT2.so
+  exports ReconstructionFactory::ScoreHits(...) and ::MixtureLnL(...).
+  => INSTALLED STACK IS v2.2.3a3 (Stage A per-hit hypothesis cache; the ML
+  estimator from v2.2.3a2 is compiled in but only active with
+  "Estimator": "ml" in the PFRICH config -- default remains "chi2").
+================================================================================
+
+STATE CHANGE 2026-11-14 19:11: irt/ checked out to `main` (1479e60, v2.2.3,
+  == origin/main) and the stack rebuilt + reinstalled from it:
+  install/lib/libIRT2.so (1 132 360 B) + install/lib/EICrecon/plugins/
+  RICH-IRT.so (921 272 B). Verified unpatched: nm -D -C libIRT2.so has 0
+  matches for ScoreHits / MixtureLnL.
+  => INSTALLED STACK IS v2.2.3 (upstream, no Stage A, no ML estimator).
+  Branch irt-2.2a (4878d0a) and tags v2.2.3a1/a2/a3 remain intact, local-only.
+================================================================================
+================================================================================
+APPENDED 2026-11-14 (branch irt-2.2a) -- Stage B implemented as three tagged
+                                          sub-stages B1/B2/B3
+================================================================================
+  The plan above said "v2.2.3a4 = Stage B, v2.2.3a5 = Stage C". That split is
+  superseded: Stage B was carried out as three separately tagged sub-stages,
+  and the former Stage C (EM) is B3. Actual mapping (annotated tags, local
+  only, on top of v2.2.3a3 = 4878d0a):
+
+    v2.2.3a4 = 074265d  Stage B1  separable mixture objective
+    v2.2.3a5 = 224795f  Stage B2  PID hypothesis marginalized, scan removed
+    v2.2.3a6 = a139245  Stage B3  expectation-maximization iterations
+
+  B1 (v2.2.3a4) -- "make the objective separable".
+    ScoreMixture() evaluates, once per particle per iteration, every
+    [hit,radiator,optical path] component of that particle with all
+    hypothesis-independent lookups resolved (MixComponent: radiator, IRT
+    solution, calibration bin, momentum + path length in the radiator,
+    reference refractive index, angular resolution and offset, measured
+    detection time) and aggregates them per [particle,hit,hypothesis]
+    (MixAgg: log-sum-exp of the component log-densities + density-weighted
+    mean Cherenkov angle). MixtureLnL() then only does log-sum-exp over
+    cached aggregates, so the objective no longer depends on the
+    [particle,hypothesis] combination. The per-component walk survives only
+    in the a posteriori assignment pass. chi^2 path untouched; ML path
+    mathematically unchanged (two-level log-sum-exp differs only by
+    floating-point rounding).
+
+  B2 (v2.2.3a5) -- "hypothesis as a mixture-component index, cdim -> 1".
+    MixtureLnLWeighted() evaluates the objective ONCE over
+    [particle,hypothesis,radiator,optical path] components weighted by
+    pi_{p,h} (pdim*hdim numbers, normalized to 1 per particle). For the
+    mixture estimator cdim stays 1: the hdim^pdim combination loop is gone.
+    The calibration pass, which used to force the truth combination, now
+    starts from truth one-hot weights; everything else starts from a uniform
+    prior. One M-step updates the weights from the responsibilities and the
+    PID of a track is argmax_h pi_{p,h} (hypoBest[]). The a posteriori
+    attachment picks the best [hypothesis,radiator,optical path] component
+    of the most probable track and attaches only when that track's posterior
+    exceeds 0.5. Single-photon plots are filled with soft,
+    responsibility-weighted statistics over all hypotheses (normalization
+    therefore differs from v2.2.3a2/a3 by construction). Neither the
+    assignment nor the hypothesis is fixed a priori, so no hit is discarded
+    and no ownership ambiguity can delete hits. chi^2 path and its scan are
+    untouched and remain the reference implementation.
+
+  B3 (v2.2.3a6) -- "EM iterations".
+    RunEM() iterates { E-step = separable objective at the current weights;
+    M-step = closed-form pi_{p,h} update } until |dlnL| < EmTolerance
+    (default 1e-6) or EmMaxIterations (default 20); the iteration count is
+    kept (GetEmIterationsUsed) and printed in verbose mode.
+    Deliberately NOT free parameters: the expected photon yield of a track.
+    It is tied to the responsibility-weighted mean Cherenkov angle by the
+    radiator yield model, and that tie is what makes the hypotheses
+    identifiable once the assignment is marginalized; freeing it would make
+    the extended Poisson term monotone in the number of assigned photons and
+    destroy the discrimination. Global yield coefficients stay in the
+    existing UpdateYields() calibration path.
+    Optional (EmFitCalibration: "yes", default off): the per-[radiator,
+    theta bin] angular offset and width are also updated by a maximization
+    step (weighted least-squares fit of the single-photon angle residuals;
+    moments cached in MixAgg: m_ThSolBar, m_ThSol2, m_ThSolP, m_ThP2). Since
+    the objective uses those constants, the component caches are rebuilt
+    after such an update, so the EM loop costs one component walk per
+    iteration when it is enabled.
+    New JSON keys: EmMaxIterations, EmTolerance, EmFitCalibration.
+
+  STATUS OF THE INSTALLED STACK: v2.2.3a6 (a139245). libIRT2.so and
+  EICrecon's RICH-IRT.so were rebuilt and reinstalled from it (the header
+  gained data members, so the plugin rebuild is mandatory).
+
+  VALIDATION STATUS -- NO RUNS WERE PERFORMED for B1/B2/B3. Per instruction,
+  no npsim->eicrecon comparisons were made while implementing these stages.
+  Each stage was verified to compile and link only. Outstanding validation,
+  when runs are authorized:
+    (1) chi^2 regression: outputs of v2.2.3a6 with "Estimator":"chi2" must be
+        identical to the v2.2.3a3 entries in the MEASUREMENT LEDGER above
+        (1/2/3/5-track samples, incl. PDG content, npe, nhits, radiator
+        angle sums);
+    (2) ML path: v2.2.3a4 vs v2.2.3a2/a3 must agree within floating-point
+        rounding; v2.2.3a5/a6 vs v2.2.3a4 quantify the effect of hypothesis
+        marginalization and of iterating EM;
+    (3) timing: the ML estimator at 5 tracks (v2.2.3a2 cost 50.09 s vs chi^2
+        46.79 s) should now be cheaper, since the scan is gone and the
+        per-hit evaluation is cached -- measure with the README.AYK protocol
+        (500 events, single-threaded, one run per configuration).
+================================================================================
+
+STATE CHANGE 2026-11-14 20:32: irt/ checked out to the annotated tag
+  v2.2.3a4 (074265d, Stage B1; detached HEAD) and the stack rebuilt +
+  reinstalled from it: install/lib/libIRT2.so (1 154 744 B) +
+  install/lib/EICrecon/plugins/RICH-IRT.so (921 272 B), plugin resolving
+  libIRT2.so to the local install.
+  Verified by symbol check: libIRT2.so exports ScoreHits (Stage A),
+  ScoreMixture + MixtureLnD + the combination-based MixtureLnL (Stage B1),
+  and does NOT export MixtureLnLWeighted / RunEM (Stages B2/B3 absent).
+  => INSTALLED STACK IS v2.2.3a4: chi^2 path with the Stage A per-hit cache;
+  ML estimator = separable objective but still evaluated per
+  [particle,hypothesis] combination (cdim = hdim^pdim), one E-step plus the
+  a posteriori assignment.
+  Branch irt-2.2a still points at a139245 (v2.2.3a6); tags a1..a6 intact.
+================================================================================
+
+STATE CHANGE 2026-11-14 20:36: irt/ checked out to the annotated tag
+  v2.2.3a5 (224795f, Stage B2; detached HEAD) and the stack rebuilt +
+  reinstalled from it: install/lib/libIRT2.so (1 158 864 B) +
+  install/lib/EICrecon/plugins/RICH-IRT.so (921 272 B), plugin resolving
+  libIRT2.so to the local install.
+  Verified by symbol check: libIRT2.so exports ScoreHits (Stage A),
+  ScoreMixture + MixtureLnD (Stage B1) and MixtureLnLWeighted (Stage B2);
+  the combination-based MixtureLnL is gone and RunEM (Stage B3) is absent.
+  => INSTALLED STACK IS v2.2.3a5: chi^2 path with the Stage A cache and its
+  hdim^pdim scan (reference); ML estimator = separable objective with the
+  PID hypothesis marginalized, cdim = 1, one M-step, PID = argmax_h pi_{p,h}.
+  Branch irt-2.2a still points at a139245 (v2.2.3a6); tags a1..a6 intact.
+================================================================================
+
+STATE CHANGE 2026-11-14 20:42: irt/ checked out to branch `irt-2.2a`
+  (tip a139245, `git describe --tags` = v2.2.3a6, Stage B3; branch used
+  rather than the tag to avoid a detached HEAD) and the stack rebuilt +
+  reinstalled from it: install/lib/libIRT2.so (1 164 032 B) +
+  install/lib/EICrecon/plugins/RICH-IRT.so (921 272 B), plugin resolving
+  libIRT2.so to the local install.
+  Verified by symbol check: libIRT2.so exports ScoreHits (Stage A),
+  ScoreMixture + MixtureLnD (B1), MixtureLnLWeighted (B2) and
+  RunEM + RebuildMixtureCache + ApplyCalibrationMStep (B3).
+  => INSTALLED STACK IS v2.2.3a6: chi^2 path with the Stage A cache and its
+  hdim^pdim scan (reference); ML estimator = separable objective, PID
+  hypothesis marginalized (cdim = 1), EM iterations to convergence
+  (EmMaxIterations 20 / EmTolerance 1e-6 by default), optional
+  EmFitCalibration M-step (off by default).
+================================================================================
+
+================================================================================
+APPENDED 2026-11-14 (branch irt-2.2a) -- v2.2.3a7: M-steps for the mixture
+                                          estimator
+================================================================================
+  v2.2.3a7 = d4ab0d8 (on top of v2.2.3a6 = a139245).
+
+  The EM loop now maximizes over all parameters of the per-hit mixture, which
+  are collected in EmParameters:
+    m_Pi         pdim*hdim hypothesis weights pi_{p,h}, normalized to 1 per
+                 particle (unchanged closed-form update from the
+                 responsibilities);
+    m_Background beta, the fraction of hits attributed to the flat background
+                 component;
+    m_YieldScale per imaging radiator, the yield scale s_r of THIS event,
+                 multiplying m_YieldCff * m_DetectedToCalibrationPhotonRatio.
+
+  Mixture normalization (proper, sums to 1 per hit):
+      beta*g  +  sum_{p,h} (1-beta)/pdim * pi_{p,h} * f_{p,h},
+      g = 1/BackgroundWindow (flat in theta), f = the single-photon angular
+      (and, when enabled, timing) Gaussian.
+
+  M-steps implemented:
+    - pi_{p,h}: closed form, from the responsibilities (unchanged);
+    - beta = (nhits - sum_p n_p)/nhits, i.e. the hits left over once every
+      track has been paid its responsibilities; clamped to [1e-3, 0.999] to
+      avoid the degenerate ends where the mixture either has no background
+      slot or explains nothing;
+    - s_r: multiplicative expectation-maximization update of a Poisson mean
+      linear in the parameters,
+          s_r <- s_r * sum_p n_p a_rp/lambda_p / sum_p a_rp,
+          a_rp = s_r * YieldCff_r * ratio_r * sin^2(theta_p),
+        which is exactly the stationary condition of the extended Poisson
+        term sum_p [n_p log lambda_p - lambda_p];
+    - Coffset / Csigma per [radiator,theta bin]: already present since
+      v2.2.3a6, still OFF by default (EmFitCalibration: "yes" enables it; it
+      mutates calibration constants the reconstruction itself uses and forces
+      a component-cache rebuild per iteration).
+
+  Deliberately NOT free: the per-track expected yield. It stays tied to the
+  responsibility-weighted mean Cherenkov angle through the radiator yield
+  model -- that tie is what makes the hypotheses identifiable once the
+  assignment is marginalized. Fitting only the global scale of each radiator
+  keeps the sin^2(theta) dependence, and hence the discrimination, intact.
+
+  Scope safety: s_r and beta are per-event parameters held in EmParameters and
+  are NEVER written back into the geometry or into the configuration.
+  "BackgroundFraction" now only supplies the starting value of beta; the
+  global yield fit remains the business of UpdateYields() on the calibration
+  path.
+
+  New JSON keys: EmFitBackground, EmFitYields (both ON by default; "no"
+  switches them off). EmFitCalibration unchanged (OFF by default). Verbose
+  mode now also prints the fitted background fraction.
+
+  chi^2 path verified untouched: the diff of v2.2.3a6..v2.2.3a7 contains no
+  change to ccdfevsave / ccdftrsave / npetrsave / sel / nsel / AddHit /
+  chisquared_cdf_c / ScoreHits / ProcessHits / MinHitCountCutoff / hmatch.
+
+  INSTALLED STACK: v2.2.3a7 (libIRT2.so + RICH-IRT.so rebuilt and reinstalled;
+  header gained data members, so the plugin rebuild is mandatory).
+
+  VALIDATION: still NO runs performed. Beyond the items listed above, v2.2.3a7
+  adds: check EM monotonicity of lnL with the new M-steps, the number of
+  iterations actually used, the fitted beta and s_r distributions, and whether
+  fitting beta/s_r changes the pion efficiency and kaon mis-ID relative to
+  v2.2.3a6.
+================================================================================
+
+STATE CHANGE 2026-11-15 13:06: irt/ checked out to `main` (1479e60, v2.2.3,
+  == origin/main) and the stack rebuilt + reinstalled from it:
+  install/lib/libIRT2.so (1 132 360 B) + install/lib/EICrecon/plugins/
+  RICH-IRT.so (921 272 B), plugin resolving libIRT2.so to the local install.
+  Verified unpatched: nm -D -C libIRT2.so has 0 matches for ScoreHits /
+  ScoreMixture / MixtureLnD / MixtureLnLWeighted / RunEM /
+  ApplyCalibrationMStep.
+  => INSTALLED STACK IS v2.2.3 (upstream: no Stage A cache, no mixture
+  estimator, no EM/M-steps).
+  Branch irt-2.2a (d4ab0d8 = v2.2.3a7) and tags v2.2.3a1..a7 intact,
+  local-only (never pushed). To restore the patched stack: `git checkout
+  irt-2.2a` (or `git checkout v2.2.3a7`) + rebuild + reinstall IRT2 and
+  RICH-IRT.so.
+================================================================================
+
+================================================================================
+APPENDED 2026-11-15 -- v2.2.3a8 = EXPERIMENT on top of v2.2.3a7
+================================================================================
+  v2.2.3a8 = 9326e29 (branch irt-2.2a). Carried over verbatim from the
+  uncommitted edits that were sitting in the `main` working tree at 13:39
+  (they were never compiled there; preserved as stash@{0} "main EXPERIMENT:
+  _EXPECTED_BG_PHOTON_COUNT_=0.1 + hard-coded m_YieldCff=160" and as the file
+  main-exp-yield-bg.patch in the sandbox root). The switch to irt-2.2a had
+  been refused by git until those edits were stashed on `main`.
+
+    1. #define _EXPECTED_BG_PHOTON_COUNT_  ( 0.1 )
+       switches on the Poisson term for hits claimed by no track hypothesis:
+       nbg counts hits with m_BackgroundCandidate,
+       chi2ev += 2*(bexp - nbg + nbg*log(nbg/bexp)) and ndfev += 1, the
+       latter only when hdim >= 2 (the PFRICH config has pi + K -> active).
+
+    2. Inside the per-track Poisson term of the chi^2 path:
+         radiator->m_YieldCff = 160.0;
+         radiator->m_DetectedToCalibrationPhotonRatio = 1.0;
+       (debug printf left commented out, hence no such string in the binary).
+
+  CAVEATS when running this tag:
+    - item 2 lives inside `if (!calibration && itr &&
+      m_UsePoissonTermInChiSquare)`, so it is INERT while pfrich-reco.json
+      keeps "UsePoissonTermInChiSquare": "no". Set it to "yes" for the
+      hard-coded yields to take effect.
+    - it mutates shared per-radiator state in place: the override persists
+      across hypotheses, particles and events within the process, and
+      overwrites whatever UpdateYields() or the calibration file set.
+    - item 1 is NOT inert: with hdim >= 2 it changes the event-level chi^2,
+      hence which [particle,hypothesis] combination wins.
+    - the mixture/EM path (v2.2.3a4..a7) is untouched by this commit: under
+      "Estimator":"ml" neither item applies (item 1 is chi^2-only, item 2 is
+      inside the chi^2 branch); the ML lambda still uses m_YieldCff scaled
+      by the per-event fitted yield scale s_r.
+
+  INSTALLED STACK: v2.2.3a8 -- install/lib/libIRT2.so (1 168 128 B) and
+  install/lib/EICrecon/plugins/RICH-IRT.so (921 272 B) rebuilt and
+  reinstalled from it at 14:06 (only the .cc changed, so no ABI break; the
+  plugin was rebuilt anyway). Branch irt-2.2a now at 9326e29; tags
+  v2.2.3a1..a8, all local-only. No runs performed on v2.2.3a8.
+================================================================================
+
+STATE CHANGE 2026-11-15 14:19: irt/ checked out back to `main` (1479e60,
+  v2.2.3, == origin/main) and the stack rebuilt + reinstalled from it:
+  install/lib/libIRT2.so (1 132 360 B) + install/lib/EICrecon/plugins/
+  RICH-IRT.so (921 272 B), plugin resolving libIRT2.so to the local install.
+  Verified pristine: 0 matches in libIRT2.so for ScoreHits / ScoreMixture /
+  MixtureLnD / MixtureLnLWeighted / RunEM / ApplyCalibrationMStep, and 0
+  active `#define _EXPECTED_BG_PHOTON_COUNT_` / `m_YieldCff = 160.0` in the
+  checked-out source (the v2.2.3a8 experiment is NOT on main).
+  => INSTALLED STACK IS v2.2.3 (upstream).
+  Still preserved: stash@{0} "main EXPERIMENT: _EXPECTED_BG_PHOTON_COUNT_=0.1
+  + hard-coded m_YieldCff=160" (restore with `git checkout main && git stash
+  pop`), main-exp-yield-bg.patch, branch irt-2.2a at 9326e29 (v2.2.3a8) and
+  tags v2.2.3a1..a8 -- all local-only, never pushed.
+================================================================================
+
+================================================================================
+APPENDED 2026-11-15 -- BUGFIX (uncommitted, on `main`): wrong radix in the
+                        [particle -> hypothesis] combination index
+================================================================================
+  Reported in BUG.txt: swapping "IdentifiedParticles" from
+  ["pi+","proton","K+"] to ["pi+","K+","proton"] made PID wrong in ~50% of
+  cases, although reordering hypotheses must be a pure relabeling.
+
+  Root cause (present in every tag from v2.2.3 up through v2.2.3a8):
+    the combination index is ENCODED with radix hdim
+        for(...) cdim *= hdim;                      // cdim = hdim^pdim
+    but DECODED with radix = number of particles:
+        unsigned hypo = id%hdim;  ...  id /= Event()->ChargedParticles().size();
+    correct only when hdim == pdim (or pdim == 1).
+
+  Effect when hdim != pdim (distinct combinations actually evaluated):
+      pdim=2 hdim=3 : 9 iterations -> 6 distinct, missing (0,2),(1,1),(2,0)
+      pdim=3 hdim=2 : 8 -> 4 ;  pdim=5 hdim=3 : 243 -> 54 ;  pdim=5 hdim=2 : 32 -> 8
+      pdim=1 (any hdim) and pdim == hdim : unaffected
+  Secondary effect: the calibration pass (itr=0) filter `if (pdg mismatch) goto
+  _next_combination` can never find the truth-matching combination when that
+  combination is one of the missing ones, so the calibration pass is silently
+  skipped for those events.
+
+  Explains BUG.txt exactly: hepmc-writer-multiple-tracks.C:54
+  `particles[itrack%2 ? 0 : 2]` with particles = {211, 321, 2212} makes every
+  event (track0 = proton, track1 = pion):
+    ["pi+","proton","K+"]  -> truth (1,0) is scanned  -> PID correct
+    ["pi+","K+","proton"]  -> truth (2,0) NEVER scanned; best possible is 1
+                              of 2 tracks right -> the observed ~50% mis-ID.
+  Falsifiable prediction: of the 6 hypothesis orders, exactly two break --
+  proton at index 2 with pion at 0, and pion at 2 with proton at 0.
+
+  FIX applied on `main` (source/ReconstructionFactory.cc, three sites, now at
+  lines 581, 726, 876): `qid /= hdim;` and `id /= hdim;` instead of dividing
+  by Event()->ChargedParticles().size().
+
+  Scope of the bug for the measurements in this ledger: with
+  "IdentifiedParticles" = [pi+, proton, K+] (hdim=3) the 1-track and 3-track
+  samples were unaffected (pdim == hdim or pdim == 1); the 2-track and
+  5-track samples WERE affected -- identically in `main` and in every patched
+  tag, so all comparisons remain internally valid, but their absolute PID
+  numbers are degraded. Wall times are unaffected (the loop count cdim is
+  unchanged).
+  The ML estimator from v2.2.3a5 up does not decode the combination index at
+  all (hypotheses are marginalized), so it is immune; v2.2.3a4's MixtureLnL
+  inherited the same decode; the chi^2 reference path is affected everywhere.
+
+  STATUS: the fix is UNCOMMITTED on `main`, sitting in the same working tree
+  as the user's experiment hunks (_EXPECTED_BG_PHOTON_COUNT_ = 0.1 and the
+  hard-coded m_YieldCff = 160 / ratio = 1). Not tagged, not cherry-picked to
+  irt-2.2a yet. Installed stack rebuilt from this tree at 14:44
+  (install/lib/libIRT2.so + EICrecon/plugins/RICH-IRT.so), i.e. it now
+  contains BOTH the fix and the experiment. No runs performed.
+================================================================================
