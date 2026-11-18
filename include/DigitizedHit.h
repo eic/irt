@@ -17,7 +17,8 @@ class IRT;
 
 class DigitizedHitSolution {
  public:
- DigitizedHitSolution(): m_Best(0), m_thp(0.0), m_tt(0.0), m_ccdf(0.0), m_rbest(0) {};
+ DigitizedHitSolution(): m_Best(0), m_thp(0.0), m_tt(0.0), m_ccdf(0.0), m_rbest(0),
+    m_chi2(0.0), m_ndf(0), m_posterior(0.0) {};
   ~DigitizedHitSolution() {};
 
   // FIXME: very inefficient;
@@ -29,18 +30,26 @@ class DigitizedHitSolution {
     return 0;
   };
 
-  void AssignVariables(IRTSolution *best, double thp, double tt, CherenkovRadiator *rptr, double ccdf) {
+  // chi2/ndf of the winning [radiator, optical path] component are stored as well, so
+  // track- and event-level CCDFs can be built a posteriori from the attached hits;
+  void AssignVariables(IRTSolution *best, double thp, double tt, CherenkovRadiator *rptr,
+                       double ccdf, double chi2 = 0.0, unsigned ndf = 0) {
     m_Best  = best;
     m_thp   = thp;
     m_tt    = tt;
     m_rbest = rptr;
     m_ccdf  = ccdf;
+    m_chi2  = chi2;
+    m_ndf   = ndf;
   };
 
   std::map<std::pair<CherenkovRadiator*, IRT*>, IRTSolution> m_All;
   IRTSolution* m_Best;      
 
   double m_thp, m_tt, m_ccdf;
+  double m_chi2;                // single-photon chi^2 of the winning component   //!
+  unsigned m_ndf;               // its number of degrees of freedom               //!
+  double m_posterior;           // mixture posterior of this hit-to-track link    //!
   CherenkovRadiator *m_rbest;
 };
 

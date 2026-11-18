@@ -54,6 +54,7 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
   m_AssignmentMode(kAssignPlurality),
+  m_PosteriorCCDFPlots(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -91,6 +92,7 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_EmTolerance(1e-6),
   m_EmFitCalibration(false),
   m_AssignmentMode(kAssignPlurality),
+  m_PosteriorCCDFPlots(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
   m_UseMcTruthPhotonDirectionSeed(true),
@@ -264,6 +266,12 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   // background is never estimated.
   if (jconfig.find("ExpectedBackgroundPhotons") != jconfig.end())
     m_ExpectedBackgroundPhotons = jconfig["ExpectedBackgroundPhotons"].template get<double>();
+
+  // Fill the CCDF plots a posteriori (from the final hit-to-track assignment) rather than
+  // during the combination scan; "no" restores the original behaviour;
+  if (jconfig.find("PosteriorCCDFPlots") != jconfig.end() &&
+      !strcmp(jconfig["PosteriorCCDFPlots"].template get<std::string>().c_str(), "no"))
+    UsePosteriorCCDFPlots(false);
 
   // A posteriori hit-to-track attachment: "plurality" (default) keeps a hit whose best
   // track beats the background component; "majority" restores the pre-v2.2.3a8 rule of
@@ -801,7 +809,8 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	  if (!sc.m_Solution) continue;
 
-	  sptr->AssignVariables(sc.m_Solution, sc.m_Thp, sc.m_Tt, sc.m_Radiator, sc.m_Ccdf);
+	  sptr->AssignVariables(sc.m_Solution, sc.m_Thp, sc.m_Tt, sc.m_Radiator, sc.m_Ccdf,
+			      sc.m_Chi2, sc.m_Ndf);
 
 	  // FIXME: should be radiator-specific;
 	  if (sc.m_Ccdf > m_SingleHitCCDFcut) {
@@ -817,7 +826,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	      if (itr && !calibration && Plots()) Plots()->hdtph()->Fill(1000*sc.m_Tmdiff);
 
-	      if (itr && !calibration && sc.m_Radiator->Plots())
+	      if (itr && !calibration && !m_PosteriorCCDFPlots && sc.m_Radiator->Plots())
 		sc.m_Radiator->Plots()->hccdfph()->Fill(sc.m_Ccdf);
 	    } //if
 	  } //if
@@ -946,6 +955,9 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
     // A posteriori hit-to-track assignment for the winning combination;
     if (m_UseMixtureLikelihood && itr) MixtureLnLWeighted(calibration, mcache, empar, true, false);
+
+    // ... and the CCDF plots, filled from the final attachment for either estimator;
+    if (!calibration && itr && m_PosteriorCCDFPlots) FillPosteriorCCDFPlots();
   } //for itr
 
   // The winning hypothesis of every particle: decoded from the best combination for the 
@@ -968,7 +980,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     // Now check how the PID procedure performed and fill out histograms;
     // Sure of interest is only to see a flat CCDF distribution for the right combination 
     // of event-level hypotheses; 
-    if (Plots() && !m_UseMixtureLikelihood) {
+    if (Plots() && !m_UseMixtureLikelihood && !m_PosteriorCCDFPlots) {
       Plots()->hccdfev()->Fill(ccdfevsave[icbest]);
     
       for(unsigned ip=0; ip<Event()->ChargedParticles().size(); ip++) 
@@ -1008,6 +1020,48 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
     }
   } //if
 } // ReconstructionFactory::LaunchRingFinder()
+
+// -------------------------------------------------------------------------------------
+//
+// CCDF plots filled from the final hit-to-track assignment. Unlike the scan-based fills,
+// these describe the fit that was actually kept: per attached photon, per track (the sum
+// of the single-photon chi^2 of its attached hits, with the usual ndf convention) and per
+// event. The *_ok histograms restrict the track- and event-level fills to tracks whose
+// assigned PID matches the MC truth.
+//
+void ReconstructionFactory::FillPosteriorCCDFPlots( void )
+{
+  double chi2ev = 0.0; unsigned ndfev = 0; bool anytr = false;
+
+  for(auto mcparticle: Event()->ChargedParticles()) {
+    double chi2tr = 0.0; unsigned ndftr = 0, npe = 0;
+
+    for(unsigned ih=0; ih<mcparticle->GetRecoCherenkovHitCount(); ih++) {
+      auto hit = mcparticle->GetRecoCherenkovHit(ih);
+      if (!hit) continue;
+
+      auto sit = hit->m_Solutions.find(mcparticle);
+      if (sit == hit->m_Solutions.end()) continue;
+      const auto &sol = sit->second;
+      if (!sol.m_Best || !sol.m_ndf) continue;
+
+      chi2tr += sol.m_chi2; ndftr += sol.m_ndf; npe++;
+
+      if (sol.m_rbest && sol.m_rbest->Plots() && sol.m_rbest->Plots()->hccdfph())
+	sol.m_rbest->Plots()->hccdfph()->Fill(ROOT::Math::chisquared_cdf_c(sol.m_chi2, sol.m_ndf));
+    } //for attached hits
+
+    if (!npe || !ndftr) continue;      // a track with no usable fit
+
+    if (Plots() && Plots()->hccdftr())
+      Plots()->hccdftr()->Fill(ROOT::Math::chisquared_cdf_c(chi2tr, ndftr));
+
+    chi2ev += chi2tr; ndfev += ndftr; anytr = true;
+  } //for particles
+
+  if (anytr && ndfev && Plots() && Plots()->hccdfev())
+    Plots()->hccdfev()->Fill(ROOT::Math::chisquared_cdf_c(chi2ev, ndfev));
+} // ReconstructionFactory::FillPosteriorCCDFPlots()
 
 // -------------------------------------------------------------------------------------
 
@@ -1353,6 +1407,7 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     // attached to the most probable track, via the [hypothesis,radiator,optical path] 
     // component which matches best for that track;
     const MixComponent *cbest = 0; double cbest_r = 0.0, bthp = 0.0, btt = 0.0;
+    double bchi2 = 0.0; unsigned bndf = 0;
 
     for(unsigned ip=0; ip<pdim; ip++) {
       const unsigned idx = ip*nhits + ihit;
@@ -1382,7 +1437,16 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
           if (calibration && truth && comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib)
             comp.m_Radiator->m_Calibrations[comp.m_Ibin].m_hcalib->Fill(1000*thdiff, r);
 
-          if (ip == ipbest && r > cbest_r) { cbest_r = r; cbest = &comp; bthp = thp; btt = tt; }
+          // single-photon chi^2 of this component: squared angular residual [+ squared timing
+          // residual], with the same resolutions and ndf convention as the chi^2 path;
+          double chi2 = pow(thdiff/comp.m_Hsigma, 2); unsigned ndf = 1;
+          if (m_UseTimingInChiSquare && GetSinglePhotonTimingResolution()) {
+            chi2 += pow(tmdiff/GetSinglePhotonTimingResolution(), 2); ndf++;
+          } //if
+
+          if (ip == ipbest && r > cbest_r) {
+            cbest_r = r; cbest = &comp; bthp = thp; btt = tt; bchi2 = chi2; bndf = ndf;
+          } //if
         } //for ih
       } //for k
     } //for ip
@@ -1400,9 +1464,9 @@ double ReconstructionFactory::MixtureLnLWeighted(bool calibration, const Mixture
     if (assign && cbest && is_signal) {
       auto dit = hit.m_Solutions.find(particles[ipbest]);
       if (dit != hit.m_Solutions.end()) {
-        // note: the last argument is the chi^2-path CCDF slot, reused here for the 
-        // posterior probability of this assignment;
-        dit->second.AssignVariables(cbest->m_Solution, bthp, btt, cbest->m_Radiator, rbest);
+        dit->second.AssignVariables(cbest->m_Solution, bthp, btt, cbest->m_Radiator,
+                                    ROOT::Math::chisquared_cdf_c(bchi2, bndf), bchi2, bndf);
+        dit->second.m_posterior = rbest;
         particles[ipbest]->AddHit(&hit);
       } //if
     } //if

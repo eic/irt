@@ -124,6 +124,10 @@ class ReconstructionFactory : public Digitization, public Calibration {
   void SetEmMaxIterations( unsigned value )  { m_EmMaxIterations = value; };
   void SetEmTolerance( double value )        { m_EmTolerance = value; };
   void UseEmCalibration( bool value = true ) { m_EmFitCalibration = value; };
+
+  // Fill the single-photon, track- and event-level CCDF plots a posteriori, i.e. from the
+  // final hit-to-track assignment, instead of during the combination scan (default: yes);
+  void UsePosteriorCCDFPlots( bool value = true ) { m_PosteriorCCDFPlots = value; };
   unsigned GetEmIterationsUsed( void ) const { return m_EmIterationsUsed; };
   
  private:
@@ -165,6 +169,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   double m_EmTolerance;
   bool m_EmFitCalibration;
   unsigned m_AssignmentMode;
+  bool m_PosteriorCCDFPlots;                                                //!
 
   bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
 
@@ -251,6 +256,10 @@ class ReconstructionFactory : public Digitization, public Calibration {
   // i.e. it is separable and independent of the [particle,hypothesis] combination;
   void ScoreMixture(ChargedParticle *mcparticle, unsigned ip, bool calibration,
                     MixtureCache &cache);
+
+  // Fill the existing CCDF plots (ccdfph per photon, ccdftr per track, ccdfev per event)
+  // from the final hit-to-track attachment rather than during the combination scan;
+  void FillPosteriorCCDFPlots( void );
 
   // Parameters of the per-hit mixture that expectation-maximization actually
   // fits: the hypothesis weights pi_{p,h}, pdim*hdim of them, normalized to 1 for
