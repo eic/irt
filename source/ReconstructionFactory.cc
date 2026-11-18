@@ -1469,14 +1469,6 @@ double ReconstructionFactory::RunEM(bool calibration, MixtureCache &cache,
     prev = lnL;
   } //for it
 
-  // Deliberately not gated on BeVerbose(): EICrecon puts the factory in quiet
-  // mode (IrtInterface::SetQuietMode), and the iteration count is exactly what is
-  // needed to judge convergence in production runs;
-  const double beta = cache.m_Nhits ? m_ExpectedBackgroundPhotons/(double)cache.m_Nhits : 0.0;
-  printf("ReconstructionFactory: EM %u iteration(s), lnL = %.4f, beta = %.6f, "
-         "hits = %u, tracks = %u\n",
-         m_EmIterationsUsed, lnL, beta, cache.m_Nhits, cache.m_Pdim);
-
   return lnL;
 } // ReconstructionFactory::RunEM()
 
