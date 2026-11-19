@@ -57,7 +57,7 @@ ReconstructionFactory::ReconstructionFactory(const char *dfname, const char *cfn
   m_PosteriorCCDFPlots(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
-  m_UseMcTruthPhotonDirectionSeed(true),
+  m_PhotonDirectionSeed(kSeedMcTruth),
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
@@ -95,7 +95,7 @@ ReconstructionFactory::ReconstructionFactory(CherenkovDetectorCollection *geomet
   m_PosteriorCCDFPlots(true),
   //m_ExperimentalMode(false), 
   // Help conical mirrors a bit;
-  m_UseMcTruthPhotonDirectionSeed(true),
+  m_PhotonDirectionSeed(kSeedMcTruth),
   m_Plots(0),
   // Require at least one associated hit per default;
   m_HitCountCutoff(1),
@@ -335,9 +335,31 @@ void ReconstructionFactory::JsonParser(nlohmann::json jconfig)
   } //if
 
   // May want to cheat a bit (feed IRT with true photon direction vectors);
-  if (jconfig.find("UseMcTruthPhotonDirectionSeed") != jconfig.end() &&
-      !strcmp(jconfig["UseMcTruthPhotonDirectionSeed"].template get<std::string>().c_str(), "no"))
-    IgnoreMcTruthPhotonDirectionSeed();
+  // How the initial photon direction for the IRT iteration is chosen; the old
+  // "UseMcTruthPhotonDirectionSeed" spelling is still accepted, with a warning;
+  if (jconfig.find("PhotonDirectionSeed") != jconfig.end()) {
+    TString seed = jconfig["PhotonDirectionSeed"].template get<std::string>();
+    seed.ToLower();
+
+    if (!strcmp(seed.Data(), "mc-truth"))             m_PhotonDirectionSeed = kSeedMcTruth;
+    else if (!strcmp(seed.Data(), "track-direction")) m_PhotonDirectionSeed = kSeedTrackDirection;
+    else if (!strcmp(seed.Data(), "plane-tangent"))   m_PhotonDirectionSeed = kSeedPlaneTangent;
+    else if (!strcmp(seed.Data(), "unrolled-cone"))   m_PhotonDirectionSeed = kSeedUnrolledCone;
+    else {
+      printf("ReconstructionFactory: unsupported \"PhotonDirectionSeed\" value \"%s\" -- use "
+             "\"mc-truth\", \"track-direction\", \"plane-tangent\" or \"unrolled-cone\"; "
+             "falling back to \"track-direction\"\n", seed.Data());
+      m_PhotonDirectionSeed = kSeedTrackDirection;
+    } //if
+  } else if (jconfig.find("UseMcTruthPhotonDirectionSeed") != jconfig.end()) {
+    printf("ReconstructionFactory: \"UseMcTruthPhotonDirectionSeed\" is deprecated -- use "
+           "\"PhotonDirectionSeed\": \"mc-truth\" or \"track-direction\" instead\n");
+
+    if (!strcmp(jconfig["UseMcTruthPhotonDirectionSeed"].template get<std::string>().c_str(), "yes"))
+      m_PhotonDirectionSeed = kSeedMcTruth;
+    else
+      m_PhotonDirectionSeed = kSeedTrackDirection;
+  } //if
 
   // Require at least that many associated hits; populate 0-th bin of a PID match
   // histogram otherwise; default: 1;
@@ -552,7 +574,7 @@ void ReconstructionFactory::JsonParser(const char *fname)
 
 // -------------------------------------------------------------------------------------
 
-void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector<DigitizedHit> &hits, bool use_seed)
+void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector<DigitizedHit> &hits)
 { 
   double theta = mcparticle->GetVertexMomentum().Theta();
   unsigned ibin = (unsigned)floor(theta / _THETA_BIN_WIDTH_);
@@ -616,19 +638,41 @@ void ReconstructionFactory::ProcessHits(ChargedParticle *mcparticle, std::vector
         auto tag = std::make_pair(radiator, irt);
 
         {
+          // Seed directions: MC truth when configured to do so, otherwise built from the
+          // geometry of the first mirror in this optical path. An empty list means "solve
+          // unseeded", which is what "track-direction" does;
+          std::vector<TVector3> seeds;
+
+          switch (m_PhotonDirectionSeed) {
+          case kSeedMcTruth:
+            seeds = hit.m_DirectionSeeds;
+            break;
+          case kSeedPlaneTangent:
+          case kSeedUnrolledCone:
+            irt->BuildDirectionSeeds(path.m_History->m_EstimatedVertex,
+                                     hit.GetDetectionPosition(),
+                                     (m_PhotonDirectionSeed == kSeedPlaneTangent ?
+                                      IRT::kSeedModePlaneTangent :
+                                      IRT::kSeedModeUnrolledCone),
+                                     &seeds);
+            break;
+          default: break;      // kSeedTrackDirection
+          } //switch
+
           IRTSolution seed;
 
           // Loop through all of the provided seeds until IRT converges (yes, assume 
           // the solution is unique);
-          unsigned smax = use_seed ? hit.m_DirectionSeeds.size() : 1;
+          const bool seeded = !seeds.empty();
+          unsigned smax = seeded ? seeds.size() : 1;
           for(unsigned iq=0; iq<smax; iq++) {
-            if (use_seed) seed.SetSeed(hit.m_DirectionSeeds[iq]);
+            if (seeded) seed.SetSeed(seeds[iq]);
 
             auto &solution = hit.m_Solutions[mcparticle].m_All[tag] = 
               irt->Solve(mcparticle, path.m_History->m_EstimatedVertex,
                          // FIXME: give beam line as a parameter;
                          path.m_History->m_AverageParentMomentum.Unit(), hit.GetDetectionPosition(), 
-                         TVector3(0,0,1), false, use_seed ? &seed : 0);
+                         TVector3(0,0,1), false, seeded ? &seed : 0);
             
             solution.m_Time = solution.m_Length/300;
 
@@ -765,7 +809,7 @@ void ReconstructionFactory::LaunchRingFinder(bool calibration)
 
 	// FIXME: 'true': use 3D direction seeds (MC truth); otherwise conical mirror case
 	// is problematic; do it better later;
-	ProcessHits(mcparticle, Hits(), m_UseMcTruthPhotonDirectionSeed);
+	ProcessHits(mcparticle, Hits());
 
 	// The IRT solutions are in place; evaluate every hit for every PID hypothesis 
 	// of this particle once, so the combination scan below is pure lookups;

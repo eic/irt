@@ -70,14 +70,31 @@ class ReconstructionFactory : public Digitization, public Calibration {
   int AddHypothesis(const char *pdg);
 
   //void SetExperimentalMode( void )                   { m_ExperimentalMode = true; };
-  void IgnoreMcTruthPhotonDirectionSeed( void )      { m_UseMcTruthPhotonDirectionSeed = false; };
+  // How the initial photon direction for the IRT iteration is chosen:
+  //   "mc-truth"        - the direction from the MC truth photon vertex momentum (the
+  //                       old "yes"; an upper bound, not a reconstruction option);
+  //   "track-direction" - no seed at all, the iteration starts from the flat prior
+  //                       (the old "no");
+  //   "plane-tangent"   - seed from the specular point of the first mirror, obtained by
+  //                       iterating the tangent-plane reflection (any mirror shape);
+  //   "unrolled-cone"   - the same, started from several windings of the development of
+  //                       the cone, so the additional specular (and multi-bounce)
+  //                       solutions become reachable. Requires conical mirrors, i.e. it
+  //                       is not available for dRICH;
+  enum PhotonDirectionSeed { kSeedMcTruth, kSeedTrackDirection, kSeedPlaneTangent,
+                             kSeedUnrolledCone };
+  void SetPhotonDirectionSeed( PhotonDirectionSeed mode ) { m_PhotonDirectionSeed = mode; };
+  PhotonDirectionSeed GetPhotonDirectionSeed( void ) const {
+    return (PhotonDirectionSeed)m_PhotonDirectionSeed;
+  };
+  bool McTruthSeedsUsed( void ) const { return m_PhotonDirectionSeed == kSeedMcTruth; };
 
   CherenkovEvent *GetEvent(unsigned ev, bool calibration = false);
 
   void SetQuietMode( void )       { m_VerboseMode = false; };
   
   // Multi-particle case;
-  void ProcessHits(ChargedParticle *mcparticle, std::vector<DigitizedHit> &hits, bool use_seed = false);
+  void ProcessHits(ChargedParticle *mcparticle, std::vector<DigitizedHit> &hits);
 
   CherenkovRadiator *UseInRingImaging(const char *name) {
     if (!name) return 0;
@@ -171,7 +188,7 @@ class ReconstructionFactory : public Digitization, public Calibration {
   unsigned m_AssignmentMode;
   bool m_PosteriorCCDFPlots;                                                //!
 
-  bool /*m_ExperimentalMode,*/ m_UseMcTruthPhotonDirectionSeed;
+  unsigned m_PhotonDirectionSeed;                                               //!
 
   std::vector<TParticlePDG*> m_Hypotheses;
 
