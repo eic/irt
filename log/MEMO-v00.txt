@@ -956,3 +956,45 @@ scripts (runbench.sh, apply-bench-patches.py, collect.py) and the sim/recon/root
 outputs remain in the sandbox root, so paths quoted elsewhere in this file refer
 to that directory.
 ================================================================================
+
+--------------------------------------------------------------------------------
+PHOTON DIRECTION SEEDING: new option (commit 5e23b1f, branch bench/v2.2.3a8)
+--------------------------------------------------------------------------------
+"UseMcTruthPhotonDirectionSeed" is replaced by one string option
+"PhotonDirectionSeed" with four values:
+  "mc-truth"        the old "yes"  - truth photon direction at the photocathode; an
+                    upper bound for convergence studies, not a reconstruction option
+  "track-direction" the old "no"   - unseeded Newton iteration
+  "plane-tangent"   NEW - seed taken from the specular point of the first mirror of the
+                    optical path: Fermat's stationary point of |x_emit - P| + |P - x_det|,
+                    solved by iterating the tangent-plane reflection (4 steps, chord
+                    start). Works for any mirror shape, so dRICH (spherical mirrors) too
+  "unrolled-cone"   NEW - the same iteration started from 24 windings of the development
+                    of the cone, so the extra specular (and multi-bounce) solutions of a
+                    conical mirror become reachable. Requires conical mirror surfaces;
+                    IRT::MirrorsAreConical() checks it, and for a detector with non-conical
+                    mirrors (dRICH) it warns once and falls back to "plane-tangent". A path
+                    with no mirrors at all (the direct one) gets no seed by design.
+
+Implementation notes:
+  * IRT::BuildDirectionSeeds(x_emit, x_det, mode, &dirs) returns up to 8 distinct
+    emitted-ray directions (deduplicated within 1 mrad); each satisfies the law of
+    reflection at its converged impact point, and the impact point must lie inside the
+    mirror surface;
+  * these directions are fed into the existing multi-seed loop in ProcessHits, exactly
+    like the truth seeds (first converged root wins), so nothing else in the estimator
+    changed;
+  * ProcessHits no longer takes a bool; the deprecated JSON key is still accepted
+    (yes -> mc-truth, no -> track-direction) with a warning; an unrecognised value of the
+    new key is reported and falls back to "track-direction";
+  * all reco configs in the sandbox root were migrated to the new key; new variants
+    pfrich-reco-ml-pt.json (plane-tangent) and pfrich-reco-ml-uc.json (unrolled-cone) sit
+    next to the mc-truth reference pfrich-reco-ml.json.
+
+STATUS: compiles and installs; NOT yet validated. The comparison to run, on the existing
+samples with the usual protocol (ML, 500 events, one run per setting), is
+  track-direction (today's failure mode) vs plane-tangent vs unrolled-cone vs mc-truth
+  (upper bound: attached 0.9088 at 5 tracks),
+looking at sum nhits / npe, index-wise PID agreement and the wall-time cost of the extra
+seeded solves.
+================================================================================
