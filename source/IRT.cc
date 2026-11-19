@@ -132,7 +132,7 @@ bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsign
 
   // A path without mirrors (the direct one) has nothing to reflect: no seed, and the
   // unseeded solve is the right thing;
-  if (!surf) return false;
+  if (!surf) return false;   // the direct path has nothing to reflect
 
   if (mode == kSeedModeUnrolledCone && !MirrorsAreConical()) {
     // dRICH mirrors are spheres: the development argument does not apply there;
@@ -153,6 +153,24 @@ bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsign
   auto specular = [&](const TVector3 &P0, TVector3 *dir) -> bool {
     TVector3 P = P0;
 
+    // Containment test. The "V" range of these surfaces is an azimuth, and the
+    // parameterisations do not wrap it into [Vmin, Vmax] - GetV() may return values well
+    // outside it - so the periodicity has to be applied before the range check;
+    auto inside = [&](const TVector3 &xx) -> bool {
+      const double uu = surf->GetU(xx);
+      if (uu < surf->Umin() || uu > surf->Umax()) return false;
+
+      double vv = surf->GetV(xx);
+      const double lo = surf->Vmin(), hi = surf->Vmax(), period = hi - lo;
+      if (vv < lo || vv > hi) {
+        if (period <= 0.0) return false;
+        vv = lo + std::fmod(vv - lo, period);
+        if (vv < lo) vv += period;
+        if (vv > hi) return false;
+      } //if
+      return true;
+    }; //lambda inside
+
     for(unsigned i=0; i<4; i++) {
       const TVector3 nn = surf->GetNormal(P);
       // xto mirrored in the tangent plane at P;
@@ -162,18 +180,21 @@ bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsign
 
       TVector3 Pn;
       if (!surf->GetCrossing(xfrom, d.Unit(), &Pn, false)) return false;
-      if (!surf->IsInside(Pn)) return false;
+      if (!inside(Pn)) return false;
 
       const bool done = (Pn - P).Mag() < 1e-4*scale;
-      P = Pn;
-      if (done) break;
+      P = 0.5*(P + Pn);          // damping: the plain iteration oscillates on a cone
+      if (done) { P = Pn; break; } //if
     } //for iteration
 
     const TVector3 din  = (P - xfrom).Unit(), dout = (xto - P).Unit();
     const TVector3 nn   = surf->GetNormal(P);
-    // law of reflection: the normal components of the two legs cancel;
-    if (fabs(din.Dot(nn) + dout.Dot(nn)) > 0.05) return false;
-    if (din.Dot(dout) > 0.0) return false;      // no bounce at all
+    // A seed only has to land in the basin of the specular solution - the Newton
+    // iteration in Solve() decides - so the reflection law is used as a soft quality
+    // indicator rather than as a hard rejection;
+    if (din.Dot(dout) > 0.0) return false;   // the "bounce" would be a straight pass-through
+    const double resid = fabs(din.Dot(nn) + dout.Dot(nn));
+    if (resid > 0.5) return false;
 
     *dir = din;
     return true;
@@ -193,18 +214,29 @@ bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsign
       const double v = surf->Vmin() + (surf->Vmax() - surf->Vmin())*(iq + 0.5)/nstep;
       starts.push_back(surf->GetSpacePoint(umid, v));
     } //for sampling
+
+    // The chord crossing above failed: use the mirror image of the detection point in the
+    // plane through the cone axis as a second guess;
   } //if
 
-  if (mode == kSeedModeUnrolledCone) {
-    // Windings of the development: extra starts around the axis, which is what makes the
-    // additional (and multi-bounce) specular solutions reachable;
-    const double umid = 0.5*(surf->Umin() + surf->Umax());
-    const unsigned nwind = 24;
-    for(unsigned iq=0; iq<nwind; iq++) {
-      const double v = surf->Vmin() + (surf->Vmax() - surf->Vmin())*(iq + 0.5)/nwind;
-      starts.push_back(surf->GetSpacePoint(umid, v));
-    } //for windings
-  } //if
+  // Either way, start the iteration from a set of points spread over the mirror: on a
+  // cone the specular point can be anywhere along the generator, and the development
+  // argument says those starts are exactly the windings of the unrolled surface, which is
+  // what makes the additional (and multi-bounce) solutions reachable. The unrolled mode
+  // simply looks harder;
+  {
+    const unsigned nstep = (mode == kSeedModeUnrolledCone ? 24 : 12);
+    const double ulo = surf->Umin(), uhi = surf->Umax();
+    const unsigned nu = (mode == kSeedModeUnrolledCone ? 3 : 2);
+
+    for(unsigned iu=0; iu<nu; iu++) {
+      const double u = ulo + (uhi - ulo)*(iu + 1.0)/(nu + 1.0);
+      for(unsigned iq=0; iq<nstep; iq++) {
+        const double v = surf->Vmin() + (surf->Vmax() - surf->Vmin())*(iq + 0.5)/nstep;
+        starts.push_back(surf->GetSpacePoint(u, v));
+      } //for azimuth
+    } //for slant position
+  } //block
 
   for(auto &P0: starts) {
     TVector3 dir;
