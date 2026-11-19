@@ -44,6 +44,25 @@ class IRT: public TObject {
 		    const TVector3 &xfrom, const TVector3 &nfrom, const TVector3 &xto, const TVector3 &beam, 
 		    bool derivatives = false, const IRTSolution *seed = 0);
 
+  // Seeds built from the geometry alone, i.e. without any MC truth: the specular impact
+  // point(s) of the first mirror in this optical path, converted into emitted-ray
+  // directions. Supported modes (see IRT.cc for the construction):
+  //   kSeedModePlaneTangent : iterate the tangent-plane reflection starting from the chord
+  //                           crossing; works for any mirror surface (dRICH included);
+  //   kSeedModeUnrolledCone : the same iteration started from a set of windings of the
+  //                           development of the cone, i.e. it also enumerates the extra
+  //                           specular solutions of a conical mirror. Requires conical
+  //                           mirror surfaces, so it is NOT usable for dRICH;
+  // returns false when the path has no mirror, when the mode does not match the mirror
+  // geometry, or when no consistent specular point was found;
+  enum SeedMode { kSeedModePlaneTangent = 1, kSeedModeUnrolledCone = 2 };
+
+  bool BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsigned mode,
+                           std::vector<TVector3> *seeds) const;
+
+  // True when every mirror of this optical path is a cone of revolution;
+  bool MirrorsAreConical( void ) const;
+
   //unsigned GetSector( void ) const { return m_Sector; };
 
   inline OpticalBoundary *tail( void ) const { 

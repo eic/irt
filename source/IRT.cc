@@ -1,6 +1,9 @@
 
 #include "IRT.h"
 #include "ChargedParticle.h"
+#include "ConicalSurface.h"
+
+#include <mutex>
 
 namespace IRT2 {
 
@@ -78,6 +81,146 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 
   return true;
 } // IRT::Transport()
+
+// -------------------------------------------------------------------------------------
+//
+// Seeds built from the geometry alone. A specular bounce is the stationary point of
+// |xfrom - P| + |P - xto| with P on the mirror: reflect xto in the tangent plane at a
+// trial P, intersect xfrom -> xto' with the mirror, and iterate. The tangent plane of a
+// cone at P is isometric to its development, so this iteration IS what an unrolled-cone
+// construction solves; what differs is where the search starts and how many solutions are
+// looked for:
+//   kSeedModePlaneTangent : one start, taken where the chord crosses the mirror;
+//   kSeedModeUnrolledCone : starts at a set of windings around the axis, which enumerates
+//                           the additional specular solutions of a cone (and, by the same
+//                           token, the multi-bounce candidates that a single chord start
+//                           can never reach).
+// The resulting emitted-ray directions are handed to the existing Newton iteration as
+// seeds, exactly like the MC truth ones.
+//
+bool IRT::MirrorsAreConical( void ) const
+{
+  bool any = false;
+
+  for(unsigned iq=0; iq<_m_OpticalBoundaries.size(); iq++) {
+    auto boundary = GetOpticalBoundary(iq);
+    if (!boundary || !boundary->m_Surface || boundary->m_Refractive) continue;
+
+    any = true;
+    if (!dynamic_cast<const ConicalSurface*>(boundary->m_Surface)) return false;
+  } //for boundary
+
+  return any;
+} // IRT::MirrorsAreConical()
+
+// -------------------------------------------------------------------------------------
+
+bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsigned mode,
+                              std::vector<TVector3> *seeds) const
+{
+  if (!seeds) return false;
+  seeds->clear();
+
+  // First mirror in this optical path;
+  const ParametricSurface *surf = 0;
+  for(unsigned iq=0; iq<_m_OpticalBoundaries.size(); iq++) {
+    auto boundary = GetOpticalBoundary(iq);
+    if (!boundary || !boundary->m_Surface || boundary->m_Refractive) continue;
+    surf = boundary->m_Surface;
+    break;
+  } //for boundary
+
+  // A path without mirrors (the direct one) has nothing to reflect: no seed, and the
+  // unseeded solve is the right thing;
+  if (!surf) return false;
+
+  if (mode == kSeedModeUnrolledCone && !MirrorsAreConical()) {
+    // dRICH mirrors are spheres: the development argument does not apply there;
+    static std::once_flag warned;
+    std::call_once(warned, []() {
+        printf("IRT: \"unrolled-cone\" photon direction seeding requires conical mirror "
+               "surfaces, which this detector does not have - falling back to "
+               "\"plane-tangent\"\n");
+      });
+    mode = kSeedModePlaneTangent;
+  } //if
+
+  const TVector3 chord = xto - xfrom;
+  const double scale = (chord.Mag() > 1e-9 ? chord.Mag() : 1.0);
+
+  // Iterate the tangent-plane reflection to a specular point; returns the emitted
+  // direction when the reflection law holds at the converged point;
+  auto specular = [&](const TVector3 &P0, TVector3 *dir) -> bool {
+    TVector3 P = P0;
+
+    for(unsigned i=0; i<4; i++) {
+      const TVector3 nn = surf->GetNormal(P);
+      // xto mirrored in the tangent plane at P;
+      const TVector3 xm = xto - 2.0*nn*nn.Dot(xto - P);
+      const TVector3 d  = xm - xfrom;
+      if (d.Mag() < 1e-9) return false;
+
+      TVector3 Pn;
+      if (!surf->GetCrossing(xfrom, d.Unit(), &Pn, false)) return false;
+      if (!surf->IsInside(Pn)) return false;
+
+      const bool done = (Pn - P).Mag() < 1e-4*scale;
+      P = Pn;
+      if (done) break;
+    } //for iteration
+
+    const TVector3 din  = (P - xfrom).Unit(), dout = (xto - P).Unit();
+    const TVector3 nn   = surf->GetNormal(P);
+    // law of reflection: the normal components of the two legs cancel;
+    if (fabs(din.Dot(nn) + dout.Dot(nn)) > 0.05) return false;
+    if (din.Dot(dout) > 0.0) return false;      // no bounce at all
+
+    *dir = din;
+    return true;
+  }; //lambda specular
+
+  // Starting points: the chord crossing, and - for the cone - a set of windings;
+  std::vector<TVector3> starts;
+
+  TVector3 guess;
+  if (surf->GetCrossing(xfrom, chord.Unit(), &guess, false) && surf->IsInside(guess))
+    starts.push_back(guess);
+  else {
+    // Chord misses the mirror: sample the surface so the iteration still gets a chance;
+    const double umid = 0.5*(surf->Umin() + surf->Umax());
+    const unsigned nstep = 12;
+    for(unsigned iq=0; iq<nstep; iq++) {
+      const double v = surf->Vmin() + (surf->Vmax() - surf->Vmin())*(iq + 0.5)/nstep;
+      starts.push_back(surf->GetSpacePoint(umid, v));
+    } //for sampling
+  } //if
+
+  if (mode == kSeedModeUnrolledCone) {
+    // Windings of the development: extra starts around the axis, which is what makes the
+    // additional (and multi-bounce) specular solutions reachable;
+    const double umid = 0.5*(surf->Umin() + surf->Umax());
+    const unsigned nwind = 24;
+    for(unsigned iq=0; iq<nwind; iq++) {
+      const double v = surf->Vmin() + (surf->Vmax() - surf->Vmin())*(iq + 0.5)/nwind;
+      starts.push_back(surf->GetSpacePoint(umid, v));
+    } //for windings
+  } //if
+
+  for(auto &P0: starts) {
+    TVector3 dir;
+    if (!specular(P0, &dir)) continue;
+
+    bool duplicate = false;
+    for(auto &s: *seeds)
+      if (s.Dot(dir) > std::cos(1e-3)) { duplicate = true; break; } //if
+    if (duplicate) continue;
+
+    seeds->push_back(dir);
+    if (seeds->size() >= 8) break;   // bounded: the Newton iteration sorts out the rest
+  } //for starts
+
+  return !seeds->empty();
+} // IRT::BuildDirectionSeeds()
 
 // -------------------------------------------------------------------------------------
 
