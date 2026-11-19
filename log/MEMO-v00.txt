@@ -998,3 +998,64 @@ samples with the usual protocol (ML, 500 events, one run per setting), is
 looking at sum nhits / npe, index-wise PID agreement and the wall-time cost of the extra
 seeded solves.
 ================================================================================
+
+================================================================================
+APPENDED 2026-11-19 -- eta = -1.9 single-track test of the photon direction seeds
+(commit 43b6743)
+================================================================================
+Sample: fresh, recipe-consistent. HepMC electron-going-endcap-eta19.hepmc (pi+, 7.0 GeV/c,
+eta = -1.9, phi = 90 deg, 1000 events) -> sim.bench1e19.root via
+  npsim --compactFile $EIC_SHELL_PREFIX/share/epic/epic_tracking_and_pfrich.xml -N 500
+At this angle the track crosses the photosensor plane at r ~ 515 mm, so the direct ring
+(ring radius ~ 128 mm) falls largely off the sensors: what is detected is dominated by
+partial reflection off the outer cone -- exactly the case that unseeded fitting misses.
+
+Configuration: ML estimator, "store" for the evaluation plots (changed from "display" in
+pfrich-reco.json and drich-reco.json, and in all pfrich-reco*.json variants; plots are now
+archived as pfrich_e19f-<mode>.root), 500 events, one run per setting, single-threaded.
+Configs: pfrich-reco-19-{trackdirection,planetangent,unrolledcone,mctruth}.json
+
+  mode              sum npe  sum nhits  attached  PID composition agreement   wall
+  track-direction     6345      3826     0.6030   96.52%                      29.3 s
+  plane-tangent       6345      5134     0.8091   99.39%                      31.1 s
+  unrolled-cone       6345      5146     0.8110   99.39%                      32.5 s
+  mc-truth (bound)    6345      5272     0.8309   99.39%                      29.3 s
+
+So the geometry-only seeds recover 97.4% (plane-tangent) / 97.6% (unrolled-cone) of the
+truth-seeded gain in attached photons and reach the truth-seeded PID quality, at 6-11%
+extra wall time.
+
+Three defects had to be fixed for the seeds to work at all (see commit 43b6743):
+  1. ParametricSurface::IsInside() cannot be used with these surfaces: GetV() returns the
+     azimuth UNWRAPPED (e.g. -64.2 or 46.3 against [0, 2pi]), so every candidate specular
+     point was rejected as "outside". Worked around in IRT::BuildDirectionSeeds by applying
+     the periodicity before the range check. The proper fix belongs in the surface classes
+     (or in IsInside itself) - candidate follow-up;
+  2. the tangent-plane iteration oscillates on a cone; damping P -> (P + Pn)/2 fixes it;
+  3. a single chord-based starting point never reaches the reflected solutions; the search
+     now starts from a grid over the mirror (2 x 12, and 3 x 24 for unrolled-cone),
+     handing up to 8 distinct seeds to Solve(), which decides.
+
+Also noted: "estimator = ml" appears twice per run, i.e. two ReconstructionFactory
+instances are constructed in a PFRICH job - relevant for any future per-job statistics.
+
+Open follow-ups: re-measure the eta = -2.5 benchmark matrix (bench{1,2,3,5}) with
+plane-tangent instead of mc-truth, since every earlier number in this file was taken with
+truth seeding; and fix IsInside()/GetV() at the source.
+================================================================================
+
+--------------------------------------------------------------------------------
+TAG v2.2.3a11 (created 2026-11-19, at this commit on bench/v2.2.3a8)
+--------------------------------------------------------------------------------
+  Between v2.2.3a10 (d2fbace) and v2.2.3a11:
+    5e23b1f  PhotonDirectionSeed: one option with four values, replacing
+             UseMcTruthPhotonDirectionSeed
+    41cb9ab  log: record the PhotonDirectionSeed option and the seeding modes
+    43b6743  IRT: geometry-based photon direction seeds now actually find the
+             specular points (azimuth wrap, damping, multi-start, soft acceptance)
+    fa6e36b  log: eta=-1.9 seed comparison results and the three defects found
+  Headline result at this tag (500 single-track 7 GeV/c pi+ events at eta=-1.9, ML,
+  one run per setting): attached 0.6030 (track-direction) -> 0.8091 (plane-tangent) /
+  0.8110 (unrolled-cone), against the mc-truth bound 0.8309; PID composition agreement
+  96.52% -> 99.39%, i.e. the bound. Cost +6-11% wall time.
+================================================================================
