@@ -67,11 +67,18 @@ thread_local TVector3 OpticalBoundary::m_OutgoingDirection;
 	if (fabs(arg) > 1.0) return false;
 	double theta2 = asin(arg);
 
-	boundary->m_OutgoingDirection.Rotate(theta1 - theta2, na);
+	// At normal incidence na is a zero vector (theta1 - theta2 == 0 as well),
+	// so the rotation is a no-op; skip it to avoid a TRotation "zero axis" warning;
+	if (na.Mag2() > 0)
+	  boundary->m_OutgoingDirection.Rotate(theta1 - theta2, na);
       } //if
     } else {
       // Reflection;
-      boundary->m_OutgoingDirection.Rotate(M_PI - 2*acos(ns.Dot(boundary->m_IncomingDirection)), na);
+      if (na.Mag2() > 0)
+	boundary->m_OutgoingDirection.Rotate(M_PI - 2*acos(ns.Dot(boundary->m_IncomingDirection)), na);
+      else
+	// Normal incidence: reflection simply reverses the direction;
+	boundary->m_OutgoingDirection = -boundary->m_IncomingDirection;
     } //if
 
       // Prepare input for the next boundary;
@@ -316,12 +323,15 @@ bool IRT::BuildDirectionSeeds(const TVector3 &xfrom, const TVector3 &xto, unsign
 
 	{ 
 	  double slope = acos(nfrom.Dot(beam));
-	  auto axis = nfrom.Cross(beam).Unit();
+	  auto cross = nfrom.Cross(beam);
 	  auto nn = TVector3(sin(solution.m_Theta)*cos(solution.m_Phi), 
 			     sin(solution.m_Theta)*sin(solution.m_Phi), 
 			     cos(solution.m_Theta));
 	  solution.m_Direction = nn;
-	  nn.Rotate(slope, axis); 
+	  // When nfrom is parallel to beam the axis is zero and slope == 0,
+	  // so the rotation is a no-op; skip it to avoid a "zero axis" warning;
+	  if (cross.Mag2() > 0)
+	    nn.Rotate(slope, cross.Unit());
 
 	  solution.m_Theta = nn.Theta();
 	  // Yes, as of 2023/03/02 subtract the changed particle phi angle;
