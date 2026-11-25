@@ -42,6 +42,11 @@ class Digitization : public virtual GeantImport {
   CherenkovRadiator *AddBlackoutRadiator(const char *rname);
   void SetSensorActiveAreaPixellation(unsigned div)  { m_SensorActiveAreaPixellation = div; };
   void SetSinglePhotonTimingResolution(double value) { m_SinglePhotonTimingResolution = value; };
+  // Reseed the timing smearing generator; a multi-threaded caller should do this once per
+  // event (with an event-derived seed), otherwise the result for a given event depends on
+  // how many events this instance processed before; NB: TRandom::SetSeed(0) would pick a
+  // non-reproducible seed, hence the remapping;
+  void SetRandomSeed(UInt_t seed) { m_rndm.SetSeed(seed ? seed : 1); };
 
  protected:
   std::vector<DigitizedHit> &Hits( void ) { return m_Hits; };
