@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 
+# Version from git describe
+include(cmake/git_version.cmake)
+set_git_version(IRT2_VERSION)
+
 project(IRT2
-  VERSION 2.3.1
+  VERSION ${IRT2_VERSION}
   LANGUAGES CXX
 )
+message(STATUS "IRT2 version: ${IRT2_VERSION_FULL}")
 
 cmake_policy(SET CMP0079 NEW) # allow `target_link_libraries` from any dir
 
@@ -214,7 +219,7 @@ configure_package_config_file(
 
 write_basic_package_version_file(
   "${CMAKE_PROJECT_NAME}ConfigVersion.cmake"
-  VERSION ${VERSION}
+  VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
 )
 
